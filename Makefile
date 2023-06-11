@@ -8,7 +8,6 @@ HTTPSERVE_PORT	?= 8000
 INKSCAPE		?= inkscape
 INSTALL			?= install
 JSDOC			?=	./node_modules/.bin/jsdoc
-LERNA			?= ./node_modules/.bin/lerna
 OXIPNG			?= oxipng
 PAPER		 	=
 RJS				?= ./node_modules/.bin/r.js
@@ -59,13 +58,17 @@ serve: node_modules dist
 serve_bg: node_modules
 	$(HTTPSERVE) -p $(HTTPSERVE_PORT) -c-1 -s &
 
+certs:
+	mkdir certs
+	cd certs && openssl req -newkey rsa:4096 -x509 -sha256 -days 365 -nodes -out chat.example.org.crt -keyout chat.example.org.key
+
 ########################################################################
 ## Translation machinery
 
 dist/converse-no-dependencies.js: src webpack/webpack.common.js webpack/webpack.nodeps.js @converse/headless node_modules
 	npm run nodeps
 
-GETTEXT = $(XGETTEXT) --from-code=UTF-8 --language=JavaScript --keyword=__ --keyword=___ --keyword=i18n_ --force-po --output=src/i18n/converse.pot --package-name=Converse.js --copyright-holder="Jan-Carel Brand" --package-version=10.1.2 dist/converse-no-dependencies.js -c
+GETTEXT = $(XGETTEXT) --from-code=UTF-8 --language=JavaScript --keyword=__ --keyword=___ --keyword=i18n_ --force-po --output=src/i18n/converse.pot --package-name=Converse.js --copyright-holder="Jan-Carel Brand" --package-version=10.1.3 dist/converse-no-dependencies.js -c
 
 src/i18n/converse.pot: dist/converse-no-dependencies.js
 	$(GETTEXT) 2>&1 > /dev/null; exit $$?;
@@ -84,7 +87,9 @@ po:
 
 .PHONY: release
 release:
-	find ./src -name "*~" -exec rm {} \;
+	rm -rf release && mkdir release
+	git clone git@github.com:conversejs/converse.js.git --depth 1 release/
+	cd release
 	$(SED) -i '/^export const VERSION_NAME =/s/=.*/= "v$(VERSION)";/' src/headless/shared/constants.js
 	$(SED) -i '/Version:/s/:.*/: $(VERSION)/' COPYRIGHT
 	$(SED) -i '/Project-Id-Version:/s/:.*/: Converse.js $(VERSION)\n"/' src/i18n/converse.pot
@@ -116,9 +121,6 @@ deploy:
 ########################################################################
 ## Install dependencies
 
-$(LERNA):
-	npm install lerna
-
 ${NVM_DIR}/nvm.sh:
 	wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
 	source ~/.bashrc
@@ -130,11 +132,8 @@ nvm: ${NVM_DIR}/nvm.sh
 node: .nvmrc
 	. $(HOME)/.nvm/nvm.sh && nvm install
 
-package-lock.json: package.json
+node_modules: package.json src/headless/package.json
 	npm install
-
-node_modules: $(LERNA) package.json package-lock.json src/headless/package.json src/headless/package-lock.json
-	npm run lerna
 
 .PHONY: clean
 clean:
@@ -199,7 +198,6 @@ src/headless/dist/converse-headless.min.js: src webpack/webpack.common.js node_m
 dist:: node_modules src/* | dist/website.css dist/website.min.css
 	npm run headless
 	npm run build
-	make types
 
 .PHONY: install
 install:: dist
@@ -221,11 +219,11 @@ eslint: node_modules
 
 .PHONY: check
 check: eslint | dist/converse.js dist/converse.css
-	npm run test
+	npm run test -- $(ARGS)
 
 .PHONY: test
 test:
-	npm run test
+	npm run test -- $(ARGS)
 
 ########################################################################
 ## Documentation
