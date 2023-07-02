@@ -65,10 +65,7 @@ certs:
 ########################################################################
 ## Translation machinery
 
-dist/converse-no-dependencies.js: src webpack/webpack.common.js webpack/webpack.nodeps.js @converse/headless node_modules
-	npm run nodeps
-
-GETTEXT = $(XGETTEXT) --from-code=UTF-8 --language=JavaScript --keyword=__ --keyword=___ --keyword=i18n_ --force-po --output=src/i18n/converse.pot --package-name=Converse.js --copyright-holder="Jan-Carel Brand" --package-version=10.1.3 dist/converse-no-dependencies.js -c
+GETTEXT = $(XGETTEXT) --from-code=UTF-8 --language=JavaScript --keyword=__ --keyword=___ --keyword=i18n_ --force-po --output=src/i18n/converse.pot --package-name=Converse.js --copyright-holder="Jan-Carel Brand" --package-version=10.1.5 dist/converse-no-dependencies.js -c
 
 src/i18n/converse.pot: dist/converse-no-dependencies.js
 	$(GETTEXT) 2>&1 > /dev/null; exit $$?;
@@ -85,11 +82,8 @@ po:
 ########################################################################
 ## Release management
 
-.PHONY: release
-release:
-	rm -rf release && mkdir release
-	git clone git@github.com:conversejs/converse.js.git --depth 1 release/
-	cd release
+.PHONY: version
+version:
 	$(SED) -i '/^export const VERSION_NAME =/s/=.*/= "v$(VERSION)";/' src/headless/shared/constants.js
 	$(SED) -i '/Version:/s/:.*/: $(VERSION)/' COPYRIGHT
 	$(SED) -i '/Project-Id-Version:/s/:.*/: Converse.js $(VERSION)\n"/' src/i18n/converse.pot
@@ -105,16 +99,27 @@ release:
 	make pot
 	make po
 	make dist
-	npm pack
-	cd src/headless && npm pack
+
+release-checkout:
+	git clone git@github.com:conversejs/converse.js.git --depth 1 --branch $(BRANCH) release-$(BRANCH)
+	cd release-$(BRANCH) && make dist
+
+.PHONY: publish
+publish:
+	make release-checkout
+	cd release-$(BRANCH) && npm pack && npm publish
+	cd release-$(BRANCH)/src/headless && npm pack && npm publish
+	find ./release-$(BRANCH)/ -name "converse.js-*.tgz" -exec mv {} . \;
+	find ./release-$(BRANCH)/src/headless -name "converse-headless-*.tgz" -exec mv {} . \;
+	rm -rf release-$(BRANCH)
 
 .PHONY: postrelease
 postrelease:
-	$(SED) -i '/^_converse.VERSION_NAME =/s/=.*/= "v$(VERSION)dev";/' src/headless/core.js
+	$(SED) -i '/^export const VERSION_NAME =/s/=.*/= "v$(VERSION)dev";/' src/headless/shared/constants.js
 
 .PHONY: deploy
 deploy:
-	git clone --branch v$(VERSION) git@github.com:conversejs/converse.js.git $(VERSION)
+	git clone --branch v$(VERSION) git@github.com:conversejs/converse.js.git --depth 1 $(VERSION)
 	cd $(VERSION) && make node && ASSET_PATH=https://cdn.conversejs.org/$(VERSION)/dist/ make dist && make doc
 	cd .. && git pull && make node && ASSET_PATH=https://cdn.conversejs.org/dist/ make dist && make doc
 
@@ -150,6 +155,9 @@ devserver: node_modules
 
 ########################################################################
 ## Builds
+
+dist/converse-no-dependencies.js: src webpack/webpack.common.js webpack/webpack.nodeps.js @converse/headless node_modules
+	npm run nodeps
 
 dist/converse.js:: node_modules
 	npm run build
@@ -197,7 +205,16 @@ src/headless/dist/converse-headless.min.js: src webpack/webpack.common.js node_m
 
 dist:: node_modules src/* | dist/website.css dist/website.min.css
 	npm run headless
-	npm run build
+	# Ideally this should just be `npm run build`.
+	# The additional steps are necessary to properly generate JSON chunk files
+	# from the .po files. The nodeps config uses preset-env with IE11.
+	# Somehow this is necessary.
+	npm run nodeps
+	$(eval TMPD := $(shell mktemp -d))
+	mv dist/locales $(TMPD) && \
+	npm run build && \
+	mv $(TMPD)/locales/*-po.js dist/locales/ && \
+	rm -rf $(TMPD)
 
 .PHONY: install
 install:: dist

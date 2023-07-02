@@ -1,6 +1,16 @@
 # Changelog
 
-## 10.1.3 (Unreleased)
+## 10.1.5 (2023-06-29)
+
+- #3209: Fix error when importing the `converse` global with bootstrap modal API
+- #3207: `.po` translation files weren't included in previous release
+- Updated Galician and Portuguese translations
+
+## 10.1.4 (2023-06-25)
+
+- Fix `dist` directory not included in NPM package
+
+## 10.1.3 (2023-06-23)
 
 - Add the ability to set roles and affiliations via the MUC occupant modal
 - Fix `isOnlyEmojis is not a function` when using only `@converse/headless`
