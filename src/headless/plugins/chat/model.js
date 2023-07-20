@@ -1,11 +1,11 @@
 import ModelWithContact from './model-with-contact.js';
 import isMatch from "lodash-es/isMatch";
 import isObject from "lodash-es/isObject";
-import log from '@converse/headless/log';
+import log from '../../log.js';
 import pick from "lodash-es/pick";
 import { Model } from '@converse/skeletor/src/model.js';
 import { TimeoutError } from '../../shared/errors.js';
-import { _converse, api, converse } from "../../core.js";
+import { _converse, api, converse } from "../../index.js";
 import { debouncedPruneHistory, handleCorrection } from '@converse/headless/shared/chat/utils.js';
 import { filesize } from "filesize";
 import { getMediaURLsMetadata } from '@converse/headless/shared/parsers.js';

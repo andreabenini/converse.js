@@ -1,21 +1,16 @@
 /* global libsignal */
 import difference from 'lodash-es/difference';
 import invokeMap from 'lodash-es/invokeMap';
-import log from '@converse/headless/log';
 import range from 'lodash-es/range';
 import omit from 'lodash-es/omit';
 import { Model } from '@converse/skeletor/src/model.js';
 import { generateDeviceID } from './utils.js';
-import { _converse, api, converse } from '@converse/headless/core';
+import { _converse, api, converse, log } from '@converse/headless';
 
 const { Strophe, $build, u } = converse.env;
 
 
-const OMEMOStore = Model.extend({
-    Direction: {
-        SENDING: 1,
-        RECEIVING: 2
-    },
+class OMEMOStore extends Model {
 
     getIdentityKeyPair () {
         const keypair = this.get('identity_keypair');
@@ -23,11 +18,11 @@ const OMEMOStore = Model.extend({
             'privKey': u.base64ToArrayBuffer(keypair.privKey),
             'pubKey': u.base64ToArrayBuffer(keypair.pubKey)
         });
-    },
+    }
 
     getLocalRegistrationId () {
         return Promise.resolve(parseInt(this.get('device_id'), 10));
-    },
+    }
 
     isTrustedIdentity (identifier, identity_key, direction) { // eslint-disable-line no-unused-vars
         if (identifier === null || identifier === undefined) {
@@ -41,14 +36,14 @@ const OMEMOStore = Model.extend({
             return Promise.resolve(true);
         }
         return Promise.resolve(u.arrayBufferToBase64(identity_key) === trusted);
-    },
+    }
 
     loadIdentityKey (identifier) {
         if (identifier === null || identifier === undefined) {
             throw new Error("Can't load identity_key for invalid identifier");
         }
         return Promise.resolve(u.base64ToArrayBuffer(this.get('identity_key' + identifier)));
-    },
+    }
 
     saveIdentity (identifier, identity_key) {
         if (identifier === null || identifier === undefined) {
@@ -64,11 +59,11 @@ const OMEMOStore = Model.extend({
         } else {
             return Promise.resolve(false);
         }
-    },
+    }
 
     getPreKeys () {
         return this.get('prekeys') || {};
-    },
+    }
 
     loadPreKey (key_id) {
         const res = this.getPreKeys()[key_id];
@@ -79,7 +74,7 @@ const OMEMOStore = Model.extend({
             });
         }
         return Promise.resolve();
-    },
+    }
 
     storePreKey (key_id, key_pair) {
         const prekey = {};
@@ -89,12 +84,12 @@ const OMEMOStore = Model.extend({
         };
         this.save('prekeys', Object.assign(this.getPreKeys(), prekey));
         return Promise.resolve();
-    },
+    }
 
     removePreKey (key_id) {
         this.save('prekeys', omit(this.getPreKeys(), key_id));
         return Promise.resolve();
-    },
+    }
 
     loadSignedPreKey (keyId) { // eslint-disable-line no-unused-vars
         const res = this.get('signed_prekey');
@@ -105,7 +100,7 @@ const OMEMOStore = Model.extend({
             });
         }
         return Promise.resolve();
-    },
+    }
 
     storeSignedPreKey (spk) {
         if (typeof spk !== 'object') {
@@ -127,7 +122,7 @@ const OMEMOStore = Model.extend({
             'signature': u.arrayBufferToBase64(spk.signature)
         });
         return Promise.resolve();
-    },
+    }
 
     removeSignedPreKey (key_id) {
         if (this.get('signed_prekey')['id'] === key_id) {
@@ -135,19 +130,19 @@ const OMEMOStore = Model.extend({
             this.save();
         }
         return Promise.resolve();
-    },
+    }
 
     loadSession (identifier) {
         return Promise.resolve(this.get('session' + identifier));
-    },
+    }
 
     storeSession (identifier, record) {
         return Promise.resolve(this.save('session' + identifier, record));
-    },
+    }
 
     removeSession (identifier) {
         return Promise.resolve(this.unset('session' + identifier));
-    },
+    }
 
     removeAllSessions (identifier) {
         const keys = Object.keys(this.attributes).filter(key =>
@@ -157,7 +152,7 @@ const OMEMOStore = Model.extend({
         keys.forEach(key => { attrs[key] = undefined; });
         this.save(attrs);
         return Promise.resolve();
-    },
+    }
 
     publishBundle () {
         const signed_prekey = this.get('signed_prekey');
@@ -180,7 +175,7 @@ const OMEMOStore = Model.extend({
         );
         const options = { 'pubsub#access_model': 'open' };
         return api.pubsub.publish(null, node, item, options, false);
-    },
+    }
 
     async generateMissingPreKeys () {
         const missing_keys = difference(
@@ -203,7 +198,7 @@ const OMEMOStore = Model.extend({
         const device = devicelist.devices.get(this.get('device_id'));
         const bundle = await device.getBundle();
         device.save('bundle', Object.assign(bundle, { 'prekeys': marshalled_keys }));
-    },
+    }
 
     /**
      * Generates, stores and then returns pre-keys.
@@ -228,7 +223,7 @@ const OMEMOStore = Model.extend({
             'id': k.keyId,
             'key': u.arrayBufferToBase64(k.keyPair.pubKey)
         }));
-    },
+    }
 
     /**
      * Generate the cryptographic data used by the X3DH key agreement protocol
@@ -277,7 +272,7 @@ const OMEMOStore = Model.extend({
             { 'promise': true }
         );
         device.save('bundle', bundle);
-    },
+    }
 
     fetchSession () {
         if (this._setup_promise === undefined) {
@@ -300,6 +295,6 @@ const OMEMOStore = Model.extend({
         }
         return this._setup_promise;
     }
-});
+}
 
 export default OMEMOStore;

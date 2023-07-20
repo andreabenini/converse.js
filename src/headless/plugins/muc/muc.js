@@ -6,9 +6,9 @@ import pick from 'lodash-es/pick';
 import sizzle from 'sizzle';
 import { Model } from '@converse/skeletor/src/model.js';
 import { ROOMSTATUS } from './constants.js';
-import { Strophe, $build, $iq, $msg, $pres } from 'strophe.js/src/strophe';
+import { Strophe, $build, $iq, $msg, $pres } from 'strophe.js';
 import { TimeoutError } from '../../shared/errors.js';
-import { _converse, api, converse } from '../../core.js';
+import { _converse, api, converse } from '../../index.js';
 import { computeAffiliationsDelta, setAffiliations, getAffiliationList }  from './affiliations/utils.js';
 import { getOpenPromise } from '@converse/openpromise';
 import { handleCorrection } from '../../shared/chat/utils.js';
@@ -46,13 +46,13 @@ const METADATA_ATTRIBUTES = [
 
 const ACTION_INFO_CODES = ['301', '303', '333', '307', '321', '322'];
 
-const MUCSession = Model.extend({
-    defaults () {
+class MUCSession extends Model {
+    defaults () { // eslint-disable-line class-methods-use-this
         return {
             'connection_status': ROOMSTATUS.DISCONNECTED
         };
     }
-});
+}
 
 /**
  * Represents an open/ongoing groupchat conversation.

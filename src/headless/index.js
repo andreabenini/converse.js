@@ -1,7 +1,20 @@
+import './shared/constants.js';
+import _converse from './shared/_converse';
+import advancedFormat from 'dayjs/plugin/advancedFormat';
+import api from './shared/api/index.js';
+import dayjs from 'dayjs';
+import i18n from './shared/i18n';
+import { converse } from './shared/api/public.js';
+
+_converse.api = api;
+
+dayjs.extend(advancedFormat);
+
 /* START: Removable components
  * --------------------
  * Any of the following components may be removed if they're not needed.
  */
+
 import "./plugins/bookmarks/index.js";  // XEP-0199 XMPP Ping
 import "./plugins/bosh.js";             // XEP-0206 BOSH
 import "./plugins/caps/index.js";       // XEP-0115 Entity Capabilities
@@ -20,6 +33,8 @@ import "./plugins/status/index.js";
 import "./plugins/vcard/index.js";      // XEP-0054 VCard-temp
 /* END: Removable components */
 
-import { converse } from "./core.js";
+import log from './log.js';
+
+export { api, converse, _converse, i18n, log };
 
 export default converse;

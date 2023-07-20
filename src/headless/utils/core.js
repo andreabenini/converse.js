@@ -11,16 +11,52 @@ import last from "lodash-es/last";
 import log from '../log.js';
 import sizzle from "sizzle";
 import { Model } from '@converse/skeletor/src/model.js';
-import { Strophe } from 'strophe.js/src/strophe.js';
+import { Strophe } from 'strophe.js';
 import { getOpenPromise } from '@converse/openpromise';
 import { settings_api } from '../shared/settings/api.js';
 import { stx , toStanza } from './stanza.js';
+import { getSelectValues, webForm2xForm } from './form.js';
+import {
+    arrayBufferToHex,
+    arrayBufferToString,
+    stringToArrayBuffer,
+    arrayBufferToBase64,
+    base64ToArrayBuffer,
+} from './arraybuffer.js';
+import {
+    isAudioURL,
+    isGIFURL,
+    isVideoURL,
+    isImageURL,
+    isURLWithImageExtension,
+    checkFileTypes,
+    getURI,
+    shouldRenderMediaFromURL,
+    isAllowedProtocolForMedia,
+} from './url.js';
 
 /**
  * The utils object
  * @namespace u
  */
-const u = {};
+const u = {
+    arrayBufferToBase64,
+    arrayBufferToHex,
+    arrayBufferToString,
+    base64ToArrayBuffer,
+    checkFileTypes,
+    getSelectValues,
+    getURI,
+    isAllowedProtocolForMedia,
+    isAudioURL,
+    isGIFURL,
+    isImageURL,
+    isURLWithImageExtension,
+    isVideoURL,
+    shouldRenderMediaFromURL,
+    stringToArrayBuffer,
+    webForm2xForm,
+};
 
 export function isElement (el) {
     return el instanceof Element || el instanceof HTMLDocument;
@@ -442,18 +478,6 @@ u.triggerEvent = function (el, name, type="Event", bubbles=true, cancelable=true
     el.dispatchEvent(evt);
 };
 
-u.getSelectValues = function (select) {
-    const result = [];
-    const options = select && select.options;
-    for (var i=0, iLen=options.length; i<iLen; i++) {
-        const opt = options[i];
-        if (opt.selected) {
-            result.push(opt.value || opt.text);
-        }
-    }
-    return result;
-};
-
 export function getRandomInt (max) {
     return (Math.random() * max) | 0;
 }
@@ -554,7 +578,7 @@ export function waitUntil (func, max_wait=300, check_delay=3) {
     const max_wait_timeout = setTimeout(handler, max_wait);
 
     return promise;
-};
+}
 
 
 export function setUnloadEvent () {
