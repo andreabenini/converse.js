@@ -1,8 +1,5 @@
 /* global libsignal */
-import difference from 'lodash-es/difference';
-import invokeMap from 'lodash-es/invokeMap';
 import range from 'lodash-es/range';
-import omit from 'lodash-es/omit';
 import { Model } from '@converse/skeletor/src/model.js';
 import { generateDeviceID } from './utils.js';
 import { _converse, api, converse, log } from '@converse/headless';
@@ -11,6 +8,13 @@ const { Strophe, $build, u } = converse.env;
 
 
 class OMEMOStore extends Model {
+
+    get Direction () {
+        return {
+            SENDING: 1,
+            RECEIVING: 2
+        }
+    }
 
     getIdentityKeyPair () {
         const keypair = this.get('identity_keypair');
@@ -87,7 +91,9 @@ class OMEMOStore extends Model {
     }
 
     removePreKey (key_id) {
-        this.save('prekeys', omit(this.getPreKeys(), key_id));
+        const prekeys = { ...this.getPreKeys() };
+        delete prekeys[key_id];
+        this.save('prekeys', prekeys);
         return Promise.resolve();
     }
 
@@ -178,10 +184,11 @@ class OMEMOStore extends Model {
     }
 
     async generateMissingPreKeys () {
-        const missing_keys = difference(
-            invokeMap(range(0, _converse.NUM_PREKEYS), Number.prototype.toString),
-            Object.keys(this.getPreKeys())
-        );
+        const prekeyIds = Object.keys(this.getPreKeys());
+        const missing_keys = range(0, _converse.NUM_PREKEYS)
+            .map(id => id.toString())
+            .filter(id => !prekeyIds.includes(id));
+
         if (missing_keys.length < 1) {
             log.warn('No missing prekeys to generate for our own device');
             return Promise.resolve();

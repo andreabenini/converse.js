@@ -1,22 +1,11 @@
-/**
- * @copyright Shachaf Ben-Kiki, JC Brand
- * @description
- *  Started as a fork of Shachaf Ben-Kiki's jsgif library
- *  https://github.com/shachaf/jsgif
- * @license MIT License
- */
-import Stream from './stream.js';
+import { log } from '@converse/headless';
 import { getOpenPromise } from '@converse/openpromise';
-import { parseGIF } from './utils.js';
-
-const DELAY_FACTOR = 10;
-
+import { parseGIF, decompressFrames } from 'gifuct-js';
 
 export default class ConverseGif {
-
     /**
      * Creates a new ConverseGif instance
-     * @param { HTMLElement } el
+     * @param { import('lit').LitElement } el
      * @param { Object } [options]
      * @param { Number } [options.width] - The width, in pixels, of the canvas
      * @param { Number } [options.height] - The height, in pixels, of the canvas
@@ -30,7 +19,8 @@ export default class ConverseGif {
      * @param { Number } [options.progress_bar_height=5]
      */
     constructor (el, opts) {
-        this.options = Object.assign({
+        this.options = Object.assign(
+            {
                 width: null,
                 height: null,
                 autoplay: true,
@@ -38,7 +28,7 @@ export default class ConverseGif {
                 show_progress_bar: true,
                 progress_bg_color: 'rgba(0,0,0,0.4)',
                 progress_color: 'rgba(255,0,22,.8)',
-                progress_bar_height: 5
+                progress_bar_height: 5,
             },
             opts
         );
@@ -47,25 +37,23 @@ export default class ConverseGif {
         this.gif_el = el.querySelector('img');
         this.canvas = el.querySelector('canvas');
         this.ctx = this.canvas.getContext('2d');
-        // It's good practice to pre-render to an offscreen canvas
+
+        // Offscreen canvas with full gif
         this.offscreenCanvas = document.createElement('canvas');
+        // Offscreen canvas for patches
+        this.patchCanvas = document.createElement('canvas');
 
         this.ctx_scaled = false;
-        this.disposal_method = null;
-        this.disposal_restore_from_idx = null;
-        this.frame = null;
-        this.frame_offsets = []; // elements have .x and .y properties
         this.frames = [];
-        this.last_disposal_method = null;
-        this.last_img = null;
         this.load_error = null;
         this.playing = this.options.autoplay;
-        this.transparency = null;
-        this.frame_delay = null;
 
         this.frame_idx = 0;
         this.iteration_count = 0;
         this.start = null;
+        this.hovering = null;
+        this.frameImageData = null;
+        this.disposal_restore_from_idx = null;
 
         this.initialize();
     }
@@ -75,7 +63,7 @@ export default class ConverseGif {
             this.setSizes(this.options.width, this.options.height);
         }
         const data = await this.fetchGIF(this.gif_el.src);
-        requestAnimationFrame(() => this.startParsing(data));
+        requestAnimationFrame(() => this.handleGIFResponse(data));
     }
 
     initPlayer () {
@@ -87,10 +75,10 @@ export default class ConverseGif {
 
         // Show the first frame
         this.frame_idx = 0;
-        this.putFrame(this.frame_idx);
+        this.renderImage();
 
         if (this.options.autoplay) {
-            const delay = (this.frames[this.frame_idx]?.delay ?? 0) * DELAY_FACTOR;
+            const delay = this.frames[this.frame_idx]?.delay ?? 0;
             setTimeout(() => this.play(), delay);
         }
     }
@@ -127,18 +115,18 @@ export default class ConverseGif {
      * `frame_delay` parameters can also be passed in. The `timestamp`
      * parameter comes from `requestAnimationFrame`.
      *
-     * The purpose of this method is to call `putFrame` with the right delay
+     * The purpose of this method is to call `renderImage` with the right delay
      * in order to render the GIF animation.
      *
      * Note, this method will cause the *next* upcoming frame to be rendered,
      * not the current one.
      *
-     * This means `this.frame_idx` will be incremented before calling `this.putFrame`, so
-     * `putFrame(0)` needs to be called *before* this method, otherwise the
+     * This means `this.frame_idx` will be incremented before calling `this.renderImage`, so
+     * `renderImage(0)` needs to be called *before* this method, otherwise the
      * animation will incorrectly start from frame #1 (this is done in `initPlayer`).
      *
-     * @param { DOMHighRestTimestamp } timestamp - The timestamp as returned by `requestAnimationFrame`
-     * @param { DOMHighRestTimestamp } previous_timestamp - The timestamp from the previous iteration of this method.
+     * @param { DOMHighResTimeStamp } timestamp - The timestamp as returned by `requestAnimationFrame`
+     * @param { DOMHighResTimeStamp } previous_timestamp - The timestamp from the previous iteration of this method.
      * We need this in order to calculate whether we have waited long enough to
      * show the next frame.
      * @param { Number } frame_delay - The delay (in 1/100th of a second)
@@ -148,10 +136,10 @@ export default class ConverseGif {
         if (!this.playing) {
             return;
         }
-        if ((timestamp - previous_timestamp) < frame_delay) {
-            this.hovering ? this.drawPauseIcon() : this.putFrame(this.frame_idx);
+        if (timestamp - previous_timestamp < frame_delay) {
+            this.hovering ? this.drawPauseIcon() : this.renderImage();
             // We need to wait longer
-            requestAnimationFrame(ts => this.onAnimationFrame(ts, previous_timestamp, frame_delay));
+            requestAnimationFrame((ts) => this.onAnimationFrame(ts, previous_timestamp, frame_delay));
             return;
         }
         const next_frame = this.getNextFrameNo();
@@ -159,9 +147,9 @@ export default class ConverseGif {
             return;
         }
         this.frame_idx = next_frame;
-        this.putFrame(this.frame_idx);
-        const delay = (this.frames[this.frame_idx]?.delay || 8) * DELAY_FACTOR;
-        requestAnimationFrame(ts => this.onAnimationFrame(ts, timestamp, delay));
+        this.renderImage();
+        const delay = this.frames[this.frame_idx]?.delay || 8;
+        requestAnimationFrame((ts) => this.onAnimationFrame(ts, timestamp, delay));
     }
 
     setSizes (w, h) {
@@ -173,19 +161,6 @@ export default class ConverseGif {
         this.offscreenCanvas.style.width = w + 'px';
         this.offscreenCanvas.style.height = h + 'px';
         this.offscreenCanvas.getContext('2d').setTransform(1, 0, 0, 1, 0, 0);
-    }
-
-    setFrameOffset (frame, offset) {
-        if (!this.frame_offsets[frame]) {
-            this.frame_offsets[frame] = offset;
-            return;
-        }
-        if (typeof offset.x !== 'undefined') {
-            this.frame_offsets[frame].x = offset.x;
-        }
-        if (typeof offset.y !== 'undefined') {
-            this.frame_offsets[frame].y = offset.y;
-        }
     }
 
     doShowProgress (pos, length, draw) {
@@ -207,56 +182,36 @@ export default class ConverseGif {
     /**
      * Starts parsing the GIF stream data by calling `parseGIF` and passing in
      * a map of handler functions.
-     * @param { String } data - The GIF file data, as returned by the server
+     * @param {ArrayBuffer} data - The GIF file data, as returned by the server
      */
-    startParsing (data) {
-        const stream = new Stream(data);
-        /**
-         * @typedef { Object } GIFParserHandlers
-         * A map of callback functions passed `parseGIF`. These functions are
-         * called as various parts of the GIF file format are parsed.
-         * @property { Function } hdr - Callback to handle the GIF header data
-         * @property { Function } gce - Callback to handle the GIF Graphic Control Extension data
-         * @property { Function } com - Callback to handle the comment extension block
-         * @property { Function } img - Callback to handle image data
-         * @property { Function } eof - Callback once the end of file has been reached
-         */
-        const handler = {
-            'hdr': this.withProgress(stream, header => this.handleHeader(header)),
-            'gce': this.withProgress(stream, gce => this.handleGCE(gce)),
-            'com': this.withProgress(stream, ),
-            'img': this.withProgress(stream, img => this.doImg(img), true),
-            'eof': () => this.handleEOF(stream)
-        };
+    handleGIFResponse (data) {
         try {
-            parseGIF(stream, handler);
+            const gif = parseGIF(data);
+            this.hdr = gif.header;
+            this.lsd = gif.lsd;
+            this.setSizes(this.options.width ?? this.lsd.width, this.options.height ?? this.lsd.height);
+            this.frames = decompressFrames(gif, true);
         } catch (err) {
-            this.showError('parse');
+            this.showError();
         }
+        this.initPlayer();
+        !this.options.autoplay && this.drawPlayIcon();
     }
 
     drawError () {
         this.ctx.fillStyle = 'black';
-        this.ctx.fillRect(
-            0,
-            0,
-            this.options.width ? this.options.width : this.hdr.width,
-            this.options.height ? this.options.height : this.hdr.height
-        );
+        this.ctx.fillRect(0, 0, this.options.width, this.options.height);
         this.ctx.strokeStyle = 'red';
         this.ctx.lineWidth = 3;
         this.ctx.moveTo(0, 0);
-        this.ctx.lineTo(
-            this.options.width ? this.options.width : this.hdr.width,
-            this.options.height ? this.options.height : this.hdr.height
-        );
-        this.ctx.moveTo(0, this.options.height ? this.options.height : this.hdr.height);
-        this.ctx.lineTo(this.options.width ? this.options.width : this.hdr.width, 0);
+        this.ctx.lineTo(this.options.width, this.options.height);
+        this.ctx.moveTo(0, this.options.height);
+        this.ctx.lineTo(this.options.width, 0);
         this.ctx.stroke();
     }
 
-    showError (errtype) {
-        this.load_error = errtype;
+    showError () {
+        this.load_error = true;
         this.hdr = {
             width: this.gif_el.width,
             height: this.gif_el.height,
@@ -266,51 +221,11 @@ export default class ConverseGif {
         this.el.requestUpdate();
     }
 
-    handleHeader (header) {
-        this.hdr = header;
-        this.setSizes(
-            this.options.width ?? this.hdr.width,
-            this.options.height ?? this.hdr.height
-        );
-    }
+    manageDisposal (i) {
+        if (i <= 0) return;
 
-    /**
-     * Handler for GIF Graphic Control Extension (GCE) data
-     */
-    handleGCE (gce) {
-        this.pushFrame();
-        this.clear();
-        this.frame_delay = gce.delayTime;
-        this.transparency = gce.transparencyGiven ? gce.transparencyIndex : null;
-        this.disposal_method = gce.disposalMethod;
-    }
-
-    /**
-     * Handler for when the end of the GIF's file has been reached
-     */
-    handleEOF (stream) {
-        this.pushFrame();
-        this.doDecodeProgress(stream, false);
-        this.initPlayer();
-        !this.options.autoplay && this.drawPlayIcon();
-    }
-
-    pushFrame () {
-        if (!this.frame) return;
-        this.frames.push({
-            data: this.frame.getImageData(0, 0, this.hdr.width, this.hdr.height),
-            delay: this.frame_delay
-        });
-        this.frame_offsets.push({ x: 0, y: 0 });
-    }
-
-    doImg (img) {
-        this.frame = this.frame || this.offscreenCanvas.getContext('2d');
-        const currIdx = this.frames.length;
-
-        //ct = color table, gct = global color table
-        const ct = img.lctFlag ? img.lct : this.hdr.gct; // TODO: What if neither exists?
-
+        const offscreenContext = this.offscreenCanvas.getContext('2d');
+        const disposal = this.frames[i - 1].disposalType;
         /*
          *  Disposal method indicates the way in which the graphic is to
          *  be treated after being displayed.
@@ -328,94 +243,75 @@ export default class ConverseGif {
          *                  Importantly, "previous" means the frame state
          *                  after the last disposal of method 0, 1, or 2.
          */
-        if (currIdx > 0) {
-            if (this.last_disposal_method === 3) {
-                // Restore to previous
-                // If we disposed every frame including first frame up to this point, then we have
-                // no composited frame to restore to. In this case, restore to background instead.
-                if (this.disposal_restore_from_idx !== null) {
-                    this.frame.putImageData(this.frames[this.disposal_restore_from_idx].data, 0, 0);
-                } else {
-                    this.frame.clearRect(
-                        this.last_img.leftPos,
-                        this.last_img.topPos,
-                        this.last_img.width,
-                        this.last_img.height
-                    );
+        if (i > 1) {
+            if (disposal === 3) {
+                // eslint-disable-next-line no-eq-null
+                if (this.disposal_restore_from_idx != null) {
+                    offscreenContext.putImageData(this.frames[this.disposal_restore_from_idx].data, 0, 0);
                 }
             } else {
-                this.disposal_restore_from_idx = currIdx - 1;
-            }
-
-            if (this.last_disposal_method === 2) {
-                // Restore to background color
-                // Browser implementations historically restore to transparent; we do the same.
-                // http://www.wizards-toolkit.org/discourse-server/viewtopic.php?f=1&t=21172#p86079
-                this.frame.clearRect(
-                    this.last_img.leftPos,
-                    this.last_img.topPos,
-                    this.last_img.width,
-                    this.last_img.height
-                );
+                this.disposal_restore_from_idx = i - 1;
             }
         }
-        // else, Undefined/Do not dispose.
-        // frame contains final pixel data from the last frame; do nothing
 
-        //Get existing pixels for img region after applying disposal method
-        const imgData = this.frame.getImageData(img.leftPos, img.topPos, img.width, img.height);
-
-        //apply color table colors
-        img.pixels.forEach((pixel, i) => {
-            // imgData.data === [R,G,B,A,R,G,B,A,...]
-            if (pixel !== this.transparency) {
-                imgData.data[i * 4 + 0] = ct[pixel][0];
-                imgData.data[i * 4 + 1] = ct[pixel][1];
-                imgData.data[i * 4 + 2] = ct[pixel][2];
-                imgData.data[i * 4 + 3] = 255; // Opaque.
-            }
-        });
-
-        this.frame.putImageData(imgData, img.leftPos, img.topPos);
-
-        if (!this.ctx_scaled) {
-            this.ctx.scale(this.getCanvasScale(), this.getCanvasScale());
-            this.ctx_scaled = true;
+        if (disposal === 2) {
+            // Restore to background color
+            // Browser implementations historically restore to transparent; we do the same.
+            // http://www.wizards-toolkit.org/discourse-server/viewtopic.php?f=1&t=21172#p86079
+            offscreenContext.clearRect(
+                this.last_frame.dims.left,
+                this.last_frame.dims.top,
+                this.last_frame.dims.width,
+                this.last_frame.dims.height
+            );
         }
-
-        if (!this.last_img) {
-            // This is the first received image, so we draw it
-            this.ctx.drawImage(this.offscreenCanvas, 0, 0);
-        }
-        this.last_img = img;
     }
 
     /**
      * Draws a gif frame at a specific index inside the canvas.
-     * @param { Number } i - The frame index
+     * @param {boolean} show_pause_on_hover - The frame index
      */
-    putFrame (i, show_pause_on_hover=true) {
-        if (!this.frames.length) return
+    renderImage (show_pause_on_hover = true) {
+        if (!this.frames.length) return;
 
-        i = parseInt(i, 10);
+        let i = this.frame_idx;
+        i = parseInt(i.toString(), 10);
         if (i > this.frames.length - 1 || i < 0) {
             i = 0;
         }
-        const offset = this.frame_offsets[i];
-        this.offscreenCanvas.getContext('2d').putImageData(this.frames[i].data, offset.x, offset.y);
-        this.ctx.globalCompositeOperation = 'copy';
-        this.ctx.drawImage(this.offscreenCanvas, 0, 0);
+
+        this.manageDisposal(i);
+
+        const frame = this.frames[i];
+        const patchContext = this.patchCanvas.getContext('2d');
+        const offscreenContext = this.offscreenCanvas.getContext('2d');
+        const dims = frame.dims;
+        if (
+            !this.frameImageData ||
+            dims.width != this.frameImageData.width ||
+            dims.height != this.frameImageData.height
+        ) {
+            this.patchCanvas.width = dims.width;
+            this.patchCanvas.height = dims.height;
+            this.frameImageData = patchContext.createImageData(dims.width, dims.height);
+        }
+
+        // set the patch data as an override
+        this.frameImageData.data.set(frame.patch);
+        // draw the patch back over the canvas
+        patchContext.putImageData(this.frameImageData, 0, 0);
+
+        offscreenContext.drawImage(this.patchCanvas, dims.left, dims.top);
+
+        const imageData = offscreenContext.getImageData(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height);
+        this.ctx.putImageData(imageData, 0, 0);
+        this.ctx.drawImage(this.canvas, 0, 0, this.canvas.width, this.canvas.height);
 
         if (show_pause_on_hover && this.hovering) {
             this.drawPauseIcon();
         }
-    }
 
-    clear () {
-        this.transparency = null;
-        this.last_disposal_method = this.disposal_method;
-        this.disposal_method = null;
-        this.frame = null;
+        this.last_frame = frame;
     }
 
     /**
@@ -423,7 +319,7 @@ export default class ConverseGif {
      */
     play () {
         this.playing = true;
-        requestAnimationFrame(ts => this.onAnimationFrame(ts, 0, 0));
+        requestAnimationFrame((ts) => this.onAnimationFrame(ts, 0, 0));
     }
 
     /**
@@ -431,113 +327,74 @@ export default class ConverseGif {
      */
     pause () {
         this.playing = false;
-        requestAnimationFrame(() => this.drawPlayIcon())
+        requestAnimationFrame(() => this.drawPlayIcon());
     }
 
     drawPauseIcon () {
-        if (!this.playing) {
-            return;
-        }
-        // Clear the potential play button by re-rendering the current frame
-        this.putFrame(this.frame_idx, false);
+        if (!this.playing) return;
 
-        this.ctx.globalCompositeOperation = 'source-over';
+        // Clear the potential play button by re-rendering the current frame
+        this.renderImage(false);
 
         // Draw dark overlay
         this.ctx.fillStyle = 'rgb(0, 0, 0, 0.25)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        const icon_size = this.canvas.height*0.1;
-
+        const icon_size = this.canvas.height * 0.1;
         // Draw bars
-        this.ctx.lineWidth = this.canvas.height*0.04;
+        this.ctx.lineWidth = this.canvas.height * 0.04;
         this.ctx.beginPath();
-        this.ctx.moveTo(this.canvas.width/2-icon_size/2, this.canvas.height/2-icon_size);
-        this.ctx.lineTo(this.canvas.width/2-icon_size/2, this.canvas.height/2+icon_size);
+        this.ctx.moveTo(this.canvas.width / 2 - icon_size / 2, this.canvas.height / 2 - icon_size);
+        this.ctx.lineTo(this.canvas.width / 2 - icon_size / 2, this.canvas.height / 2 + icon_size);
         this.ctx.fillStyle = 'rgb(200, 200, 200, 0.75)';
         this.ctx.stroke();
 
         this.ctx.beginPath();
-        this.ctx.moveTo(this.canvas.width/2+icon_size/2, this.canvas.height/2-icon_size);
-        this.ctx.lineTo(this.canvas.width/2+icon_size/2, this.canvas.height/2+icon_size);
+        this.ctx.moveTo(this.canvas.width / 2 + icon_size / 2, this.canvas.height / 2 - icon_size);
+        this.ctx.lineTo(this.canvas.width / 2 + icon_size / 2, this.canvas.height / 2 + icon_size);
         this.ctx.fillStyle = 'rgb(200, 200, 200, 0.75)';
         this.ctx.stroke();
 
         // Draw circle
-        this.ctx.lineWidth = this.canvas.height*0.02;
+        this.ctx.lineWidth = this.canvas.height * 0.02;
         this.ctx.strokeStyle = 'rgb(200, 200, 200, 0.75)';
         this.ctx.beginPath();
-        this.ctx.arc(
-            this.canvas.width/2,
-            this.canvas.height/2,
-            icon_size*1.5,
-            0,
-            2*Math.PI
-        );
+        this.ctx.arc(this.canvas.width / 2, this.canvas.height / 2, icon_size * 1.5, 0, 2 * Math.PI);
         this.ctx.stroke();
     }
 
     drawPlayIcon () {
-        if (this.playing) {
-            return;
-        }
+        if (this.playing) return;
 
         // Clear the potential pause button by re-rendering the current frame
-        this.putFrame(this.frame_idx, false);
-
-        this.ctx.globalCompositeOperation = 'source-over';
-
+        this.renderImage(false);
         // Draw dark overlay
         this.ctx.fillStyle = 'rgb(0, 0, 0, 0.25)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         // Draw triangle
-        const triangle_size = this.canvas.height*0.1;
+        const triangle_size = this.canvas.height * 0.1;
         const region = new Path2D();
-        region.moveTo(this.canvas.width/2+triangle_size, this.canvas.height/2); // start at the pointy end
-        region.lineTo(this.canvas.width/2-triangle_size/2, this.canvas.height/2+triangle_size);
-        region.lineTo(this.canvas.width/2-triangle_size/2, this.canvas.height/2-triangle_size);
+        region.moveTo(this.canvas.width / 2 + triangle_size, this.canvas.height / 2); // start at the pointy end
+        region.lineTo(this.canvas.width / 2 - triangle_size / 2, this.canvas.height / 2 + triangle_size);
+        region.lineTo(this.canvas.width / 2 - triangle_size / 2, this.canvas.height / 2 - triangle_size);
         region.closePath();
         this.ctx.fillStyle = 'rgb(200, 200, 200, 0.75)';
         this.ctx.fill(region);
 
         // Draw circle
-        const circle_size = triangle_size*1.5;
-        this.ctx.lineWidth = this.canvas.height*0.02;
+        const circle_size = triangle_size * 1.5;
+        this.ctx.lineWidth = this.canvas.height * 0.02;
         this.ctx.strokeStyle = 'rgb(200, 200, 200, 0.75)';
         this.ctx.beginPath();
-        this.ctx.arc(
-            this.canvas.width/2,
-            this.canvas.height/2,
-            circle_size,
-            0,
-            2*Math.PI
-        );
+        this.ctx.arc(this.canvas.width / 2, this.canvas.height / 2, circle_size, 0, 2 * Math.PI);
         this.ctx.stroke();
-    }
-
-    doDecodeProgress (stream, draw) {
-        this.doShowProgress(stream.pos, stream.data.length, draw);
-    }
-
-    /**
-     * @param{boolean=} draw Whether to draw progress bar or not;
-     *  this is not idempotent because of translucency.
-     *  Note that this means that the text will be unsynchronized
-     *  with the progress bar on non-frames;
-     *  but those are typically so small (GCE etc.) that it doesn't really matter
-     */
-    withProgress (stream, fn, draw) {
-        return block => {
-            fn?.(block);
-            this.doDecodeProgress(stream, draw);
-        };
     }
 
     getCanvasScale () {
         let scale;
-        if (this.options.max_width && this.hdr && this.hdr.width > this.options.max_width) {
-            scale = this.options.max_width / this.hdr.width;
+        if (this.options.max_width && this.hdr && this.lsd.width > this.options.max_width) {
+            scale = this.options.max_width / this.lsd.width;
         } else {
             scale = 1;
         }
@@ -547,22 +404,28 @@ export default class ConverseGif {
     /**
      * Makes an HTTP request to fetch a GIF
      * @param { String } url
-     * @returns { Promise<String> } Returns a promise which resolves with the response data.
+     * @returns { Promise<ArrayBuffer> } Returns a promise which resolves with the response data.
      */
     fetchGIF (url) {
         const promise = getOpenPromise();
         const h = new XMLHttpRequest();
         h.open('GET', url, true);
+        h.responseType = 'arraybuffer';
+
         h?.overrideMimeType('text/plain; charset=x-user-defined');
         h.onload = () => {
             if (h.status != 200) {
-                this.showError('xhr - response');
+                this.showError();
                 return promise.reject();
             }
             promise.resolve(h.response);
         };
-        h.onprogress = (e) => (e.lengthComputable && this.doShowProgress(e.loaded, e.total, true));
-        h.onerror = () => this.showError('xhr');
+        h.onprogress = (e) => e.lengthComputable && this.doShowProgress(e.loaded, e.total, true);
+        h.onerror = (e) => {
+            log.error(e);
+            this.showError();
+        };
+
         h.send();
         return promise;
     }

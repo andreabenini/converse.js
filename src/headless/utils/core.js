@@ -5,9 +5,6 @@
  */
 import DOMPurify from 'dompurify';
 import _converse from '@converse/headless/shared/_converse.js';
-import compact from "lodash-es/compact";
-import isObject from "lodash-es/isObject";
-import last from "lodash-es/last";
 import log from '../log.js';
 import sizzle from "sizzle";
 import { Model } from '@converse/skeletor/src/model.js';
@@ -141,9 +138,9 @@ export function prefixMentions (message) {
     return text;
 }
 
-u.isTagEqual = function (stanza, name) {
+function isTagEqual (stanza, name) {
     if (stanza.tree?.()) {
-        return u.isTagEqual(stanza.tree(), name);
+        return isTagEqual(stanza.tree(), name);
     } else if (!(stanza instanceof Element)) {
         throw Error(
             "isTagEqual called with value which isn't "+
@@ -177,7 +174,7 @@ u.getLongestSubstring = function (string, candidates) {
 
 export function isValidJID (jid) {
     if (typeof jid === 'string') {
-        return compact(jid.split('@')).length === 2 && !jid.startsWith('@') && !jid.endsWith('@');
+        return jid.split('@').filter(s => !!s).length === 2 && !jid.startsWith('@') && !jid.endsWith('@');
     }
     return false;
 }
@@ -259,15 +256,15 @@ u.isServiceUnavailableError = function (stanza) {
 /**
  * Merge the second object into the first one.
  * @method u#merge
- * @param { Object } dst
- * @param { Object } src
+ * @param {Object} dst
+ * @param {Object} src
  */
 export function merge (dst, src) {
     for (const k in src) {
         if (!Object.prototype.hasOwnProperty.call(src, k)) continue;
         if (k === "__proto__" || k === "constructor") continue;
 
-        if (isObject(dst[k])) {
+        if (dst[k] instanceof Object) {
             merge(dst[k], src[k]);
         } else {
             dst[k] = src[k];
@@ -275,60 +272,43 @@ export function merge (dst, src) {
     }
 }
 
-u.getOuterWidth = function (el, include_margin=false) {
+/**
+ * @param {HTMLElement} el
+ * @param {boolean} include_margin
+ */
+function getOuterWidth (el, include_margin=false) {
     let width = el.offsetWidth;
     if (!include_margin) {
         return width;
     }
     const style = window.getComputedStyle(el);
-    width += parseInt(style.marginLeft ? style.marginLeft : 0, 10) +
-             parseInt(style.marginRight ? style.marginRight : 0, 10);
+    width += parseInt(style.marginLeft ? style.marginLeft : '0', 10) +
+             parseInt(style.marginRight ? style.marginRight : '0', 10);
     return width;
-};
+}
 
 /**
  * Converts an HTML string into a DOM element.
  * Expects that the HTML string has only one top-level element,
  * i.e. not multiple ones.
- * @private
  * @method u#stringToElement
- * @param { String } s - The HTML string
+ * @param {string} s - The HTML string
  */
-u.stringToElement = function (s) {
+function stringToElement (s) {
     var div = document.createElement('div');
     div.innerHTML = s;
     return div.firstElementChild;
-};
-
-/**
- * Checks whether the DOM element matches the given selector.
- * @private
- * @method u#matchesSelector
- * @param { Element } el - The DOM element
- * @param { String } selector - The selector
- */
-u.matchesSelector = function (el, selector) {
-    const match = (
-        el.matches ||
-        el.matchesSelector ||
-        el.msMatchesSelector ||
-        el.mozMatchesSelector ||
-        el.webkitMatchesSelector ||
-        el.oMatchesSelector
-    );
-    return match ? match.call(el, selector) : false;
-};
+}
 
 /**
  * Returns a list of children of the DOM element that match the selector.
- * @private
  * @method u#queryChildren
- * @param { Element } el - the DOM element
- * @param { String } selector - the selector they should be matched against
+ * @param {HTMLElement} el - the DOM element
+ * @param {string} selector - the selector they should be matched against
  */
-u.queryChildren = function (el, selector) {
-    return Array.from(el.childNodes).filter(el => u.matchesSelector(el, selector));
-};
+function queryChildren (el, selector) {
+    return Array.from(el.childNodes).filter(el => (el instanceof Element) && el.matches(selector));
+}
 
 u.contains = function (attr, query) {
     const checker = (item, key) => item.get(key).toLowerCase().includes(query.toLowerCase());
@@ -343,14 +323,6 @@ u.contains = function (attr, query) {
     };
 };
 
-u.isOfType = function (type, item) {
-    return item.get('type') == type;
-};
-
-u.isInstance = function (type, item) {
-    return item instanceof type;
-};
-
 u.getAttribute = function (key, item) {
     return item.get(key);
 };
@@ -361,44 +333,12 @@ u.contains.not = function (attr, query) {
     };
 };
 
-u.rootContains = function (root, el) {
-    // The document element does not have the contains method in IE.
-    if (root === document && !root.contains) {
-        return document.head.contains(el) || document.body.contains(el);
-    }
-    return root.contains ? root.contains(el) : window.HTMLElement.prototype.contains.call(root, el);
-};
-
-u.createFragmentFromText = function (markup) {
-    /* Returns a DocumentFragment containing DOM nodes based on the
-     * passed-in markup text.
-     */
-    // http://stackoverflow.com/questions/9334645/create-node-from-markup-string
-    var frag = document.createDocumentFragment(),
-        tmp = document.createElement('body'), child;
-    tmp.innerHTML = markup;
-    // Append elements in a loop to a DocumentFragment, so that the
-    // browser does not re-render the document for each node.
-    while (child = tmp.firstChild) {  // eslint-disable-line no-cond-assign
-        frag.appendChild(child);
-    }
-    return frag
-};
-
 u.isPersistableModel = function (model) {
     return model.collection && model.collection.browserStorage;
 };
 
 u.getResolveablePromise = getOpenPromise;
 u.getOpenPromise = getOpenPromise;
-
-u.interpolate = function (string, o) {
-    return string.replace(/{{{([^{}]*)}}}/g,
-        (a, b) => {
-            var r = o[b];
-            return typeof r === 'string' || typeof r === 'number' ? r : a;
-        });
-};
 
 /**
  * Call the callback once all the events have been triggered
@@ -431,7 +371,6 @@ export function safeSave (model, attributes, options) {
     }
 }
 
-u.safeSave = safeSave;
 
 u.siblingIndex = function (el) {
     /* eslint-disable no-cond-assign */
@@ -442,14 +381,14 @@ u.siblingIndex = function (el) {
 /**
  * Returns the current word being written in the input element
  * @method u#getCurrentWord
- * @param { HTMLElement } input - The HTMLElement in which text is being entered
- * @param { number } [index] - An optional rightmost boundary index. If given, the text
+ * @param {HTMLInputElement} input - The HTMLElement in which text is being entered
+ * @param {number} [index] - An optional rightmost boundary index. If given, the text
  *  value of the input element will only be considered up until this index.
- * @param { string } [delineator] - An optional string delineator to
+ * @param {string} [delineator] - An optional string delineator to
  *  differentiate between words.
  * @private
  */
-u.getCurrentWord = function (input, index, delineator) {
+function getCurrentWord (input, index, delineator) {
     if (!index) {
         index = input.selectionEnd || undefined;
     }
@@ -458,13 +397,13 @@ u.getCurrentWord = function (input, index, delineator) {
         [word] = word.split(delineator).slice(-1);
     }
     return word;
-};
+}
 
 u.isMentionBoundary = (s) => s !== '@' && RegExp(`(\\p{Z}|\\p{P})`, 'u').test(s);
 
 u.replaceCurrentWord = function (input, new_value) {
     const caret = input.selectionEnd || undefined;
-    const current_word = last(input.value.slice(0, caret).split(/\s/));
+    const current_word = input.value.slice(0, caret).split(/\s/).pop();
     const value = input.value;
     const mention_boundary = u.isMentionBoundary(current_word[0]) ? current_word[0] : '';
     input.value = value.slice(0, caret - current_word.length) + mention_boundary + `${new_value} ` + value.slice(caret);
@@ -472,17 +411,27 @@ u.replaceCurrentWord = function (input, new_value) {
     input.selectionEnd = mention_boundary ? selection_end + 1 : selection_end;
 };
 
-u.triggerEvent = function (el, name, type="Event", bubbles=true, cancelable=true) {
+/**
+ * @param {Element} el
+ * @param {string} name
+ * @param {string} [type]
+ * @param {boolean} [bubbles]
+ * @param {boolean} [cancelable]
+ */
+function triggerEvent (el, name, type="Event", bubbles=true, cancelable=true) {
     const evt = document.createEvent(type);
     evt.initEvent(name, bubbles, cancelable);
     el.dispatchEvent(evt);
-};
+}
 
 export function getRandomInt (max) {
     return (Math.random() * max) | 0;
 }
 
-u.placeCaretAtEnd = function (textarea) {
+/**
+ * @param {HTMLTextAreaElement} textarea
+ */
+function placeCaretAtEnd (textarea) {
     if (textarea !== document.activeElement) {
         textarea.focus();
     }
@@ -492,9 +441,13 @@ u.placeCaretAtEnd = function (textarea) {
     setTimeout(() => textarea.setSelectionRange(len, len), 1);
     // Scroll to the bottom, in case we're in a tall textarea
     // (Necessary for Firefox and Chrome)
-    this.scrollTop = 999999;
-};
+    textarea.scrollTop = 999999;
+}
 
+/**
+ * @param {string} [suffix]
+ * @return {string}
+ */
 export function getUniqueId (suffix) {
     const uuid = crypto.randomUUID?.() ??
         'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -513,9 +466,8 @@ export function getUniqueId (suffix) {
 /**
  * Clears the specified timeout and interval.
  * @method u#clearTimers
- * @param { number } timeout - Id if the timeout to clear.
- * @param { number } interval - Id of the interval to clear.
- * @private
+ * @param {ReturnType<typeof setTimeout>} timeout - Id if the timeout to clear.
+ * @param {ReturnType<typeof setInterval>} interval - Id of the interval to clear.
  * @copyright Simen Bekkhus 2016
  * @license MIT
  */
@@ -656,17 +608,25 @@ export function saveWindowState (ev) {
 
 
 export default Object.assign({
-    shouldClearCache,
-    waitUntil, // TODO: remove. Only the API should be used
-    isErrorObject,
+    getCurrentWord,
+    getOuterWidth,
     getRandomInt,
     getUniqueId,
     isElement,
     isEmptyMessage,
+    isErrorObject,
+    isTagEqual,
     isValidJID,
     merge,
+    placeCaretAtEnd,
     prefixMentions,
+    queryChildren,
+    safeSave,
     saveWindowState,
+    shouldClearCache,
+    stringToElement,
     stx,
     toStanza,
+    triggerEvent,
+    waitUntil, // TODO: remove. Only the API should be used
 }, u);
