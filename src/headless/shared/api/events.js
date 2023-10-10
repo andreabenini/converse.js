@@ -1,5 +1,5 @@
 import _converse from '../_converse.js';
-import isFunction from '../../utils/core.js';
+import { isFunction } from '../../utils/object.js';
 
 
 export default {
@@ -118,7 +118,7 @@ export default {
             } else {
                 options = options || {};
             }
-            _converse.connection.addHandler(
+            api.connection.get().addHandler(
                 handler,
                 options.ns,
                 name,

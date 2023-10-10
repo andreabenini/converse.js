@@ -38,7 +38,8 @@
     "headless": "webpack --config webpack/webpack.headless.js",
     "headless-dev": "webpack --config webpack/webpack.headless.js --mode=development",
     "nodeps": "webpack --config webpack/webpack.nodeps.js",
-    "serve": "webpack serve --config webpack/webpack.serve.js",
+    "serve": "http-server -c-1",
+    "devserver": "webpack serve --config webpack/webpack.serve.js",
     "watch": "webpack --watch --config webpack/webpack.build.js --mode=development",
     "types": "tsc --declaration --emitDeclarationOnly --allowJs",
     "check:types": "tsc --noEmit"
@@ -76,7 +77,6 @@
     "autoprefixer": "^10.4.5",
     "babel-loader": "^9.1.0",
     "bootstrap.native-loader": "2.0.0",
-    "circular-dependency-plugin": "^5.2.2",
     "clean-css-cli": "^5.6.2",
     "copy-webpack-plugin": "^11.0.0",
     "css-loader": "^6.7.1",
@@ -114,7 +114,7 @@
   },
   "dependencies": {
     "@converse/openpromise": "^0.0.1",
-    "@converse/skeletor": "^0.0.8",
+    "@converse/skeletor": "conversejs/skeletor#811e13b0a541e8511ba3978e49f45a1f83fd0239",
     "bootstrap": "^4.6.0",
     "bootstrap.native": "^2.0.27",
     "client-compress": "^2.2.2",

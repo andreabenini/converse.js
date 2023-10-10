@@ -32,22 +32,6 @@ converse.plugins.add('converse-controlbox', {
         return !_converse.api.settings.get('singleton');
     },
 
-    // Overrides mentioned here will be picked up by converse.js's
-    // plugin architecture they will replace existing methods on the
-    // relevant objects or classes.
-    // New functions which don't exist yet can also be added.
-    overrides: {
-        ChatBoxes: {
-            model (attrs, options) {
-                if (attrs && attrs.id == 'controlbox') {
-                    return new ControlBox(attrs, options);
-                } else {
-                    return this.__super__.model.apply(this, arguments);
-                }
-            }
-        }
-    },
-
     initialize () {
         api.settings.extend({
             allow_logout: true,
@@ -65,6 +49,11 @@ converse.plugins.add('converse-controlbox', {
         _converse.ControlBoxView = ControlBoxView;
         _converse.ControlBox = ControlBox;
         _converse.ControlBoxToggle = ControlBoxToggle;
+
+        api.chatboxes.registry.add(
+            _converse.CONTROLBOX_TYPE,
+            ControlBox
+        );
 
         api.listen.on('chatBoxesFetched', onChatBoxesFetched);
         api.listen.on('clearSession', clearSession);

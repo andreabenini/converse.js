@@ -2,11 +2,7 @@ import i18n from './i18n.js';
 import log from '../log.js';
 import pluggable from 'pluggable.js/src/pluggable.js';
 import { Events } from '@converse/skeletor/src/events.js';
-import { Router } from '@converse/skeletor/src/router.js';
-import { createStore, getDefaultStore } from '../utils/storage.js';
-import { getInitSettings } from './settings/utils.js';
 import { getOpenPromise } from '@converse/openpromise';
-import { shouldClearCache } from '../utils/core.js';
 
 import {
     ACTIVE,
@@ -40,9 +36,6 @@ import {
  * @namespace _converse
  */
 const _converse = {
-    log,
-
-    shouldClearCache, // TODO: Should be moved to utils with next major release
     VERSION_NAME,
 
     templates: {},
@@ -83,22 +76,12 @@ const _converse = {
         INACTIVE: 90000
     },
 
-    default_connection_options: {'explicitResourceBinding': true},
-    router: new Router(),
-
-    isTestEnv: () => {
-        return getInitSettings()['bosh_service_url'] === 'montague.lit/http-bind';
-    },
-
-    getDefaultStore,
-    createStore,
-
     /**
      * Translate the given string based on the current locale.
      * @method __
      * @private
      * @memberOf _converse
-     * @param { String } str
+     * @param { ...String } args
      */
     '__': (...args) => i18n.__(...args),
 

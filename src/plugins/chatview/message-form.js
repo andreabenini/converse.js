@@ -3,7 +3,7 @@ import { ElementView } from '@converse/skeletor/src/element.js';
 import { __ } from 'i18n';
 import { _converse, api, converse } from "@converse/headless";
 import { parseMessageForCommands } from './utils.js';
-import { prefixMentions } from '@converse/headless/utils/core.js';
+import { prefixMentions } from '@converse/headless/utils/index.js';
 
 const { u } = converse.env;
 
@@ -187,7 +187,7 @@ export default class MessageForm extends ElementView {
         ) {
             return;
         }
-        if (!_converse.connection.authenticated) {
+        if (!api.connection.get().authenticated) {
             const err_msg = __('Sorry, the connection has been lost, and your message could not be sent');
             api.alert('error', __('Error'), err_msg);
             api.connection.reconnect();

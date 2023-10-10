@@ -2,13 +2,30 @@
 
 ## 11.0.0 (Unreleased)
 
-Breaking changes:
+- #2716: Fix issue with chat display when opening via URL
+
+### Breaking changes:
+
 - Remove the old `_converse.BootstrapModal` in favor of `_converse.BaseModal` which is a web component.
+- The connection is no longer available on the `_converse` object. Instead, use `api.connection.get()`.
 
 ## 10.1.6 (2023-08-31)
 
 - #3246: Badge color not responsive to dark theme
 - Fix a GIF rendering bug that causes a memory overflow
+
+Adding more types of chats:
+  Previously the `overrides` functionality of `pluggable.js` was used to
+  `override` the `model` function on the `ChatBoxes` collection, so that
+  different types of chatboxes could be created (e.g. MUC, ChatBox, Feed).
+
+  This has been replaced with a registry, `api.chatboxes.registry`.
+
+  Use `api.chatboxes.registry.add(type, model)` to add a new type of chatbox to
+  the collection.
+
+  Then when `api.chatboxes.create(attrs, options)` is called, the right type of
+  chatbox will be created if `attrs.type` is the `type` in the registry.
 
 ## 10.1.5 (2023-06-29)
 

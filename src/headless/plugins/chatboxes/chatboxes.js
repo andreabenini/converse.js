@@ -3,12 +3,10 @@ import api from '../../shared/api/index.js';
 import { Collection } from "@converse/skeletor/src/collection";
 import { initStorage } from '../../utils/storage.js';
 
-const ChatBoxes = Collection.extend({
-    comparator: 'time_opened',
-
-    model (attrs, options) {
-        return new _converse.ChatBox(attrs, options);
-    },
+class ChatBoxes extends Collection {
+    get comparator () {
+        return 'time_opened';
+    }
 
     onChatBoxesFetched (collection) {
         collection.filter(c => !c.isValid()).forEach(c => c.destroy());
@@ -22,7 +20,7 @@ const ChatBoxes = Collection.extend({
          * @example _converse.api.waitUntil('chatBoxesFetched').then(() => { ... });
          */
         api.trigger('chatBoxesFetched');
-    },
+    }
 
     onConnected (reconnecting) {
         if (reconnecting) { return; }
@@ -32,7 +30,14 @@ const ChatBoxes = Collection.extend({
             'success': c => this.onChatBoxesFetched(c)
         });
     }
-});
 
+    createModel (attrs, options) {
+        if (!attrs.type) {
+            throw new Error("You need to specify a type of chatbox to be created");
+        }
+        const ChatBox = api.chatboxes.registry.get(attrs.type);
+        return new ChatBox(attrs, options);
+    }
+}
 
 export default ChatBoxes;

@@ -1,13 +1,20 @@
+import sizzle from "sizzle";
+import { Model } from '@converse/skeletor/src/model.js';
 import _converse from '../../shared/_converse.js';
 import api, { converse } from '../../shared/api/index.js';
 import log from '../../log.js';
 import { isArchived, isHeadline, isServerMessage, } from '../../shared/parsers';
 import { parseMessage } from './parsers.js';
-import { shouldClearCache } from '../../utils/core.js';
+import { shouldClearCache } from '../../utils/session.js';
 
 const { Strophe, u } = converse.env;
 
-export function openChat (jid) {
+export function routeToChat (event) {
+    if (!location.hash.startsWith('#converse/chat?jid=')) {
+        return;
+    }
+    event?.preventDefault();
+    const jid = location.hash.split('=').pop();
     if (!u.isValidJID(jid)) {
         return log.warn(`Invalid JID "${jid}" provided in URL fragment`);
     }
@@ -23,6 +30,22 @@ export async function onClearSession () {
         _converse.chatboxes.clearStore({ 'silent': true }, filter);
     }
 }
+
+export function isNewMessage (message) {
+    /* Given a stanza, determine whether it's a new
+     * message, i.e. not a MAM archived one.
+     */
+    if (message instanceof Element) {
+        return !(
+            sizzle(`result[xmlns="${Strophe.NS.MAM}"]`, message).length &&
+            sizzle(`delay[xmlns="${Strophe.NS.DELAY}"]`, message).length
+        );
+    } else if (message instanceof Model) {
+        message = message.attributes;
+    }
+    return !(message['is_delayed'] && message['is_archived']);
+}
+
 
 async function handleErrorMessage (stanza) {
     const from_jid = Strophe.getBareJidFromJid(stanza.getAttribute('from'));
@@ -60,7 +83,7 @@ export function autoJoinChats () {
 }
 
 export function registerMessageHandlers () {
-    _converse.connection.addHandler(
+    api.connection.get().addHandler(
         stanza => {
             if (
                 ['groupchat', 'error'].includes(stanza.getAttribute('type')) ||
@@ -76,7 +99,7 @@ export function registerMessageHandlers () {
         'message',
     );
 
-    _converse.connection.addHandler(
+    api.connection.get().addHandler(
         stanza => handleErrorMessage(stanza) || true,
         null,
         'message',
@@ -144,7 +167,7 @@ export async function enableCarbons () {
     }
 
     const iq = new Strophe.Builder('iq', {
-        'from': _converse.connection.jid,
+        'from': api.connection.get().jid,
         'type': 'set'
     }).c('enable', {xmlns: Strophe.NS.CARBONS});
 

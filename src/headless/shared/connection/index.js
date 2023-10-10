@@ -6,7 +6,7 @@ import api from '../api/index.js';
 import { ANONYMOUS, BOSH_WAIT, LOGOUT } from '../../shared/constants.js';
 import { CONNECTION_STATUS } from '../constants';
 import { Strophe } from 'strophe.js';
-import { clearSession, tearDown } from "../../utils/core.js";
+import { clearSession, tearDown } from "../../utils/session.js";
 import { getOpenPromise } from '@converse/openpromise';
 import { setUserJID, } from '../../utils/init.js';
 
@@ -168,7 +168,7 @@ export class Connection extends Strophe.Connection {
         if (api.settings.get("authentication") === ANONYMOUS) {
             await clearSession();
         }
-        return api.user.login();
+        return api.user.login(_converse.jid);
     }
 
     /**
@@ -246,7 +246,8 @@ export class Connection extends Strophe.Connection {
         this.reset();
         tearDown();
         await clearSession();
-        delete _converse.connection;
+        api.connection.destroy();
+
         /**
         * Triggered after converse.js has disconnected from the XMPP server.
         * @event _converse#disconnected

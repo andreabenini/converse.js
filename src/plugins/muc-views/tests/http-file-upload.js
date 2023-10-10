@@ -52,14 +52,14 @@ describe("XEP-0363: HTTP File Upload", function () {
                         ['http://jabber.org/protocol/disco#items'], [], 'info');
 
                     const send_backup = XMLHttpRequest.prototype.send;
-                    const IQ_stanzas = _converse.connection.IQ_stanzas;
+                    const IQ_stanzas = _converse.api.connection.get().IQ_stanzas;
 
                     await mock.waitUntilDiscoConfirmed(_converse, _converse.domain, [], [], ['upload.montague.tld'], 'items');
                     await mock.waitUntilDiscoConfirmed(_converse, 'upload.montague.tld', [], [Strophe.NS.HTTPUPLOAD], []);
                     await mock.openAndEnterChatRoom(_converse, 'lounge@montague.lit', 'romeo');
 
                     // Wait until MAM query has been sent out
-                    const sent_stanzas = _converse.connection.sent_stanzas;
+                    const sent_stanzas = _converse.api.connection.get().sent_stanzas;
                     await u.waitUntil(() => sent_stanzas.filter(s => sizzle(`[xmlns="${Strophe.NS.MAM}"]`, s).length).pop());
 
                     const view = _converse.chatboxviews.get('lounge@montague.lit');
@@ -106,7 +106,7 @@ describe("XEP-0363: HTTP File Upload", function () {
                         const el = await u.waitUntil(() => view.querySelector('.chat-content progress'));
                         expect(el.getAttribute('value')).toBe('0');
                         message.set('progress', 0.5);
-                        await u.waitUntil(() => view.querySelector('.chat-content progress').getAttribute('value') === '0.5')
+                        await u.waitUntil(() => view.querySelector('.chat-content progress')?.getAttribute('value') === '0.5')
                         message.set('progress', 1);
                         await u.waitUntil(() => view.querySelector('.chat-content progress')?.getAttribute('value') === '1')
                         message.save({
@@ -117,8 +117,8 @@ describe("XEP-0363: HTTP File Upload", function () {
                         await u.waitUntil(() => view.querySelectorAll('.chat-msg__text').length);
                     });
                     let sent_stanza;
-                    spyOn(_converse.connection, 'send').and.callFake(stanza => (sent_stanza = stanza));
-                    _converse.connection._dataRecv(mock.createRequest(stanza));
+                    spyOn(_converse.api.connection.get(), 'send').and.callFake(stanza => (sent_stanza = stanza));
+                    _converse.api.connection.get()._dataRecv(mock.createRequest(stanza));
 
                     await u.waitUntil(() => sent_stanza, 1000);
                     expect(Strophe.serialize(sent_stanza)).toBe(

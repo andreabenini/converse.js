@@ -2,9 +2,18 @@ import _converse from '../../shared/_converse.js';
 import api, { converse } from '../../shared/api/index.js';
 import log from '../../log.js';
 import { ROLES } from './constants.js';
-import { safeSave } from '../../utils/core.js';
+import { safeSave } from '../../utils/index.js';
 
 const { Strophe, sizzle, u } = converse.env;
+
+export function isChatRoom (model) {
+    return model?.get('type') === 'chatroom';
+}
+
+export function shouldCreateGroupchatMessage (attrs) {
+    return attrs.nick && (u.shouldCreateMessage(attrs) || attrs.is_tombstone);
+}
+
 
 export function getAutoFetchedAffiliationLists () {
     const affs = api.settings.get('muc_fetch_members');
@@ -29,7 +38,7 @@ export function getAssignableRoles (occupant) {
 }
 
 export function registerDirectInvitationHandler () {
-    _converse.connection.addHandler(
+    api.connection.get().addHandler(
         message => {
             _converse.onDirectMUCInvitation(message);
             return true;
@@ -56,7 +65,15 @@ export async function onWindowStateChanged (data) {
     }
 }
 
-export async function routeToRoom (jid) {
+/**
+ * @param {Event} [event]
+ */
+export async function routeToRoom (event) {
+    if (!location.hash.startsWith('#converse/room?jid=')) {
+        return;
+    }
+    event?.preventDefault();
+    const jid = location.hash.split('=').pop();
     if (!u.isValidMUCJID(jid)) {
         return log.warn(`invalid jid "${jid}" provided in url fragment`);
     }
@@ -64,7 +81,7 @@ export async function routeToRoom (jid) {
     if (api.settings.get('allow_bookmarks')) {
         await api.waitUntil('bookmarksInitialized');
     }
-    api.rooms.open(jid);
+    api.rooms.open(jid, {}, true);
 }
 
 /* Opens a groupchat, making sure that certain attributes
@@ -213,7 +230,7 @@ export function onStatusInitialized () {
 }
 
 export function onBeforeResourceBinding () {
-    _converse.connection.addHandler(
+    api.connection.get().addHandler(
         stanza => {
             const muc_jid = Strophe.getBareJidFromJid(stanza.getAttribute('from'));
             if (!_converse.chatboxes.get(muc_jid)) {
