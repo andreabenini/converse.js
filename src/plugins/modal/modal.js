@@ -1,6 +1,6 @@
 import bootstrap from "bootstrap.native";
 import tplModal from './templates/modal.js';
-import { ElementView } from '@converse/skeletor/src/element.js';
+import ElementView from '@converse/skeletor/src/element.js';
 import { getOpenPromise } from '@converse/openpromise';
 
 
@@ -10,6 +10,7 @@ class BaseModal extends ElementView {
 
     constructor (options) {
         super();
+        this.model = null;
         this.className = 'modal';
         this.initialized = getOpenPromise();
 
