@@ -5,19 +5,19 @@
  * @typedef {module:plugin-chat-parsers.MessageAttributes} MessageAttributes
  * @typedef {import('strophe.js/src/builder.js').Builder} Strophe.Builder
  */
+import isMatch from "lodash-es/isMatch";
+import pick from "lodash-es/pick";
+import { getOpenPromise } from '@converse/openpromise';
+import { Model } from '@converse/skeletor';
+import { ACTIVE, PRIVATE_CHAT_TYPE, COMPOSING, INACTIVE, PAUSED, SUCCESS, GONE } from '../../shared/constants.js';
 import ModelWithContact from './model-with-contact.js';
 import _converse from '../../shared/_converse.js';
-import api, { converse } from '../../shared/api/index.js';
-import isMatch from "lodash-es/isMatch";
+import api from '../../shared/api/index.js';
+import converse from '../../shared/api/public.js';
 import log from '../../log.js';
-import pick from "lodash-es/pick";
-import { Model } from '@converse/skeletor';
-import { ACTIVE, PRIVATE_CHAT_TYPE, COMPOSING, INACTIVE, PAUSED, SUCCESS, GONE } from '@converse/headless/shared/constants.js';
 import { TimeoutError } from '../../shared/errors.js';
 import { debouncedPruneHistory, handleCorrection } from '../../shared/chat/utils.js';
 import { filesize } from "filesize";
-import { getMediaURLsMetadata } from '../../shared/parsers.js';
-import { getOpenPromise } from '@converse/openpromise';
 import { initStorage } from '../../utils/storage.js';
 import { isEmptyMessage } from '../../utils/index.js';
 import { isNewMessage } from './utils.js';
@@ -30,8 +30,6 @@ const { Strophe, $msg, u } = converse.env;
 
 /**
  * Represents an open/ongoing chat conversation.
- * @namespace ChatBox
- * @memberOf _converse
  */
 class ChatBox extends ModelWithContact {
 
@@ -479,23 +477,22 @@ class ChatBox extends ModelWithContact {
      * Timeouts are set when the  state being set is COMPOSING or PAUSED.
      * After the timeout, COMPOSING will become PAUSED and PAUSED will become INACTIVE.
      * See XEP-0085 Chat State Notifications.
-     * @private
      * @method ChatBox#setChatState
      * @param { string } state - The chat state (consts ACTIVE, COMPOSING, PAUSED, INACTIVE, GONE)
      */
     setChatState (state, options) {
         if (this.chat_state_timeout !== undefined) {
-            window.clearTimeout(this.chat_state_timeout);
+            clearTimeout(this.chat_state_timeout);
             delete this.chat_state_timeout;
         }
         if (state === COMPOSING) {
-            this.chat_state_timeout = window.setTimeout(
+            this.chat_state_timeout = setTimeout(
                 this.setChatState.bind(this),
                 _converse.TIMEOUTS.PAUSED,
                 PAUSED
             );
         } else if (state === PAUSED) {
-            this.chat_state_timeout = window.setTimeout(
+            this.chat_state_timeout = setTimeout(
                 this.setChatState.bind(this),
                 _converse.TIMEOUTS.INACTIVE,
                 INACTIVE
@@ -866,7 +863,7 @@ class ChatBox extends ModelWithContact {
             body,
             is_spoiler,
             origin_id
-        }, getMediaURLsMetadata(text));
+        }, u.getMediaURLsMetadata(text));
 
         /**
          * *Hook* which allows plugins to update the attributes of an outgoing message.
@@ -1015,7 +1012,7 @@ class ChatBox extends ModelWithContact {
             return;
         }
         const data = item.dataforms.where({'FORM_TYPE': {'value': Strophe.NS.HTTPUPLOAD, 'type': "hidden"}}).pop();
-        const max_file_size = window.parseInt((data?.attributes || {})['max-file-size']?.value);
+        const max_file_size = parseInt((data?.attributes || {})['max-file-size']?.value, 10);
         const slot_request_url = item?.id;
 
         if (!slot_request_url) {
@@ -1036,12 +1033,18 @@ class ChatBox extends ModelWithContact {
              */
             file = await api.hook('beforeFileUpload', this, file);
 
-            if (!window.isNaN(max_file_size) && file.size > max_file_size) {
+            if (!isNaN(max_file_size) && file.size > max_file_size) {
+                const size = filesize(max_file_size);
+                const message = Array.isArray(size)
+                    ? __('The size of your file, %1$s, exceeds the maximum allowed by your server.', file.name)
+                    : __(
+                        'The size of your file, %1$s, exceeds the maximum allowed by your server, which is %2$s.',
+                        file.name, size
+                    );
                 return this.createMessage({
-                    'message': __('The size of your file, %1$s, exceeds the maximum allowed by your server, which is %2$s.',
-                        file.name, filesize(max_file_size)),
-                    'type': 'error',
-                    'is_ephemeral': true
+                    message,
+                    type: 'error',
+                    is_ephemeral: true
                 });
             } else {
                 const initial_attrs = await this.getOutgoingMessageAttributes();
@@ -1138,6 +1141,10 @@ class ChatBox extends ModelWithContact {
 
     isScrolledUp () {
         return this.ui.get('scrolled');
+    }
+
+    canPostMessages () {
+        return true;
     }
 }
 

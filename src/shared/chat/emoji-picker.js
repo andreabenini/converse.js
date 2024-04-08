@@ -2,19 +2,19 @@
  * @module emoji-picker
  * @typedef {module:dom-navigator.DOMNavigatorOptions} DOMNavigatorOptions
  */
+import debounce from 'lodash-es/debounce';
+import { api, converse, u, constants } from "@converse/headless";
 import "./emoji-picker-content.js";
 import './emoji-dropdown.js';
 import DOMNavigator from "shared/dom-navigator";
-import debounce from 'lodash-es/debounce';
 import { CustomElement } from 'shared/components/element.js';
-import { KEYCODES } from '@converse/headless/shared/constants.js';
-import { _converse, api, converse } from "@converse/headless";
+import { FILTER_CONTAINS } from "shared/autocomplete/utils.js";
 import { getTonedEmojis } from './utils.js';
 import { tplEmojiPicker } from "./templates/emoji-picker.js";
 
 import './styles/emoji.scss';
 
-const u = converse.env.utils;
+const { KEYCODES } = constants;
 
 
 export default class EmojiPicker extends CustomElement {
@@ -100,7 +100,7 @@ export default class EmojiPicker extends CustomElement {
 
     updateSearchResults (changed) {
         const old_query = changed.get('query');
-        const contains = _converse.FILTER_CONTAINS;
+        const contains = FILTER_CONTAINS;
         if (this.query) {
             if (this.query === old_query) {
                 return this.search_results;
@@ -195,7 +195,7 @@ export default class EmojiPicker extends CustomElement {
         if (ev.keyCode === KEYCODES.TAB) {
             if (ev.target.value) {
                 ev.preventDefault();
-                const match = converse.emojis.shortnames.find(sn => _converse.FILTER_CONTAINS(sn, ev.target.value));
+                const match = converse.emojis.shortnames.find(sn => FILTER_CONTAINS(sn, ev.target.value));
                 match && this.model.set({'query': match});
             } else if (!this.navigator.enabled) {
                 this.enableArrowNavigation(ev);

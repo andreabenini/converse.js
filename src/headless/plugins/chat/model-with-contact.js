@@ -1,13 +1,26 @@
-import api from "../../shared/api/index.js";
 import { Model } from '@converse/skeletor';
 import { getOpenPromise } from '@converse/openpromise';
+import api from "../../shared/api/index.js";
 
 class ModelWithContact extends Model {
+    /**
+     * @typedef {import('../vcard/vcard').default} VCard
+     * @typedef {import('../roster/contact').default} RosterContact
+     */
 
     initialize () {
         super.initialize();
         this.rosterContactAdded = getOpenPromise();
+        /**
+         * @public
+         * @type {RosterContact}
+         */
+
         this.contact = null;
+        /**
+         * @public
+         * @type {VCard}
+         */
         this.vcard = null;
     }
 

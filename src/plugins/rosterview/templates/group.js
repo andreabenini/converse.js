@@ -1,19 +1,18 @@
+import { html } from "lit";
+import { repeat } from 'lit/directives/repeat.js';
+import { _converse, api, u } from "@converse/headless";
 import 'shared/components/icons.js';
 import { __ } from 'i18n';
-import { _converse, converse, api } from "@converse/headless";
-import { html } from "lit";
-import { isUniView } from '@converse/headless/utils/session.js';
-import { repeat } from 'lit/directives/repeat.js';
 import { toggleGroup } from '../utils.js';
 
-const { u } = converse.env;
+const { isUniView } = u;
 
 
 function renderContact (contact) {
     const jid = contact.get('jid');
     const extra_classes = [];
     if (isUniView()) {
-        const chatbox = _converse.chatboxes.get(jid);
+        const chatbox = _converse.state.chatboxes.get(jid);
         if (chatbox && !chatbox.get('hidden')) {
             extra_classes.push('open');
         }
@@ -50,7 +49,7 @@ function renderContact (contact) {
 
 export default  (o) => {
     const i18n_title = __('Click to hide these contacts');
-    const collapsed = _converse.roster.state.get('collapsed_groups');
+    const collapsed = _converse.state.roster.state.get('collapsed_groups');
     return html`
         <div class="roster-group" data-group="${o.name}">
             <a href="#" class="list-toggle group-toggle controlbox-padded" title="${i18n_title}" @click=${ev => toggleGroup(ev, o.name)}>

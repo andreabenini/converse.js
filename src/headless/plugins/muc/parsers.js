@@ -5,7 +5,8 @@
  */
 import dayjs from 'dayjs';
 import _converse from '../../shared/_converse.js';
-import api, { converse } from '../../shared/api/index.js';
+import api from '../../shared/api/index.js';
+import converse from '../../shared/api/public.js';
 import {
     StanzaParseError,
     getChatMarker,
@@ -13,7 +14,6 @@ import {
     getCorrectionAttributes,
     getEncryptionAttributes,
     getErrorAttributes,
-    getMediaURLsMetadata,
     getOpenGraphMetadata,
     getOutOfBandAttributes,
     getReceiptId,
@@ -168,7 +168,7 @@ export async function parseMUCMessage (stanza, chatbox) {
     const marker = getChatMarker(stanza);
 
     /**
-     * @typedef { Object } MUCMessageAttributes
+     * @typedef {Object} MUCMessageAttributes
      * The object which {@link parseMUCMessage} returns
      * @property { ('me'|'them') } sender - Whether the message was sent by the current user or someone else
      * @property { Array<Object> } activities - A list of objects representing XEP-0316 MEP notification data
@@ -299,7 +299,7 @@ export async function parseMUCMessage (stanza, chatbox) {
     // We call this after the hook, to allow plugins to decrypt encrypted
     // messages, since we need to parse the message text to determine whether
     // there are media urls.
-    return Object.assign(attrs, getMediaURLsMetadata(attrs.is_encrypted ? attrs.plaintext : attrs.body));
+    return Object.assign(attrs, u.getMediaURLsMetadata(attrs.is_encrypted ? attrs.plaintext : attrs.body));
 }
 
 /**

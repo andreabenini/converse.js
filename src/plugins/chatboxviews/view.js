@@ -1,15 +1,14 @@
+import { render } from 'lit';
+import { api, _converse } from '@converse/headless';
 import tplBackgroundLogo from '../../templates/background_logo.js';
 import tplChats from './templates/chats.js';
 import { CustomElement } from 'shared/components/element.js';
-import { api, _converse } from '@converse/headless';
-import { getAppSettings } from '@converse/headless/shared/settings/utils.js';
-import { render } from 'lit';
 
 
 class ConverseChats extends CustomElement {
 
     initialize () {
-        this.model = _converse.chatboxes;
+        this.model = _converse.state.chatboxes;
         this.listenTo(this.model, 'add', () => this.requestUpdate());
         this.listenTo(this.model, 'change:closed', () => this.requestUpdate());
         this.listenTo(this.model, 'change:hidden', () => this.requestUpdate());
@@ -23,7 +22,7 @@ class ConverseChats extends CustomElement {
         this.listenTo(_converse, 'reconnected', () => this.requestUpdate());
         this.listenTo(_converse, 'disconnected', () => this.requestUpdate());
 
-        const settings = getAppSettings();
+        const settings = api.settings.get();
         this.listenTo(settings, 'change:view_mode', () => this.requestUpdate())
         this.listenTo(settings, 'change:singleton', () => this.requestUpdate())
 
@@ -35,14 +34,14 @@ class ConverseChats extends CustomElement {
         body.classList.add(`converse-${api.settings.get('view_mode')}`);
 
         /**
-         * Triggered once the _converse.ChatBoxViews view-colleciton has been initialized
+         * Triggered once the ChatBoxViews view-colleciton has been initialized
          * @event _converse#chatBoxViewsInitialized
          * @example _converse.api.listen.on('chatBoxViewsInitialized', () => { ... });
          */
         api.trigger('chatBoxViewsInitialized');
     }
 
-    render () { // eslint-disable-line class-methods-use-this
+    render () {
         return tplChats();
     }
 }

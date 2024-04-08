@@ -1,20 +1,20 @@
 /**
  * @typedef {import('shared/chat/emoji-dropdown.js').default} EmojiDropdown
  */
-import tplMessageForm from './templates/message-form.js';
-import { CustomElement } from 'shared/components/element.js';
+import { _converse, api, converse, constants, u } from "@converse/headless";
 import { __ } from 'i18n';
-import { _converse, api, converse } from "@converse/headless";
+import { CustomElement } from 'shared/components/element.js';
+import tplMessageForm from './templates/message-form.js';
 import { parseMessageForCommands } from './utils.js';
-import { prefixMentions } from '@converse/headless/utils/index.js';
 
-const { u } = converse.env;
+const { ACTIVE, COMPOSING } = constants;
 
 
 export default class MessageForm extends CustomElement {
 
     async initialize () {
-        this.model = _converse.chatboxes.get(this.getAttribute('jid'));
+        const { chatboxes } = _converse.state;
+        this.model = chatboxes.get(this.getAttribute('jid'));
         await this.model.initialized;
         this.listenTo(this.model.messages, 'change:correcting', this.onMessageCorrecting);
         this.listenTo(this.model, 'change:composing_spoiler', () => this.requestUpdate());
@@ -57,7 +57,7 @@ export default class MessageForm extends CustomElement {
      * @param { number } [position] - The end index of the string to be
      *  replaced with the new value.
      */
-    insertIntoTextArea (value, replace = false, correcting = false, position) {
+    insertIntoTextArea (value, replace = false, correcting = false, position, separator = ' ') {
         const textarea = /** @type {HTMLTextAreaElement} */(this.querySelector('.chat-textarea'));
         if (correcting) {
             u.addClass('correcting', textarea);
@@ -67,17 +67,17 @@ export default class MessageForm extends CustomElement {
         if (replace) {
             if (position && typeof replace == 'string') {
                 textarea.value = textarea.value.replace(new RegExp(replace, 'g'), (match, offset) =>
-                    offset == position - replace.length ? value + ' ' : match
+                    offset == position - replace.length ? value + separator : match
                 );
             } else {
                 textarea.value = value;
             }
         } else {
             let existing = textarea.value;
-            if (existing && existing[existing.length - 1] !== ' ') {
-                existing = existing + ' ';
+            if (existing && existing[existing.length - 1] !== separator) {
+                existing = existing + separator;
             }
-            textarea.value = existing + value + ' ';
+            textarea.value = existing + value + separator;
         }
         const ev = document.createEvent('HTMLEvents');
         ev.initEvent('change', false, true);
@@ -87,11 +87,11 @@ export default class MessageForm extends CustomElement {
 
     onMessageCorrecting (message) {
         if (message.get('correcting')) {
-            this.insertIntoTextArea(prefixMentions(message), true, true);
+            this.insertIntoTextArea(u.prefixMentions(message), true, true);
         } else {
             const currently_correcting = this.model.messages.findWhere('correcting');
             if (currently_correcting && currently_correcting !== message) {
-                this.insertIntoTextArea(prefixMentions(message), true, true);
+                this.insertIntoTextArea(u.prefixMentions(message), true, true);
             } else {
                 this.insertIntoTextArea('', true, false);
             }
@@ -180,15 +180,16 @@ export default class MessageForm extends CustomElement {
         ) {
             return;
         }
-        if (this.model.get('chat_state') !== _converse.COMPOSING) {
+        if (this.model.get('chat_state') !== COMPOSING) {
             // Set chat state to composing if keyCode is not a forward-slash
             // (which would imply an internal command and not a message).
-            this.model.setChatState(_converse.COMPOSING);
+            this.model.setChatState(COMPOSING);
         }
     }
 
     async onFormSubmitted (ev) {
         ev?.preventDefault?.();
+        const { chatboxviews } = _converse.state;
 
         const textarea = /** @type {HTMLTextAreaElement} */(this.querySelector('.chat-textarea'));
         const message_text = textarea.value.trim();
@@ -226,7 +227,7 @@ export default class MessageForm extends CustomElement {
         if (api.settings.get('view_mode') === 'overlayed') {
             // XXX: Chrome flexbug workaround. The .chat-content area
             // doesn't resize when the textarea is resized to its original size.
-            const chatview = _converse.chatboxviews.get(this.getAttribute('jid'));
+            const chatview = chatboxviews.get(this.getAttribute('jid'));
             const msgs_container = chatview.querySelector('.chat-content__messages');
             msgs_container.parentElement.style.display = 'none';
         }
@@ -235,13 +236,13 @@ export default class MessageForm extends CustomElement {
 
         if (api.settings.get('view_mode') === 'overlayed') {
             // XXX: Chrome flexbug workaround.
-            const chatview = _converse.chatboxviews.get(this.getAttribute('jid'));
+            const chatview = chatboxviews.get(this.getAttribute('jid'));
             const msgs_container = chatview.querySelector('.chat-content__messages');
             msgs_container.parentElement.style.display = '';
         }
         // Suppress events, otherwise superfluous CSN gets set
         // immediately after the message, causing rate-limiting issues.
-        this.model.setChatState(_converse.ACTIVE, { 'silent': true });
+        this.model.setChatState(ACTIVE, { 'silent': true });
         textarea.focus();
     }
 }

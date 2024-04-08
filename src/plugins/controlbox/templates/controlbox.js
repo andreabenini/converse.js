@@ -1,8 +1,12 @@
+/**
+ * @typedef {import('../controlbox').default} ControlBoxView
+ */
 import tplSpinner from "templates/spinner.js";
-import { _converse, api, converse } from "@converse/headless";
+import { _converse, api, converse, constants } from "@converse/headless";
 import { html } from 'lit';
 
 const { Strophe } = converse.env;
+const { ANONYMOUS } = constants;
 
 
 function whenNotConnected (o) {
@@ -17,6 +21,9 @@ function whenNotConnected (o) {
 }
 
 
+/**
+ * @param {ControlBoxView} el
+ */
 export default (el) => {
     const o = el.model.toJSON();
     const sticky_controlbox = api.settings.get('sticky_controlbox');
@@ -40,7 +47,7 @@ export default (el) => {
                             <converse-user-profile></converse-user-profile>
                             <converse-headlines-feeds-list class="controlbox-section"></converse-headlines-feeds-list>
                             <div id="chatrooms" class="controlbox-section"><converse-rooms-list></converse-rooms-list></div>
-                            ${ api.settings.get("authentication") === _converse.ANONYMOUS ? '' :
+                            ${ api.settings.get("authentication") === ANONYMOUS ? '' :
                                 html`<div id="converse-roster" class="controlbox-section"><converse-roster></converse-roster></div>`
                             }`
                         : whenNotConnected(o)

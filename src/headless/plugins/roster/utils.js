@@ -1,10 +1,14 @@
+/**
+ * @typedef {import('./contacts').default} RosterContacts
+ */
 import _converse from '../../shared/_converse.js';
-import api, { converse } from '../../shared/api/index.js';
+import api from '../../shared/api/index.js';
+import converse from '../../shared/api/public.js';
 import log from "../../log.js";
 import { Strophe } from 'strophe.js';
 import { Model } from '@converse/skeletor';
 import { RosterFilter } from '../../plugins/roster/filter.js';
-import { STATUS_WEIGHTS, PRIVATE_CHAT_TYPE } from "../../shared/constants";
+import { PRIVATE_CHAT_TYPE } from "../../shared/constants";
 import { initStorage } from '../../utils/storage.js';
 import { shouldClearCache } from '../../utils/session.js';
 
@@ -35,7 +39,7 @@ function initRoster () {
     initStorage(roster.data, id);
     roster.data.fetch();
     /**
-     * Triggered once the `_converse.RosterContacts`
+     * Triggered once the `RosterContacts`
      * been created, but not yet populated with data.
      * This event is useful when you want to create views for these collections.
      * @event _converse#chatBoxMaximized
@@ -58,8 +62,9 @@ async function populateRoster (ignore_cache=false) {
     if (ignore_cache) {
         connection.send_initial_presence = true;
     }
+    const roster = /** @type {RosterContacts} */(_converse.state.roster);
     try {
-        await _converse.state.roster.fetchRosterContacts();
+        await roster.fetchRosterContacts();
         api.trigger('rosterContactsFetched');
     } catch (reason) {
         log.error(reason);
@@ -70,7 +75,8 @@ async function populateRoster (ignore_cache=false) {
 
 
 function updateUnreadCounter (chatbox) {
-    const contact = _converse.state.roster?.get(chatbox.get('jid'));
+    const roster = /** @type {RosterContacts} */(_converse.state.roster);
+    const contact = roster?.get(chatbox.get('jid'));
     contact?.save({'num_unread': chatbox.get('num_unread')});
 }
 
@@ -80,7 +86,8 @@ function registerPresenceHandler () {
     unregisterPresenceHandler();
     const connection = api.connection.get();
     presence_ref = connection.addHandler(presence => {
-            _converse.state.roster.presenceHandler(presence);
+            const roster = /** @type {RosterContacts} */(_converse.state.roster);
+            roster.presenceHandler(presence);
             return true;
         }, null, 'presence', null);
 }
@@ -103,8 +110,8 @@ async function clearPresences () {
  */
 export async function onClearSession () {
     await clearPresences();
-    if (shouldClearCache()) {
-        const { roster } = _converse.state;
+    if (shouldClearCache(_converse)) {
+        const roster = /** @type {RosterContacts} */(_converse.state.roster);
         if (roster) {
             roster.data?.destroy();
             await roster.clearStore();
@@ -132,7 +139,8 @@ export function onPresencesInitialized (reconnecting) {
     } else {
         initRoster();
     }
-    _converse.state.roster.onConnected();
+    const roster = /** @type {RosterContacts} */(_converse.state.roster);
+    roster.onConnected();
     registerPresenceHandler();
     populateRoster(!api.connection.get().restored);
 }
@@ -193,7 +201,8 @@ export function onChatBoxesInitialized () {
  * Roster specific handler for the rosterContactsFetched promise
  */
 export function onRosterContactsFetched () {
-    _converse.state.roster.on('add', contact => {
+    const roster = /** @type {RosterContacts} */(_converse.state.roster);
+    roster.on('add', contact => {
         // When a new contact is added, check if we already have a
         // chatbox open for it, and if so attach it to the chatbox.
         const chatbox = _converse.state.chatboxes.findWhere({ 'jid': contact.get('jid') });
@@ -211,88 +220,4 @@ export function rejectPresenceSubscription (jid, message) {
     const pres = $pres({to: jid, type: "unsubscribed"});
     if (message && message !== "") { pres.c("status").t(message); }
     api.send(pres);
-}
-
-export function contactsComparator (contact1, contact2) {
-    const status1 = contact1.presence.get('show') || 'offline';
-    const status2 = contact2.presence.get('show') || 'offline';
-    if (STATUS_WEIGHTS[status1] === STATUS_WEIGHTS[status2]) {
-        const name1 = (contact1.getDisplayName()).toLowerCase();
-        const name2 = (contact2.getDisplayName()).toLowerCase();
-        return name1 < name2 ? -1 : (name1 > name2? 1 : 0);
-    } else  {
-        return STATUS_WEIGHTS[status1] < STATUS_WEIGHTS[status2] ? -1 : 1;
-    }
-}
-
-export function groupsComparator (a, b) {
-    const HEADER_WEIGHTS = {};
-    const {
-        HEADER_UNREAD,
-        HEADER_REQUESTING_CONTACTS,
-        HEADER_CURRENT_CONTACTS,
-        HEADER_UNGROUPED,
-        HEADER_PENDING_CONTACTS,
-    } = _converse.labels;
-
-    HEADER_WEIGHTS[HEADER_UNREAD] = 0;
-    HEADER_WEIGHTS[HEADER_REQUESTING_CONTACTS] = 1;
-    HEADER_WEIGHTS[HEADER_CURRENT_CONTACTS]    = 2;
-    HEADER_WEIGHTS[HEADER_UNGROUPED]           = 3;
-    HEADER_WEIGHTS[HEADER_PENDING_CONTACTS]    = 4;
-
-    const WEIGHTS =  HEADER_WEIGHTS;
-    const special_groups = Object.keys(HEADER_WEIGHTS);
-    const a_is_special = special_groups.includes(a);
-    const b_is_special = special_groups.includes(b);
-    if (!a_is_special && !b_is_special ) {
-        return a.toLowerCase() < b.toLowerCase() ? -1 : (a.toLowerCase() > b.toLowerCase() ? 1 : 0);
-    } else if (a_is_special && b_is_special) {
-        return WEIGHTS[a] < WEIGHTS[b] ? -1 : (WEIGHTS[a] > WEIGHTS[b] ? 1 : 0);
-    } else if (!a_is_special && b_is_special) {
-        const a_header = HEADER_CURRENT_CONTACTS;
-        return WEIGHTS[a_header] < WEIGHTS[b] ? -1 : (WEIGHTS[a_header] > WEIGHTS[b] ? 1 : 0);
-    } else if (a_is_special && !b_is_special) {
-        const b_header = HEADER_CURRENT_CONTACTS;
-        return WEIGHTS[a] < WEIGHTS[b_header] ? -1 : (WEIGHTS[a] > WEIGHTS[b_header] ? 1 : 0);
-    }
-}
-
-export function getGroupsAutoCompleteList () {
-    const { roster } = _converse.state;
-    const groups = roster.reduce((groups, contact) => groups.concat(contact.get('groups')), []);
-    return [...new Set(groups.filter(i => i))];
-}
-
-export function getJIDsAutoCompleteList () {
-    return [...new Set(_converse.state.roster.map(item => Strophe.getDomainFromJid(item.get('jid'))))];
-}
-
-
-/**
- * @param {string} query
- */
-export async function getNamesAutoCompleteList (query) {
-    const options = {
-        'mode': /** @type {RequestMode} */('cors'),
-        'headers': {
-            'Accept': 'text/json'
-        }
-    };
-    const url = `${api.settings.get('xhr_user_search_url')}q=${encodeURIComponent(query)}`;
-    let response;
-    try {
-        response = await fetch(url, options);
-    } catch (e) {
-        log.error(`Failed to fetch names for query "${query}"`);
-        log.error(e);
-        return [];
-    }
-
-    const json = response.json;
-    if (!Array.isArray(json)) {
-        log.error(`Invalid JSON returned"`);
-        return [];
-    }
-    return json.map(i => ({'label': i.fullname || i.jid, 'value': i.jid}));
 }

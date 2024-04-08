@@ -1,5 +1,6 @@
 import _converse from '../../shared/_converse.js';
-import api, { converse } from '../../shared/api/index.js';
+import api from '../../shared/api/index.js';
+import converse from '../../shared/api/public.js';
 import { initStorage } from '../../utils/storage.js';
 import { getUnloadEvent } from '../../utils/session.js';
 import { ACTIVE, INACTIVE } from '../../shared/constants.js';
@@ -146,7 +147,7 @@ export function registerIntervalHandler () {
     window.addEventListener('keypress', onUserActivity);
     window.addEventListener('mousemove', onUserActivity);
     window.addEventListener(getUnloadEvent(), onUserActivity, {'once': true, 'passive': true});
-    everySecondTrigger = window.setInterval(onEverySecond, 1000);
+    everySecondTrigger = setInterval(onEverySecond, 1000);
 }
 
 export function tearDown () {
@@ -157,7 +158,7 @@ export function tearDown () {
     window.removeEventListener('mousemove', onUserActivity);
     window.removeEventListener(getUnloadEvent(), onUserActivity);
     if (everySecondTrigger) {
-        window.clearInterval(everySecondTrigger);
+        clearInterval(everySecondTrigger);
         everySecondTrigger = null;
     }
 }

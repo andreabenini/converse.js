@@ -3,57 +3,33 @@
  * @license Mozilla Public License (MPLv2)
  * @description This is the core utilities module.
  */
-import log, { LEVELS } from '../log.js';
-import { Model } from '@converse/skeletor';
 import { toStanza } from 'strophe.js';
 import { getOpenPromise } from '@converse/openpromise';
-import { shouldClearCache } from './session.js';
-import { merge, isError, isFunction } from './object.js';
-import { createStore, getDefaultStore } from './storage.js';
+import { Model } from '@converse/skeletor';
+import log, { LEVELS } from '../log.js';
 import { waitUntil } from './promise.js';
-import { isValidJID, isValidMUCJID, isSameBareJID } from './jid.js';
-import { isErrorStanza } from './stanza.js';
-import {
-    getCurrentWord,
-    getSelectValues,
-    isMentionBoundary,
-    placeCaretAtEnd,
-    replaceCurrentWord,
-    webForm2xForm
-} from './form.js';
-import {
-    getOuterWidth,
-    isElement,
-    isTagEqual,
-    queryChildren,
-    stringToElement,
-} from './html.js';
-import {
-    arrayBufferToHex,
-    arrayBufferToString,
-    stringToArrayBuffer,
-    arrayBufferToBase64,
-    base64ToArrayBuffer,
-} from './arraybuffer.js';
-import {
-    isAudioURL,
-    isGIFURL,
-    isVideoURL,
-    isImageURL,
-    isURLWithImageExtension,
-    checkFileTypes,
-    getURI,
-    shouldRenderMediaFromURL,
-    isAllowedProtocolForMedia,
-} from './url.js';
-
+import * as stanza from './stanza.js';
+import * as session from './session.js';
+import * as object from './object.js';
+import * as storage from './storage.js';
+import * as jid from './jid';
+import * as form from './form.js';
+import * as html from './html.js';
+import * as arraybuffer from './arraybuffer.js';
+import * as url from './url.js';
 
 /**
+ * @typedef {Record<string, Function>} CommonUtils
+ * @typedef {Record<'muc'|'mam', CommonUtils>} PluginUtils
+ *
  * The utils object
  * @namespace u
- * @type {Record<string, Function>}
+ * @type {CommonUtils & PluginUtils}
  */
-const u = {};
+const u = {
+    muc: null,
+    mam: null,
+};
 
 
 /**
@@ -188,52 +164,26 @@ export function getUniqueId (suffix) {
 }
 
 export default Object.assign({
-    arrayBufferToBase64,
-    arrayBufferToHex,
-    arrayBufferToString,
-    base64ToArrayBuffer,
-    checkFileTypes,
-    createStore,
-    getCurrentWord,
-    getDefaultStore,
+    ...arraybuffer,
+    ...form,
+    ...html,
+    ...jid,
+    ...object,
+    ...session,
+    ...stanza,
+    ...storage,
+    ...url,
     getLongestSubstring,
     getOpenPromise,
-    getOuterWidth,
     getRandomInt,
-    getSelectValues,
-    getURI,
     getUniqueId,
-    isAllowedProtocolForMedia,
-    isAudioURL,
-    isElement,
     isEmptyMessage,
-    isError,
     isErrorObject,
-    isErrorStanza,
-    isFunction,
-    isGIFURL,
-    isImageURL,
-    isMentionBoundary,
-    isSameBareJID,
-    isTagEqual,
-    isURLWithImageExtension,
-    isValidJID,
-    isValidMUCJID,
-    isVideoURL,
-    merge,
     onMultipleEvents,
-    placeCaretAtEnd,
     prefixMentions,
-    queryChildren,
-    replaceCurrentWord,
     safeSave,
-    shouldClearCache,
     shouldCreateMessage,
-    shouldRenderMediaFromURL,
-    stringToArrayBuffer,
-    stringToElement,
     toStanza,
     triggerEvent,
-    webForm2xForm,
     waitUntil, // TODO: remove. Only the API should be used
 }, u);

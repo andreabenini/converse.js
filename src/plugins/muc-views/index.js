@@ -3,15 +3,15 @@
  * @description XEP-0045 Multi-User Chat Views
  * @license Mozilla Public License (MPLv2)
  */
+import { api, converse, constants } from '@converse/headless';
 import '../chatboxviews/index.js';
 import './affiliation-form.js';
 import './role-form.js';
 import MUCView from './muc.js';
-import { api, converse } from '@converse/headless';
-import { CHATROOMS_TYPE } from '@converse/headless/shared/constants.js';
 import { clearHistory, confirmDirectMUCInvitation, parseMessageForMUCCommands } from './utils.js';
 
 const { Strophe } = converse.env;
+const { CHATROOMS_TYPE } = constants;
 
 import './styles/index.scss';
 
@@ -52,6 +52,7 @@ converse.plugins.add('converse-muc-views', {
             'muc_mention_autocomplete_show_avatar': true,
             'muc_roomid_policy': null,
             'muc_roomid_policy_hint': null,
+            'muc_search_service': 'api@search.jabber.network',
             'roomconfig_whitelist': [],
             'show_retraction_warning': true,
             'visible_toolbar_buttons': {
@@ -59,7 +60,12 @@ converse.plugins.add('converse-muc-views', {
             }
         });
 
-        _converse.ChatRoomView = MUCView;
+        const exports = {
+            ChatRoomView: MUCView,
+            MUCView
+        };
+        Object.assign(_converse, exports); // DEPRECATED
+        Object.assign(_converse.exports, exports);
 
         if (!api.settings.get('muc_domain')) {
             // Use service discovery to get the default MUC domain

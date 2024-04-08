@@ -1,11 +1,11 @@
 import bootstrap from 'bootstrap.native';
+import { _converse, api, converse, constants } from '@converse/headless';
 import tplLoginPanel from './templates/loginform.js';
-import { ANONYMOUS } from '@converse/headless/shared/constants';
 import { CustomElement } from 'shared/components/element.js';
-import { _converse, api, converse } from '@converse/headless';
 import { updateSettingsWithFormData, validateJID } from './utils.js';
 
 const { Strophe } = converse.env;
+const { ANONYMOUS } = constants;
 
 
 class LoginForm extends CustomElement {
@@ -37,7 +37,8 @@ class LoginForm extends CustomElement {
         ev?.preventDefault();
 
         if (api.settings.get('authentication') === ANONYMOUS) {
-            return this.connect(_converse.jid);
+            const jid = _converse.session.get('jid');
+            return this.connect(jid);
         }
 
         if (!validateJID(ev.target)) {

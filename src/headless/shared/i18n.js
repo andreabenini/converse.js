@@ -3,9 +3,9 @@ import { sprintf } from 'sprintf-js';
 /**
  * @namespace i18n
  */
-export default {
+const i18nStub = {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
-    initialize () {},
+    async initialize () {},
 
     /**
      * Overridable string wrapper method which can be used to provide i18n
@@ -24,3 +24,5 @@ export default {
         return sprintf(...args);
     }
 };
+
+export default i18nStub;

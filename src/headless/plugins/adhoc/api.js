@@ -1,10 +1,18 @@
+/**
+ * @typedef {import('./utils').AdHocCommand} AdHocCommand
+ * @typedef {import('./utils').AdHocCommandResult} AdHocCommandResult
+ */
 import log from '../../log.js';
 import _converse from '../../shared/_converse.js';
-import api, { converse } from '../../shared/api/index.js';
-import { getCommandFields, parseForCommands } from './utils.js';
+import api from '../../shared/api/index.js';
+import converse from '../../shared/api/public.js';
+import { parseCommandResult, parseForCommands } from './utils.js';
 
 const { Strophe, $iq, u, stx } = converse.env;
 
+/**
+ * @typedef {'execute'| 'cancel' |'prev'|'next'|'complete'} AdHocCommandAction
+ */
 
 export default {
     /**
@@ -18,7 +26,7 @@ export default {
     adhoc: {
         /**
          * @method api.adhoc.getCommands
-         * @param { String } to_jid
+         * @param {string} to_jid
          */
         async getCommands (to_jid) {
             try {
@@ -36,43 +44,29 @@ export default {
 
         /**
          * @method api.adhoc.fetchCommandForm
+         * @param {string} jid
+         * @param {string} node
+         * @returns {Promise<AdHocCommandResult>}
          */
-        async fetchCommandForm (command) {
-            const node = command.node;
-            const jid = command.jid;
+        async fetchCommandForm (jid, node) {
             const stanza = $iq({
-                'type': 'set',
-                'to': jid
+                type: 'set',
+                to: jid
             }).c('command', {
-                'xmlns': Strophe.NS.ADHOC,
-                'node': node,
-                'action': 'execute'
+                xmlns: Strophe.NS.ADHOC,
+                action: 'execute',
+                node,
             });
-            try {
-                return getCommandFields(await api.sendIQ(stanza), jid);
-
-            } catch (e) {
-                if (e === null) {
-                    log.error(`Error: timeout while trying to execute command for ${jid}`);
-                } else {
-                    log.error(`Error while trying to execute command for ${jid}`);
-                    log.error(e);
-                }
-                const { __ } = _converse;
-                return {
-                    instructions: __('An error occurred while trying to fetch the command form'),
-                    fields: []
-                }
-            }
+            return parseCommandResult(await api.sendIQ(stanza), jid);
         },
 
         /**
          * @method api.adhoc.runCommand
-         * @param { String } jid
-         * @param { String } sessionid
-         * @param { 'execute' | 'cancel' | 'prev' | 'next' | 'complete' } action
-         * @param { String } node
-         * @param { Array<{ [k:string]: string }> } inputs
+         * @param {String} jid
+         * @param {String} sessionid
+         * @param {AdHocCommandAction} action
+         * @param {String} node
+         * @param {Array<{ [k:string]: string }>} inputs
          */
         async runCommand (jid, sessionid, node, action, inputs) {
             const iq =
@@ -102,7 +96,7 @@ export default {
             const status = command?.getAttribute('status');
             return {
                 status,
-                ...(status === 'executing' ? getCommandFields(result) : {}),
+                ...(status === 'executing' ? parseCommandResult(result) : {}),
                 note: result.querySelector('note')?.textContent
             }
         }

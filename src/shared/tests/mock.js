@@ -696,7 +696,7 @@ async function _initConverse (settings) {
         discover_connection_methods: false,
         enable_smacks: false,
         i18n: 'en',
-        loglevel: window.location.pathname === 'debug.html' ? 'debug' : 'warn',
+        loglevel: window.location.pathname === 'debug.html' ? 'debug' : 'error',
         no_trimming: true,
         persistent_store: 'localStorage',
         play_sounds: false,
@@ -723,7 +723,7 @@ async function deviceListFetched (_converse, jid) {
     const stanza = await u.waitUntil(
         () => Array.from(_converse.api.connection.get().IQ_stanzas).filter(iq => iq.querySelector(selector)).pop()
     );
-    await u.waitUntil(() => _converse.devicelists.get(jid));
+    await u.waitUntil(() => _converse.state.devicelists.get(jid));
     return stanza;
 }
 

@@ -1,3 +1,4 @@
+import { api, converse, log, constants } from  '@converse/headless';
 import './message-actions.js';
 import './message-body.js';
 import 'shared/components/dropdown.js';
@@ -14,11 +15,10 @@ import tplRetraction from './templates/retraction.js';
 import tplSpinner from 'templates/spinner.js';
 import { CustomElement } from 'shared/components/element.js';
 import { __ } from 'i18n';
-import { _converse, api, converse, log } from  '@converse/headless';
-import { getAppSettings } from '@converse/headless/shared/settings/utils.js';
 import { getHats } from './utils.js';
 
 const { Strophe, dayjs } = converse.env;
+const { SUCCESS } = constants;
 
 
 export default class Message extends CustomElement {
@@ -44,7 +44,7 @@ export default class Message extends CustomElement {
             return;
         }
 
-        const settings = getAppSettings();
+        const settings = api.settings.get();
         this.listenTo(settings, 'change:render_media', () => {
             // Reset individual show/hide state of media
             this.model.save('hide_url_previews', undefined)
@@ -80,7 +80,7 @@ export default class Message extends CustomElement {
             return '';
         } else if (this.show_spinner) {
             return tplSpinner();
-        } else if (this.model.get('file') && this.model.get('upload') !== _converse.SUCCESS) {
+        } else if (this.model.get('file') && this.model.get('upload') !== SUCCESS) {
             return this.renderFileProgress();
         } else if (['mep'].includes(this.model.get('type'))) {
             return this.renderMEPMessage();

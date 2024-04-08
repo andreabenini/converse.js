@@ -3,12 +3,11 @@
  * @copyright 2022, the Converse.js contributors
  * @license Mozilla Public License (MPLv2)
  */
+import { _converse, api, converse } from '@converse/headless';
 import './modals/bookmark-list.js';
 import './modals/bookmark-form.js';
-import '@converse/headless/plugins/muc/index.js';
 import BookmarkForm from './components/bookmark-form.js';
 import BookmarksView from './components/bookmarks-list.js';
-import { _converse, api, converse } from '@converse/headless';
 import { bookmarkableChatRoomView } from './mixins.js';
 import { getHeadingButtons, removeBookmarkViaEvent, addBookmarkViaEvent } from './utils.js';
 
@@ -35,13 +34,16 @@ converse.plugins.add('converse-bookmark-views', {
             hide_open_bookmarks: true
         });
 
-        _converse.removeBookmarkViaEvent = removeBookmarkViaEvent;
-        _converse.addBookmarkViaEvent = addBookmarkViaEvent;
+        const exports =  {
+            removeBookmarkViaEvent,
+            addBookmarkViaEvent,
+            MUCBookmarkForm: BookmarkForm,
+            BookmarksView,
+        }
 
-        Object.assign(_converse.ChatRoomView.prototype, bookmarkableChatRoomView);
-
-        _converse.MUCBookmarkForm = BookmarkForm;
-        _converse.BookmarksView = BookmarksView;
+        Object.assign(_converse, exports); // DEPRECATED
+        Object.assign(_converse.exports, exports);
+        Object.assign(_converse.exports.ChatRoomView.prototype, bookmarkableChatRoomView);
 
         api.listen.on('getHeadingButtons', getHeadingButtons);
         api.listen.on('chatRoomViewInitialized', view => view.setBookmarkState());

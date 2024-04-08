@@ -1,5 +1,5 @@
 import { ASCII_REPLACE_REGEX, CODEPOINTS_REGEX } from './regexes.js';
-import { converse } from '../../shared/api/index.js';
+import converse from '../../shared/api/public.js';
 
 const { u } = converse.env;
 
@@ -220,6 +220,9 @@ function getEmojisByAtrribute (attr) {
 }
 
 Object.assign(u, {
+    getCodePointReferences,
+    getShortnameReferences,
+    convertASCII2Emoji,
     getEmojisByAtrribute,
     isOnlyEmojis,
     shortnamesToUnicode,

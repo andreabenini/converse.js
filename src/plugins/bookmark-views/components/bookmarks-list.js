@@ -1,21 +1,22 @@
 import debounce from "lodash-es/debounce";
+import { Model } from '@converse/skeletor';
+import { _converse, api, u } from '@converse/headless';
 import tplBookmarksList from './templates/list.js';
 import tplSpinner from "templates/spinner.js";
 import { CustomElement } from 'shared/components/element.js';
-import { Model } from '@converse/skeletor';
-import { _converse, api } from '@converse/headless';
-import { initStorage } from '@converse/headless/utils/storage.js';
 
 import '../styles/bookmarks.scss';
+
+const { initStorage }  = u;
 
 
 export default class BookmarksView extends CustomElement {
 
     async initialize () {
         await api.waitUntil('bookmarksInitialized');
-        const { bookmarks, chatboxes } = _converse;
+        const { bookmarks, chatboxes } = _converse.state;
 
-        this.liveFilter = debounce((ev) => this.model.set({'filter_text': ev.target.value}), 100);
+        this.liveFilter = debounce((ev) => this.model.set({'text': ev.target.value}), 100);
 
         this.listenTo(bookmarks, 'add', () => this.requestUpdate());
         this.listenTo(bookmarks, 'remove', () => this.requestUpdate());
@@ -23,7 +24,8 @@ export default class BookmarksView extends CustomElement {
         this.listenTo(chatboxes, 'add', () => this.requestUpdate());
         this.listenTo(chatboxes, 'remove', () => this.requestUpdate());
 
-        const id = `converse.bookmarks-list-model-${_converse.bare_jid}`;
+        const bare_jid = _converse.session.get('bare_jid');
+        const id = `converse.bookmarks-list-model-${bare_jid}`;
         this.model = new Model({ id });
         initStorage(this.model, id);
 
@@ -36,12 +38,12 @@ export default class BookmarksView extends CustomElement {
     }
 
     render () {
-        return _converse.bookmarks && this.model ? tplBookmarksList(this) : tplSpinner();
+        return _converse.state.bookmarks && this.model ? tplBookmarksList(this) : tplSpinner();
     }
 
     clearFilter (ev) {
         ev?.stopPropagation?.();
-        this.model.set('filter_text', '');
+        this.model.set('text', '');
     }
 }
 

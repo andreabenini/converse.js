@@ -1,8 +1,7 @@
+import { _converse, api, converse, constants, Bookmarks } from '@converse/headless';
 import { __ } from 'i18n';
-import { _converse, api, converse } from '@converse/headless';
-import { checkBookmarksSupport } from '@converse/headless/plugins/bookmarks/utils';
-import { CHATROOMS_TYPE } from '@converse/headless/shared/constants';
 
+const { CHATROOMS_TYPE } = constants;
 
 export function getHeadingButtons (view, buttons) {
     if (api.settings.get('allow_bookmarks') && view.model.get('type') === CHATROOMS_TYPE) {
@@ -16,7 +15,7 @@ export function getHeadingButtons (view, buttons) {
         };
         const names = buttons.map(t => t.name);
         const idx = names.indexOf('details');
-        const data_promise = checkBookmarksSupport().then((s) => (s ? data : null));
+        const data_promise = Bookmarks.checkBookmarksSupport().then((s) => (s ? data : null));
         return idx > -1 ? [...buttons.slice(0, idx), data_promise, ...buttons.slice(idx)] : [data_promise, ...buttons];
     }
     return buttons;
@@ -28,7 +27,7 @@ export async function removeBookmarkViaEvent (ev) {
     const jid = ev.currentTarget.getAttribute('data-room-jid');
     const result = await api.confirm(__('Are you sure you want to remove the bookmark "%1$s"?', name));
     if (result) {
-        _converse.bookmarks.where({ jid }).forEach(b => b.destroy());
+        _converse.state.bookmarks.where({ jid }).forEach(b => b.destroy());
     }
 }
 

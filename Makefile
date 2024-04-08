@@ -202,7 +202,7 @@ src/headless/dist/converse-headless.js: src webpack/webpack.common.js node_modul
 src/headless/dist/converse-headless.min.js: src webpack/webpack.common.js node_modules @converse/headless
 	npm run headless
 
-dist:: node_modules src/* | dist/website.css dist/website.min.css
+dist:: node_modules src/**/* | dist/website.css dist/website.min.css
 	npm run headless
 	# Ideally this should just be `npm run build`.
 	# The additional steps are necessary to properly generate JSON chunk files
@@ -229,12 +229,21 @@ types:: node_modules
 ########################################################################
 ## Tests
 
+.PHONY: check-git-clean
+check-git-clean:
+	@if ! git diff-index --quiet HEAD src/types src/headless/types; then\
+		echo "Error: uncommitted type changes. Please include all type changes in your commit"\
+		exit 1;\
+	fi
+
 .PHONY: eslint
 eslint: node_modules
 	npm run lint
 
 .PHONY: check
 check: eslint | dist/converse.js dist/converse.css
+	npm run types
+	make check-git-clean
 	npm run test -- $(ARGS)
 
 .PHONY: test

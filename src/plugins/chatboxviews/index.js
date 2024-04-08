@@ -1,12 +1,10 @@
 /**
- * @module converse-chatboxviews
- * @copyright 2022, the Converse.js contributors
+ * @copyright 2024, the Converse.js contributors
  * @license Mozilla Public License (MPLv2)
  */
-import './view.js';
-import '@converse/headless/plugins/chatboxes/index.js';
-import ChatBoxViews from './container.js';
 import { _converse, api, converse } from '@converse/headless';
+import './view.js';
+import ChatBoxViews from './container.js';
 import { calculateViewportHeightUnit } from './utils.js';
 
 import './styles/chats.scss';
@@ -30,11 +28,12 @@ converse.plugins.add('converse-chatboxviews', {
 
         /************************ BEGIN Event Handlers ************************/
         api.listen.on('chatBoxesInitialized', () => {
-            _converse.chatboxes.on('destroy', m => _converse.chatboxviews.remove(m.get('jid')));
+            _converse.state.chatboxes.on('destroy', (m) => chatboxviews.remove(m.get('jid')));
         });
 
-        api.listen.on('cleanup', () => delete _converse.chatboxviews);
-        api.listen.on('clearSession', () => _converse.chatboxviews.closeAllChatBoxes());
+        api.listen.on('cleanup', () => Object.assign(_converse, { chatboxviews: null })); // DEPRECATED
+        api.listen.on('cleanup', () => delete _converse.state.chatboxviews);
+        api.listen.on('clearSession', () => chatboxviews.closeAllChatBoxes());
         api.listen.on('chatBoxViewsInitialized', calculateViewportHeightUnit);
 
         window.addEventListener('resize', calculateViewportHeightUnit);
@@ -50,13 +49,14 @@ converse.plugins.add('converse-chatboxviews', {
              * @async
              * @memberOf converse
              * @method insertInto
+             * @param {HTMLElement} container
              * @example
              * converse.insertInto(document.querySelector('#converse-container'));
              */
             insertInto (container) {
-                const el = _converse.chatboxviews?.el;
+                const el = chatboxviews.el;
                 if (el && !container.contains(el)) {
-                    container.insertAdjacentElement('afterBegin', el);
+                    container.insertAdjacentElement('afterbegin', el);
                 } else if (!el) {
                     throw new Error('Cannot insert non-existing #conversejs element into the DOM');
                 }

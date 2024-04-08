@@ -1,5 +1,6 @@
 import _converse from '../../shared/_converse.js';
-import api, { converse } from '../../shared/api/index.js';
+import api from '../../shared/api/index.js';
+import converse from '../../shared/api/public.js';
 import log from '../../log.js';
 import { getOpenPromise } from '@converse/openpromise';
 import { isTestEnv } from '../../utils/session.js';
@@ -14,6 +15,9 @@ function isStreamManagementSupported () {
     return api.disco.stream.getFeature('sm', Strophe.NS.SM);
 }
 
+/**
+ * @param {Element} el
+ */
 function handleAck (el) {
     if (!_converse.session.get('smacks_enabled')) {
         return true;
@@ -53,6 +57,9 @@ function sendAck () {
     return true;
 }
 
+/**
+ * @param {Element} el
+ */
 function stanzaHandler (el) {
     if (_converse.session.get('smacks_enabled')) {
         if (u.isTagEqual(el, 'iq') || u.isTagEqual(el, 'presence') || u.isTagEqual(el, 'message')) {
@@ -83,6 +90,9 @@ function resetSessionData () {
     });
 }
 
+/**
+ * @param {Element} el
+ */
 function saveSessionData (el) {
     const data = { 'smacks_enabled': true };
     if (['1', 'true'].includes(el.getAttribute('resume'))) {
@@ -92,7 +102,17 @@ function saveSessionData (el) {
     return true;
 }
 
+/**
+ * @param {Element} el
+ */
 function onFailedStanza (el) {
+    resetSessionData();
+    /**
+     * Triggered when the XEP-0198 stream could not be resumed.
+     * @event _converse#streamResumptionFailed
+     */
+    api.trigger('streamResumptionFailed');
+
     if (el.querySelector('item-not-found')) {
         // Stream resumption must happen before resource binding but
         // enabling a new stream must happen after resource binding.
@@ -101,18 +121,15 @@ function onFailedStanza (el) {
         // After resource binding, sendEnableStanza will be called
         // based on the afterResourceBinding event.
         log.warn(
-            'Could not resume previous SMACKS session, session id not found. ' + 'A new session will be established.'
+            'Could not resume previous SMACKS session, session id not found. A new session will be established.'
         );
     } else {
         log.error('Failed to enable stream management');
         log.error(el.outerHTML);
+
+        const connection = api.connection.get();
+        connection._changeConnectStatus(Strophe.Status.DISCONNECTED, null);
     }
-    resetSessionData();
-    /**
-     * Triggered when the XEP-0198 stream could not be resumed.
-     * @event _converse#streamResumptionFailed
-     */
-    api.trigger('streamResumptionFailed');
     return true;
 }
 
@@ -141,6 +158,9 @@ function resendUnackedStanzas () {
     stanzas.forEach(s => api.send(s));
 }
 
+/**
+ * @param {Element} el
+ */
 function onResumedStanza (el) {
     saveSessionData(el);
     handleAck(el);

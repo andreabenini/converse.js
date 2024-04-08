@@ -1,6 +1,6 @@
 {
   "name": "@converse/headless",
-  "version": "10.1.5",
+  "version": "10.1.7",
   "description": "Converse.js Headless build",
   "author": "JC Brand <jc@opkode.com>",
   "contributors": [
@@ -8,7 +8,8 @@
   ],
   "homepage": "https://conversejs.org",
   "license": "MPL-2.0",
-  "main": "dist/converse-headless.js",
+  "main": "index.js",
+  "types": "types/index.d.ts",
   "module": "index.js",
   "keywords": [
     "converse.js",
@@ -32,7 +33,7 @@
   },
   "dependencies": {
     "@converse/openpromise": "^0.0.1",
-    "@converse/skeletor": "conversejs/skeletor#4ff728207fa30721686021d11fb8b5245c54a6b4",
+    "@converse/skeletor": "conversejs/skeletor#7e1cbeba0161bfe91d709a22deaa70e4daa0cd39",
     "dayjs": "^1.11.8",
     "dompurify": "^3.0.8",
     "filesize": "^10.0.7",
@@ -41,7 +42,7 @@
     "pluggable.js": "3.0.1",
     "sizzle": "^2.3.5",
     "sprintf-js": "^1.1.2",
-    "strophe.js": "strophe/strophejs#a75895308216e81b28f58d276395a01b15c9e645",
+    "strophe.js": "strophe/strophejs#57ff5e731d7e83a4025492b2973b3d1524239f46",
     "urijs": "^1.19.10"
   },
   "devDependencies": {}

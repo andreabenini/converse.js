@@ -3,8 +3,10 @@
  * @license Mozilla Public License (MPLv2)
  * @description This is the DOM/HTML utilities module.
  * @typedef {import('lit').TemplateResult} TemplateResult
- * @typedef {import('strophe.js/src/builder.js').Builder} Strophe.Builder
  */
+import { render } from 'lit';
+import { Builder, Stanza } from 'strophe.js';
+import { api, converse, log, u } from '@converse/headless';
 import tplAudio from 'templates/audio.js';
 import tplFile from 'templates/file.js';
 import tplFormCaptcha from '../templates/form_captcha.js';
@@ -17,13 +19,9 @@ import tplFormUrl from '../templates/form_url.js';
 import tplFormUsername from '../templates/form_username.js';
 import tplHyperlink from 'templates/hyperlink.js';
 import tplVideo from 'templates/video.js';
-import u from '../headless/utils/index.js';
-import { api, converse, log } from '@converse/headless';
-import { getURI, isAudioURL, isImageURL, isVideoURL, isValidURL } from '@converse/headless/utils/url.js';
-import { render } from 'lit';
-import { queryChildren } from '@converse/headless/utils/html.js';
 
 const { sizzle, Strophe } = converse.env;
+const { getURI, isAudioURL, isImageURL, isVideoURL, isValidURL, queryChildren } = u;
 
 const APPROVED_URL_PROTOCOLS = ['http', 'https', 'xmpp', 'mailto'];
 
@@ -52,10 +50,12 @@ const XFORM_VALIDATE_TYPE_MAP = {
 const EMPTY_TEXT_REGEX = /\s*\n\s*/
 
 /**
- * @param {Element|Strophe.Builder} el
+ * @param {Element|Builder|Stanza} el
  */
 function stripEmptyTextNodes (el) {
-    el = el.tree?.() ?? el;
+    if (el instanceof Builder || el instanceof Stanza) {
+        el = el.tree();
+    }
 
     let n;
     const text_nodes = [];
@@ -71,6 +71,10 @@ function stripEmptyTextNodes (el) {
     return el;
 }
 
+/**
+ * @param {string} name
+ * @param {{ new_password: string }} options
+ */
 function getAutoCompleteProperty (name, options) {
     return {
         'muc#roomconfig_lang': 'language',
@@ -82,12 +86,12 @@ const serializer = new XMLSerializer();
 
 /**
  * Given two XML or HTML elements, determine if they're equal
- * @param { Element } actual
- * @param { Element } expected
- * @returns { Boolean }
+ * @param {Element} actual
+ * @param {Element} expected
+ * @returns {Boolean}
  */
 function isEqualNode (actual, expected) {
-    if (!u.isElement(actual)) throw new Error("Element being compared must be an Element!");
+    if (!u.isElement(actual)) throw new Error('Element being compared must be an Element!');
 
     actual = stripEmptyTextNodes(actual);
     expected = stripEmptyTextNodes(expected);
@@ -115,7 +119,8 @@ function isEqualNode (actual, expected) {
         const { xmlHtmlNode } = Strophe;
         const actual_string = serializer.serializeToString(actual);
         const expected_string = serializer.serializeToString(expected);
-        isEqual = actual_string === expected_string || xmlHtmlNode(actual_string).isEqualNode(xmlHtmlNode(expected_string));
+        isEqual =
+            actual_string === expected_string || xmlHtmlNode(actual_string).isEqualNode(xmlHtmlNode(expected_string));
     }
 
     return isEqual;
@@ -574,6 +579,21 @@ export function xForm2TemplateResult (field, stanza, options={}) {
     }
 }
 
+/**
+ * @param {HTMLElement} el
+ * @param {boolean} include_margin
+ */
+export function getOuterWidth (el, include_margin=false) {
+    let width = el.offsetWidth;
+    if (!include_margin) {
+        return width;
+    }
+    const style = window.getComputedStyle(el);
+    width += parseInt(style.marginLeft ? style.marginLeft : '0', 10) +
+             parseInt(style.marginRight ? style.marginRight : '0', 10);
+    return width;
+}
+
 Object.assign(u, {
     addClass,
     ancestor,
@@ -582,6 +602,7 @@ Object.assign(u, {
     getElementFromTemplateResult,
     getNextElement,
     getOOBURLMarkup,
+    getOuterWidth,
     hasClass,
     hideElement,
     isEqualNode,

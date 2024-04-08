@@ -2,17 +2,17 @@ import DOMPurify from 'dompurify';
 import { Strophe } from 'strophe.js';
 
 /**
- * @param { any } el
- * @returns { boolean }
+ * @param {unknown} el
+ * @returns {boolean}
  */
 export function isElement (el) {
     return el instanceof Element || el instanceof HTMLDocument;
 }
 
 /**
- * @param { Element | typeof Strophe.Builder } stanza
- * @param { string } name
- * @returns { boolean }
+ * @param {Element | typeof Strophe.Builder} stanza
+ * @param {string} name
+ * @returns {boolean}
  */
 export function isTagEqual (stanza, name) {
     if (stanza instanceof Strophe.Builder) {
@@ -24,21 +24,6 @@ export function isTagEqual (stanza, name) {
     } else {
         return Strophe.isTagEqual(stanza, name);
     }
-}
-
-/**
- * @param {HTMLElement} el
- * @param {boolean} include_margin
- */
-export function getOuterWidth (el, include_margin=false) {
-    let width = el.offsetWidth;
-    if (!include_margin) {
-        return width;
-    }
-    const style = window.getComputedStyle(el);
-    width += parseInt(style.marginLeft ? style.marginLeft : '0', 10) +
-             parseInt(style.marginRight ? style.marginRight : '0', 10);
-    return width;
 }
 
 /**

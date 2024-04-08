@@ -6,7 +6,8 @@
 import DiscoEntities from './entities.js';
 import DiscoEntity from './entity.js';
 import _converse from '../../shared/_converse.js';
-import api, { converse } from '../../shared/api/index.js';
+import api from '../../shared/api/index.js';
+import converse from '../../shared/api/public.js';
 import disco_api from './api.js';
 import {
     clearSession,
@@ -17,6 +18,12 @@ import {
 } from './utils.js';
 
 const { Strophe } = converse.env;
+
+/**
+ * @typedef {Object} DiscoState
+ * @property {Array} _identities
+ * @property {Array} _features
+ */
 
 converse.plugins.add('converse-disco', {
     initialize () {

@@ -1,10 +1,10 @@
+import { Strophe } from 'strophe.js';
+import { _converse, api } from '@converse/headless';
 import 'shared/autocomplete/index.js';
 import BaseModal from 'plugins/modal/modal.js';
 import tplAddContactModal from './templates/add-contact.js';
-import { Strophe } from 'strophe.js';
 import { __ } from 'i18n';
-import { _converse, api } from '@converse/headless';
-import { getNamesAutoCompleteList } from '@converse/headless/plugins/roster/utils.js';
+import { getNamesAutoCompleteList } from '../utils.js';
 
 export default class AddContactModal extends BaseModal {
     initialize () {
@@ -31,7 +31,7 @@ export default class AddContactModal extends BaseModal {
         if (!jid || jid.split('@').filter((s) => !!s).length < 2) {
             this.model.set('error', __('Please enter a valid XMPP address'));
             return false;
-        } else if (_converse.roster.get(Strophe.getBareJidFromJid(jid))) {
+        } else if (_converse.state.roster.get(Strophe.getBareJidFromJid(jid))) {
             this.model.set('error', __('This contact has already been added'));
             return false;
         }
@@ -43,7 +43,7 @@ export default class AddContactModal extends BaseModal {
         if (group && !Array.isArray(group)) {
             group = [group];
         }
-        _converse.roster.addAndSubscribe(jid, name, group);
+        _converse.state.roster.addAndSubscribe(jid, name, group);
         this.model.clear();
         this.modal.hide();
     }

@@ -2,9 +2,10 @@
  * @typedef {import('@converse/skeletor').Model} Model
  */
 import { CustomElement } from '../components/element.js';
-import { _converse, api } from '@converse/headless';
+import { _converse, api, constants } from '@converse/headless';
 import { onScrolledDown } from './utils.js';
-import { CHATROOMS_TYPE, INACTIVE } from '@converse/headless/shared/constants.js';
+
+const { CHATROOMS_TYPE, INACTIVE } = constants;
 
 
 export default class BaseChatView extends CustomElement {
@@ -23,13 +24,13 @@ export default class BaseChatView extends CustomElement {
 
     disconnectedCallback () {
         super.disconnectedCallback();
-        _converse.chatboxviews.remove(this.jid, this);
+        _converse.state.chatboxviews.remove(this.jid, this);
     }
 
     updated () {
         if (this.model && this.jid !== this.model.get('jid')) {
             this.stopListening();
-            _converse.chatboxviews.remove(this.model.get('jid'), this);
+            _converse.state.chatboxviews.remove(this.model.get('jid'), this);
             delete this.model;
             this.requestUpdate();
             this.initialize();

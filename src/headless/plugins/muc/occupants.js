@@ -1,26 +1,26 @@
 /**
  * @typedef {module:plugin-muc-parsers.MemberListItem} MemberListItem
  */
-import ChatRoomOccupant from './occupant.js';
+import MUCOccupant from './occupant.js';
 import _converse from '../../shared/_converse.js';
 import log from '../../log';
-import api, { converse } from '../../shared/api/index.js';
+import api from '../../shared/api/index.js';
+import converse from '../../shared/api/public.js';
 import { Collection, Model } from '@converse/skeletor';
 import { Strophe } from 'strophe.js';
 import { getAffiliationList } from './affiliations/utils.js';
-import { getAutoFetchedAffiliationLists, occupantsComparator } from './utils.js';
+import { occupantsComparator } from './utils.js';
 import { getUniqueId } from '../../utils/index.js';
 
 const { u } = converse.env;
 
 
 /**
- * A list of {@link _converse.ChatRoomOccupant} instances, representing participants in a MUC.
+ * A list of {@link MUCOccupant} instances, representing participants in a MUC.
  * @class
- * @namespace _converse.ChatRoomOccupants
  * @memberOf _converse
  */
-class ChatRoomOccupants extends Collection {
+class MUCOccupants extends Collection {
 
     constructor (attrs, options) {
         super(
@@ -31,12 +31,18 @@ class ChatRoomOccupants extends Collection {
     }
 
     get model() {
-        return ChatRoomOccupant;
+        return MUCOccupant;
     }
 
     initialize() {
         this.on('change:nick', () => this.sort());
         this.on('change:role', () => this.sort());
+    }
+
+
+    static getAutoFetchedAffiliationLists () {
+        const affs = api.settings.get('muc_fetch_members');
+        return Array.isArray(affs) ? affs : affs ? ['member', 'admin', 'owner'] : [];
     }
 
     create (attrs, options) {
@@ -52,7 +58,7 @@ class ChatRoomOccupants extends Collection {
             // https://xmpp.org/extensions/xep-0045.html#affil-priv
             return;
         }
-        const affiliations = getAutoFetchedAffiliationLists();
+        const affiliations = MUCOccupants.getAutoFetchedAffiliationLists();
         if (affiliations.length === 0) {
             return;
         }
@@ -130,7 +136,7 @@ class ChatRoomOccupants extends Collection {
      *
      * Lookup by occupant_id is done first, then jid, and then nick.
      *
-     * @method _converse.ChatRoomOccupants#findOccupant
+     * @method _converse.MUCOccupants#findOccupant
      * @param { OccupantData } data
      */
     findOccupant (data) {
@@ -144,10 +150,10 @@ class ChatRoomOccupants extends Collection {
     }
 
     /**
-     * Get the {@link ChatRoomOccupant} instance which
+     * Get the {@link MUCOccupant} instance which
      * represents the current user.
-     * @method _converse.ChatRoomOccupants#getOwnOccupant
-     * @returns {ChatRoomOccupant}
+     * @method _converse.MUCOccupants#getOwnOccupant
+     * @returns {MUCOccupant}
      */
     getOwnOccupant () {
         const bare_jid = _converse.session.get('bare_jid');
@@ -159,4 +165,4 @@ class ChatRoomOccupants extends Collection {
 }
 
 
-export default ChatRoomOccupants;
+export default MUCOccupants;

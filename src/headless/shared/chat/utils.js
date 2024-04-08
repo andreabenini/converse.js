@@ -1,13 +1,13 @@
 /**
  * @module:headless-shared-chat-utils
- * @typedef {import('../../plugins/muc/muc.js').default} MUC
- * @typedef {import('../../plugins/chat/model.js').default} ChatBox
  * @typedef {import('../../plugins/chat/message.js').default} Message
- * @typedef {module:headless-shared-parsers.MediaURLMetadata} MediaURLMetadata
+ * @typedef {import('../../plugins/chat/model.js').default} ChatBox
+ * @typedef {import('../../plugins/muc/muc.js').default} MUC
  * @typedef {module:headless-shared-chat-utils.MediaURLData} MediaURLData
  */
 import debounce from 'lodash-es/debounce.js';
-import api, { converse } from '../../shared/api/index.js';
+import converse from '../api/public.js';
+import api from '../api/index.js';
 
 const { u } = converse.env;
 
@@ -36,39 +36,6 @@ export function pruneHistory (model) {
         }
     }
 }
-
-/**
- * Given an array of {@link MediaURLMetadata} objects and text, return an
- * array of {@link MediaURL} objects.
- * @param {Array<MediaURLMetadata>} arr
- * @param {String} text
- * @returns{Array<MediaURLData>}
- */
-export function getMediaURLs (arr, text, offset=0) {
-    /**
-     * @typedef {Object} MediaURLData
-     * An object representing a URL found in a chat message
-     * @property {Boolean} is_audio
-     * @property {Boolean} is_image
-     * @property {Boolean} is_video
-     * @property {String} end
-     * @property {String} start
-     * @property {String} url
-     */
-    return arr.map(o => {
-        const start = o.start - offset;
-        const end = o.end - offset;
-        if (start < 0 || start >= text.length) {
-            return null;
-        }
-        return Object.assign({}, o, {
-            start,
-            end,
-            'url': text.substring(o.start-offset, o.end-offset),
-        });
-    }).filter(o => o);
-}
-
 
 /**
  * Determines whether the given attributes of an incoming message
@@ -117,7 +84,6 @@ export async function handleCorrection (model, attrs) {
     }
     return message;
 }
-
 
 export const debouncedPruneHistory = debounce(pruneHistory, 500, {
     maxWait: 2000

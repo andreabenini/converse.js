@@ -1,14 +1,13 @@
+import { _converse, api, u } from '@converse/headless';
+import { CustomElement } from 'shared/components/element';
 import MinimizedChatsToggle from './toggle.js';
 import tplChatsPanel from './templates/chats-panel.js';
-import { CustomElement } from 'shared/components/element';
-import { _converse, api } from '@converse/headless';
-import { initStorage } from '@converse/headless/utils/storage.js';
 
 
 export default class MinimizedChats extends CustomElement {
 
     async initialize () {
-        this.model = _converse.chatboxes;
+        this.model = _converse.state.chatboxes;
         await this.initToggle();
         this.listenTo(this.minchats, 'change:collapsed', () => this.requestUpdate())
         this.listenTo(this.model, 'add', () => this.requestUpdate())
@@ -35,9 +34,10 @@ export default class MinimizedChats extends CustomElement {
     }
 
     async initToggle () {
-        const id = `converse.minchatstoggle-${_converse.bare_jid}`;
+        const bare_jid = _converse.session.get('bare_jid');
+        const id = `converse.minchatstoggle-${bare_jid}`;
         this.minchats = new MinimizedChatsToggle({id});
-        initStorage(this.minchats, id, 'session');
+        u.initStorage(this.minchats, id, 'session');
         await new Promise(resolve => this.minchats.fetch({'success': resolve, 'error': resolve}));
     }
 
