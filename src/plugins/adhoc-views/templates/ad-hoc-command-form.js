@@ -1,9 +1,11 @@
 /**
+ * @typedef {import('lit').TemplateResult} TemplateResult
  * @typedef {import('../adhoc-commands').default} AdHocCommands
  * @typedef {import('../adhoc-commands').AdHocCommandUIProps} AdHocCommandUIProps
  */
 import { html } from 'lit';
 import { __ } from 'i18n';
+import { xFormField2TemplateResult } from 'utils/html.js';
 
 const ACTION_MAP = {
     execute: __('Execute'),
@@ -19,6 +21,24 @@ const NOTE_ALERT_MAP = {
 };
 
 /**
+ * @param {AdHocCommandUIProps} command
+ */
+function tplReportedTable (command) {
+    return html`
+        <table class="table">
+            <thead class="thead-light">
+                ${command.reported?.map((r) => html`<th scope="col" data-var="${r.var}">${r.label}</th>`)}
+            </thead>
+            <tbody>
+                ${command.items?.map(
+                    (fields) => html`<tr>${fields.map((f) => html`<td data-var="${f.var}">${f.value}</td>`)
+                }</tr>`)}
+            </tbody>
+        </table>
+    `;
+}
+
+/**
  * @param {AdHocCommands} el
  * @param {AdHocCommandUIProps} command
  */
@@ -26,10 +46,10 @@ export default (el, command) => {
     const i18n_cancel = __('Cancel');
 
     return html`
+        <!-- Don't remove this <span>,
+                this is a workaround for a lit bug where a <form> cannot be removed
+                if it contains an <input> with name "remove" -->
         <span>
-            <!-- Don't remove this <span>,
-                 this is a workaround for a lit bug where a <form> cannot be removed
-                 if it contains an <input> with name "remove" -->
             <form class="converse-form">
                 ${command.alert
                     ? html`<div class="alert alert-${command.alert_type}" role="alert">${command.alert}</div>`
@@ -40,12 +60,17 @@ export default (el, command) => {
                       </div>`
                     : ''}
 
+                ${command.type === 'result' && command.title ?
+                        html`<div class="alert alert-info">${command.title}</div>` : ''}
+
+                ${command.type === 'form' && command.title ? html`<h6>${command.title}</h6>` : ''}
+
                 <fieldset class="form-group">
                     <input type="hidden" name="command_node" value="${command.node}" />
                     <input type="hidden" name="command_jid" value="${command.jid}" />
-
                     ${command.instructions ? html`<p class="form-instructions">${command.instructions}</p>` : ''}
-                    ${command.fields ?? []}
+                    ${command.type === 'result' ? tplReportedTable(command) : ''}
+                    ${command.fields?.map(f => xFormField2TemplateResult(f), { domain: command.jid }) ?? ''}
                 </fieldset>
                 ${command.actions?.length
                     ? html` <fieldset>
