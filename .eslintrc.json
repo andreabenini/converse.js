@@ -88,7 +88,12 @@
         "lines-around-comment": "off",
         "lines-around-directive": "off",
         "max-depth": "error",
-        "max-len": ["error", { "code": 120 }],
+        "max-len": ["error", {
+            "code": 120,
+            "comments": 120,
+            "ignoreStrings": true,
+            "ignoreUrls": true
+        }],
         "max-lines": "off",
         "max-nested-callbacks": "off",
         "max-params": "off",
@@ -167,7 +172,7 @@
         "no-restricted-properties": "error",
         "no-restricted-syntax": "error",
         "no-return-assign": "error",
-        "no-return-await": "error",
+        "no-return-await": "off",
         "no-script-url": "error",
         "no-self-compare": "error",
         "no-sequences": "error",

@@ -53,18 +53,10 @@ export default class Message extends CustomElement {
 
         this.listenTo(this.chatbox, 'change:first_unread_id', () => this.requestUpdate());
         this.listenTo(this.model, 'change', () => this.requestUpdate());
-        this.model.vcard && this.listenTo(this.model.vcard, 'change', () => this.requestUpdate());
-
-        if (this.model.get('type') === 'groupchat') {
-            if (this.model.occupant) {
-                this.listenTo(this.model.occupant, 'change', () => this.requestUpdate());
-            } else {
-                this.listenTo(this.model, 'occupantAdded', () => {
-                    this.requestUpdate();
-                    this.listenTo(this.model.occupant, 'change', () => this.requestUpdate())
-                });
-            }
-        }
+        this.listenTo(this.model, 'contact:change', () => this.requestUpdate());
+        this.listenTo(this.model, 'vcard:change', () => this.requestUpdate());
+        this.listenTo(this.model, 'occupant:change', () => this.requestUpdate());
+        this.listenTo(this.model, 'occupant:add', () => this.requestUpdate());
     }
 
     async setModels () {
@@ -198,6 +190,7 @@ export default class Message extends CustomElement {
             'is_retracted': this.isRetracted(),
             'username': this.model.getDisplayName(),
             'should_show_avatar': this.shouldShowAvatar(),
+            'colorize_username': api.settings.get('colorize_username'),
         }
     }
 

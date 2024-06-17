@@ -1,5 +1,5 @@
-import { Model } from '@converse/skeletor';
 import api from '../../shared/api/index.js';
+import { ColorAwareModel } from '../../shared/color.js';
 import { AFFILIATIONS, ROLES } from './constants.js';
 
 /**
@@ -8,11 +8,16 @@ import { AFFILIATIONS, ROLES } from './constants.js';
  * @namespace _converse.MUCOccupant
  * @memberOf _converse
  */
-class MUCOccupant extends Model {
+class MUCOccupant extends ColorAwareModel {
 
     constructor (attributes, options) {
         super(attributes, options);
         this.vcard = null;
+    }
+
+    initialize () {
+        this.on('change:nick', () => this.setColor());
+        this.on('change:jid', () => this.setColor());
     }
 
     defaults () {
@@ -61,9 +66,9 @@ class MUCOccupant extends Model {
     }
 
     /**
-    * Return affiliations which may be assigned by this occupant
-    * @returns {typeof AFFILIATIONS} An array of assignable affiliations
-    */
+     * Return affiliations which may be assigned by this occupant
+     * @returns {typeof AFFILIATIONS} An array of assignable affiliations
+     */
     getAssignableAffiliations () {
         let disabled = api.settings.get('modtools_disable_assign');
         if (!Array.isArray(disabled)) {
@@ -77,7 +82,6 @@ class MUCOccupant extends Model {
             return [];
         }
     }
-
 
     isMember () {
         return ['admin', 'owner', 'member'].includes(this.get('affiliation'));

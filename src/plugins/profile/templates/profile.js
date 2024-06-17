@@ -14,11 +14,17 @@ function tplSignout () {
 
 function tplUserSettingsButton (o) {
     const i18n_details = __('Show details about this chat client');
-    return html`<a class="controlbox-heading__btn show-client-info align-self-center" title="${i18n_details}" @click=${o.showUserSettingsModal}>
+    return html`<a class="controlbox-heading__btn show-client-info align-self-center"
+        title="${i18n_details}"
+        @click=${o.showUserSettingsModal}>
+
         <converse-icon class="fa fa-cog" size="1em"></converse-icon>
     </a>`;
 }
 
+/**
+ * @param {import('../statusview').default} el
+ */
 export default (el) => {
     const chat_status = el.model.get('status') || 'offline';
     const status_message = el.model.get('status_message') || __("I am %1$s", getPrettyStatus(chat_status));
@@ -39,7 +45,8 @@ export default (el) => {
             <div class="controlbox-section profile d-flex">
                 <a class="show-profile" href="#" @click=${el.showProfileModal}>
                     <converse-avatar class="avatar align-self-center"
-                        .data=${el.model.vcard?.attributes}
+                        .model=${el.model}
+                        name="${el.model.getDisplayName()}"
                         nonce=${el.model.vcard?.get('vcard_updated')}
                         height="40" width="40"></converse-avatar>
                 </a>
@@ -48,9 +55,18 @@ export default (el) => {
                 ${api.settings.get('allow_logout') ? tplSignout() : ''}
             </div>
             <div class="d-flex xmpp-status">
-                <a class="change-status" title="${i18n_change_status}" data-toggle="modal" data-target="#changeStatusModal" @click=${el.showStatusChangeModal}>
+                <a class="change-status"
+                   title="${i18n_change_status}"
+                   data-toggle="modal"
+                   data-target="#changeStatusModal"
+                   @click=${el.showStatusChangeModal}>
+
                     <span class="${chat_status} w-100 align-self-center" data-value="${chat_status}">
-                    <converse-icon color="var(--${color})" css="margin-top: -0.1em" size="0.82em" class="${classes}"></converse-icon> ${status_message}</span>
+                        <converse-icon
+                                color="var(--${color})"
+                                css="margin-top: -0.1em"
+                                size="0.82em"
+                                class="${classes}"></converse-icon> ${status_message}</span>
                 </a>
             </div>
         </div>`

@@ -6,9 +6,7 @@ export type MemberListItem = any;
 export type MessageAttributes = any;
 export type MUCMessageAttributes = any;
 export type UserMessage = any;
-export namespace Strophe {
-    type Builder = any;
-}
+export type Builder = import('strophe.js').Builder;
 /**
  * Represents an open/ongoing groupchat conversation.
  * @namespace MUC
@@ -64,7 +62,7 @@ declare class MUC extends ChatBox {
     /**
      * @param {string} password
      */
-    constructJoinPresence(password: string): Promise<import("strophe.js/src/types/builder.js").default>;
+    constructJoinPresence(password: string): Promise<import("strophe.js/src/types/builder").default>;
     clearOccupantsCache(): void;
     /**
      * Given the passed in MUC message, send a XEP-0333 chat marker.
@@ -91,9 +89,18 @@ declare class MUC extends ChatBox {
      * @method MUC#onHiddenChange
      */
     private onHiddenChange;
-    onOccupantAdded(occupant: any): void;
-    onOccupantRemoved(occupant: any): void;
-    onOccupantShowChanged(occupant: any): void;
+    /**
+     * @param {MUCOccupant} occupant
+     */
+    onOccupantAdded(occupant: MUCOccupant): void;
+    /**
+     * @param {MUCOccupant} occupant
+     */
+    onOccupantRemoved(occupant: MUCOccupant): void;
+    /**
+     * @param {MUCOccupant} occupant
+     */
+    onOccupantShowChanged(occupant: MUCOccupant): void;
     onRoomEntered(): Promise<void>;
     onConnectionStatusChanged(): Promise<void>;
     restoreSession(): Promise<any>;
@@ -105,10 +112,6 @@ declare class MUC extends ChatBox {
     occupants: any;
     fetchOccupants(): any;
     handleAffiliationChangedMessage(stanza: any): void;
-    /**
-     * @param {Element} stanza
-     */
-    handleErrorMessageStanza(stanza: Element): Promise<void>;
     /**
      * Handles incoming message stanzas from the service that hosts this MUC
      * @private
@@ -127,7 +130,7 @@ declare class MUC extends ChatBox {
      * Parses an incoming message stanza and queues it for processing.
      * @private
      * @method MUC#handleMessageStanza
-     * @param {Strophe.Builder|Element} stanza
+     * @param {Builder|Element} stanza
      */
     private handleMessageStanza;
     /**
@@ -148,7 +151,7 @@ declare class MUC extends ChatBox {
      * or error message within a specific timeout period.
      * @private
      * @method MUC#sendTimedMessage
-     * @param {Strophe.Builder|Element } message
+     * @param {Builder|Element } message
      * @returns { Promise<Element>|Promise<TimeoutError> } Returns a promise
      *  which resolves with the reflected message stanza or with an error stanza or
      *  {@link TimeoutError}.
@@ -183,12 +186,11 @@ declare class MUC extends ChatBox {
      * Sends an IQ stanza to the XMPP server to destroy this groupchat. Not
      * to be confused with the {@link MUC#destroy}
      * method, which simply removes the room from the local browser storage cache.
-     * @private
      * @method MUC#sendDestroyIQ
      * @param { string } [reason] - The reason for destroying the groupchat.
      * @param { string } [new_jid] - The JID of the new groupchat which replaces this one.
      */
-    private sendDestroyIQ;
+    sendDestroyIQ(reason?: string, new_jid?: string): any;
     /**
      * Leave the groupchat.
      * @private
@@ -196,7 +198,12 @@ declare class MUC extends ChatBox {
      * @param { string } [exit_msg] - Message to indicate your reason for leaving
      */
     private leave;
-    close(ev: any): Promise<any>;
+    /**
+     * @param {{ name: 'closeAllChatBoxes' }} [ev]
+     */
+    close(ev?: {
+        name: 'closeAllChatBoxes';
+    }): Promise<any>;
     canModerateMessages(): any;
     /**
      * Return an array of unique nicknames based on all occupants and messages in this MUC.
@@ -206,15 +213,29 @@ declare class MUC extends ChatBox {
      */
     private getAllKnownNicknames;
     getAllKnownNicknamesRegex(): RegExp;
-    getOccupantByJID(jid: any): any;
-    getOccupantByNickname(nick: any): any;
-    getReferenceURIFromNickname(nickname: any): string;
+    /**
+     * @param {string} jid
+     */
+    getOccupantByJID(jid: string): any;
+    /**
+     * @param {string} nick
+     */
+    getOccupantByNickname(nick: string): any;
+    /**
+     * @param {string} nick
+     */
+    getReferenceURIFromNickname(nick: string): string;
     /**
      * Given a text message, look for `@` mentions and turn them into
      * XEP-0372 references
      * @param { String } text
      */
     parseTextForReferences(text: string): any[];
+    /**
+     * @param {Object} [attrs] - A map of attributes to be saved on the message
+     * @returns {Promise<MUCMessage>}
+     */
+    getOutgoingMessageAttributes(attrs?: any): Promise<MUCMessage>;
     /**
      * Utility method to construct the JID for the current user as occupant of the groupchat.
      * @private
@@ -225,12 +246,11 @@ declare class MUC extends ChatBox {
     private getRoomJIDAndNick;
     /**
      * Send a direct invitation as per XEP-0249
-     * @private
      * @method MUC#directInvite
      * @param { String } recipient - JID of the person being invited
      * @param { String } [reason] - Reason for the invitation
      */
-    private directInvite;
+    directInvite(recipient: string, reason?: string): void;
     /**
      * Refresh the disco identity, features and fields for this {@link MUC}.
      * *features* are stored on the features {@link Model} attribute on this {@link MUC}.
@@ -500,10 +520,10 @@ declare class MUC extends ChatBox {
      * @method MUC#sendStatusPresence
      * @param { String } type
      * @param { String } [status] - An optional status message
-     * @param { Element[]|Strophe.Builder[]|Element|Strophe.Builder } [child_nodes]
+     * @param { Element[]|Builder[]|Element|Builder } [child_nodes]
      *  Nodes(s) to be added as child nodes of the `presence` XML element.
      */
-    sendStatusPresence(type: string, status?: string, child_nodes?: Element[] | Strophe.Builder[] | Element | Strophe.Builder): Promise<void>;
+    sendStatusPresence(type: string, status?: string, child_nodes?: Element[] | Builder[] | Element | Builder): Promise<void>;
     /**
      * Check whether we're still joined and re-join if not
      * @method MUC#rejoinIfNecessary
@@ -661,12 +681,11 @@ declare class MUC extends ChatBox {
     isUserMentioned(message: MUCMessage): any;
     incrementUnreadMsgsCounter(message: any): void;
 }
-import ChatBox from "../chat/model";
+import ChatBox from "../chat/model.js";
 declare class MUCSession extends Model {
     defaults(): {
         connection_status: number;
     };
 }
 import { Model } from "@converse/skeletor";
-import { Strophe } from "strophe.js";
 //# sourceMappingURL=muc.d.ts.map

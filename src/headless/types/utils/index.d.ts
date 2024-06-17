@@ -53,7 +53,7 @@ declare const _default: {
     getAttributes(stanza: Element): any;
     isUniView(): boolean;
     isTestEnv(): boolean;
-    getUnloadEvent(): "pagehide" | "beforeunload" | "unload";
+    getUnloadEvent(): "pagehide" | "beforeunload" | "unload"; /** @type {keyof LEVELS} */
     replacePromise(_converse: any, name: string): void;
     shouldClearCache(_converse: any): boolean;
     tearDown(_converse: any): Promise<any>;
@@ -83,6 +83,7 @@ declare const _default: {
     isMentionBoundary(s: string): boolean;
     replaceCurrentWord(input: HTMLInputElement, new_value: string): void;
     placeCaretAtEnd(textarea: HTMLTextAreaElement): void;
+    colorize(s: string): Promise<string>;
     /**
      * @copyright The Converse.js contributors
      * @license Mozilla Public License (MPLv2)

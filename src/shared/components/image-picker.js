@@ -1,49 +1,68 @@
+import { Model } from '@converse/skeletor';
 import { CustomElement } from './element.js';
 import { __ } from 'i18n';
 import { api } from "@converse/headless";
 import { html } from 'lit';
 
-const i18n_profile_picture = __('Your profile picture');
+const i18n_profile_picture = __('Click to set a new picture');
 
 
 export default class ImagePicker extends CustomElement {
 
     constructor () {
         super();
+        this.model = null;
         this.width = null;
         this.height = null;
+        this.data = new Model();
+        this.nonce = null;
     }
 
     static get properties () {
         return {
-            'height': { type: Number },
-            'data': { type: Object},
-            'width': { type: Number },
+            height: { type: Number },
+            model: { type: Object },
+            width: { type: Number },
         }
     }
 
     render () {
         return html`
             <a class="change-avatar" @click=${this.openFileSelection} title="${i18n_profile_picture}">
-                <converse-avatar class="avatar" .data=${this.data} height="${this.height}" width="${this.width}"></converse-avatar>
+                <converse-avatar
+                    .model=${this.model}
+                    .pickerdata=${this.data}
+                    class="avatar"
+                    name="${this.model.getDisplayName()}"
+                    height="${this.height}"
+                    nonce=${this.nonce || this.model.vcard?.get('vcard_updated')}
+                    width="${this.width}"></converse-avatar>
             </a>
-            <input @change=${this.updateFilePreview} class="hidden" name="image" type="file"/>
+            <input @change=${this.updateFilePreview} class="hidden" name="avatar_image" type="file"/>
         `;
     }
 
+    /**
+     * @param {Event} ev
+     */
     openFileSelection (ev) {
         ev.preventDefault();
         /** @type {HTMLInputElement} */(this.querySelector('input[type="file"]')).click();
     }
 
+    /**
+     * @param {InputEvent} ev
+     */
     updateFilePreview (ev) {
-        const file = ev.target.files[0];
+        const file = /** @type {HTMLInputElement} */(ev.target).files[0];
         const reader = new FileReader();
         reader.onloadend = () => {
-            this.data = {
+            this.data.set({
                 'data_uri': reader.result,
                 'image_type': file.type
-            }
+            });
+            this.nonce = new Date().toISOString();
+            this.requestUpdate();
         }
         reader.readAsDataURL(file);
     }

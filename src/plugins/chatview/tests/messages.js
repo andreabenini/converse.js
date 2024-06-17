@@ -657,7 +657,7 @@ describe("A Chat Message", function () {
         const msg_object = chatbox.messages.models[0];
 
         const msg_author = view.querySelector('.chat-content .chat-msg:last-child .chat-msg__author');
-        expect(msg_author.textContent.trim()).toBe('Romeo');
+        expect(msg_author.textContent.trim()).toBe('Romeo Montague');
 
         const msg_time = view.querySelector('.chat-content .chat-msg:last-child .chat-msg__time');
         const time = dayjs(msg_object.get('time')).format(api.settings.get('time_format'));
@@ -918,6 +918,7 @@ describe("A Chat Message", function () {
 
             const { api } = _converse;
             await mock.waitForRoster(_converse, 'current', 1, false);
+            await mock.openControlBox(_converse);
             const rosterview = document.querySelector('converse-roster');
             await u.waitUntil(() => rosterview.querySelectorAll('.roster-group').length, 300);
             const message = '\n\n        This is a received message         \n\n';
@@ -1300,6 +1301,7 @@ describe("A Chat Message", function () {
 
             const { api } = _converse;
             await mock.waitForRoster(_converse, 'current');
+            await mock.openControlBox(_converse);
             const rosterview = document.querySelector('converse-roster');
             await u.waitUntil(() => rosterview.querySelectorAll('.roster-group').length)
             // Send a message from a different resource

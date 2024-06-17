@@ -1,5 +1,8 @@
 /**
  * @typedef {module:plugin-muc-parsers.MemberListItem} MemberListItem
+ * @typedef {import('@converse/skeletor/src/types/collection').Attributes} Attributes
+ * @typedef {import('@converse/skeletor/src/types/collection').CollectionOptions} CollectionOptions
+ * @typedef {import('@converse/skeletor/src/types/collection').Options} Options
  */
 import MUCOccupant from './occupant.js';
 import _converse from '../../shared/_converse.js';
@@ -22,6 +25,10 @@ const { u } = converse.env;
  */
 class MUCOccupants extends Collection {
 
+    /**
+     * @param {MUCOccupant[]} attrs
+     * @param {CollectionOptions} options
+     */
     constructor (attrs, options) {
         super(
             attrs,
@@ -39,12 +46,15 @@ class MUCOccupants extends Collection {
         this.on('change:role', () => this.sort());
     }
 
-
     static getAutoFetchedAffiliationLists () {
         const affs = api.settings.get('muc_fetch_members');
         return Array.isArray(affs) ? affs : affs ? ['member', 'admin', 'owner'] : [];
     }
 
+    /**
+     * @param {Model|Attributes} attrs
+     * @param {Options} [options]
+     */
     create (attrs, options) {
         if (attrs.id || attrs instanceof Model) {
             return super.create(attrs, options);
