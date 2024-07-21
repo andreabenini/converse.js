@@ -951,7 +951,7 @@ class MUC extends ChatBox {
     }
 
     /**
-     * @param {{ name: 'closeAllChatBoxes' }} [ev]
+     * @param {{name: 'closeAllChatBoxes'}} [ev]
      */
     async close (ev) {
         const { ENTERED, CLOSING } = ROOMSTATUS;
@@ -968,10 +968,10 @@ class MUC extends ChatBox {
         }
 
         // Delete the session model
-        await new Promise(resolve =>
+        await new Promise(success =>
             this.session.destroy({
-                'success': resolve,
-                'error': (_, e) => { log.error(e); resolve(); }
+                success,
+                error: (_, e) => { log.error(e); success(); }
             })
         );
         return _converse.exports.ChatBox.prototype.close.call(this);
@@ -2800,7 +2800,7 @@ class MUC extends ChatBox {
                 // Accept default configuration
                 await this.sendConfiguration().then(() => this.refreshDiscoInfo());
             } else {
-                this.session.save({ 'view': converse.MUC.VIEWS.CONFIG });
+                api.modal.show('converse-muc-config-modal', { model: this });
             }
         }
     }

@@ -1,3 +1,4 @@
+import 'shared/components/image-picker.js';
 import tplSpinner from 'templates/spinner.js';
 import { __ } from 'i18n';
 import { api, converse, parsers } from '@converse/headless';
@@ -43,7 +44,7 @@ export default (el) => {
                 <legend class="centered">${title}</legend>
                 ${title !== instructions ? html`<p class="form-help">${instructions}</p>` : ''}
 
-                ${fieldTemplates.length ? html`<div class="row">
+                ${fieldTemplates.length && el.model.features.get('vcard-temp') ? html`<div class="row">
                     <converse-image-picker .model=${el.model} width="96" height="96"></converse-image-picker>
                 </div>` : ''}
 
