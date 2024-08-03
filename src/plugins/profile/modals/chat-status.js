@@ -1,7 +1,9 @@
-import BaseModal from 'plugins/modal/modal.js';
-import tplChatStatusModal from '../templates/chat-status-modal.js';
-import { __ } from 'i18n';
 import { api, converse } from '@converse/headless';
+import BaseModal from 'plugins/modal/modal.js';
+import { __ } from 'i18n';
+import tplChatStatusModal from '../templates/chat-status-modal.js';
+
+import './styles/chat-status-modal.scss';
 
 const u = converse.env.utils;
 
@@ -23,7 +25,6 @@ export default class ChatStatusModal extends BaseModal {
     }
 
     getModalTitle () {
-        // eslint-disable-line class-methods-use-this
         return __('Change chat status');
     }
 
@@ -40,10 +41,10 @@ export default class ChatStatusModal extends BaseModal {
         ev.preventDefault();
         const data = new FormData(ev.target);
         this.model.save({
-            'status_message': data.get('status_message'),
-            'status': data.get('chat_status'),
+            status_message: data.get('status_message'),
+            status: data.get('chat_status'),
         });
-        this.modal.hide();
+        this.close();
     }
 }
 

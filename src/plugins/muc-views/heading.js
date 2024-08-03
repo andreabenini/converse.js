@@ -1,10 +1,8 @@
 import './modals/config.js';
 import './modals/muc-details.js';
-import './modals/muc-invite.js';
 import './modals/nickname.js';
 import tplMUCHead from './templates/muc-head.js';
 import { CustomElement } from 'shared/components/element.js';
-import { Model } from '@converse/skeletor';
 import { __ } from 'i18n';
 import { _converse, api, converse } from "@converse/headless";
 import { destroyMUC, showModeratorToolsModal } from './utils.js';
@@ -28,7 +26,6 @@ export default class MUCHeading extends CustomElement {
         this.listenTo(this.user_settings, 'change:mucs_with_hidden_subject', () => this.requestUpdate());
 
         await this.model.initialized;
-        this.listenTo(this.model.features, 'change:open', () => this.requestUpdate());
         this.model.occupants.forEach(o => this.onOccupantAdded(o));
         this.listenTo(this.model.occupants, 'add', this.onOccupantAdded);
         this.listenTo(this.model.occupants, 'change:affiliation', this.onOccupantAffiliationChanged);
@@ -70,17 +67,18 @@ export default class MUCHeading extends CustomElement {
     /**
      * @param {Event} ev
      */
-    showInviteModal (ev) {
-        ev.preventDefault();
-        api.modal.show('converse-muc-invite-modal', { model: new Model(), 'chatroomview': this }, ev);
+    toggleTopic (ev) {
+        ev?.preventDefault?.();
+        this.model.toggleSubjectHiddenState();
     }
 
     /**
      * @param {Event} ev
      */
-    toggleTopic (ev) {
+    toggleOccupants (ev) {
         ev?.preventDefault?.();
-        this.model.toggleSubjectHiddenState();
+        ev?.stopPropagation?.();
+        this.model.save({'hidden_occupants': !this.model.get('hidden_occupants')});
     }
 
     /**
@@ -144,17 +142,6 @@ export default class MUCHeading extends CustomElement {
             'name': 'nickname'
         });
 
-        if (this.model.invitesAllowed()) {
-            buttons.push({
-                'i18n_text': __('Invite'),
-                'i18n_title': __('Invite someone to join this groupchat'),
-                'handler': ev => this.showInviteModal(ev),
-                'a_class': 'open-invite-modal',
-                'icon_class': 'fa-user-plus',
-                'name': 'invite'
-            });
-        }
-
         const subject = this.model.get('subject');
         if (subject && subject.text) {
             buttons.push({
@@ -162,12 +149,21 @@ export default class MUCHeading extends CustomElement {
                 'i18n_title': subject_hidden
                     ? __('Show the topic message in the heading')
                     : __('Hide the topic in the heading'),
-                'handler': ev => this.toggleTopic(ev),
+                'handler': /** @param {Event} ev */(ev) => this.toggleTopic(ev),
                 'a_class': 'hide-topic',
                 'icon_class': 'fa-minus-square',
                 'name': 'toggle-topic'
             });
         }
+
+        buttons.push({
+            'i18n_text': this.model.get('hidden_occupants') ? __('Show participants') : __('Hide participants'),
+            'i18n_title': this.model.get('hidden_occupants')
+                ? __('Show the groupchat participants')
+                : __('Hide the groupchat participants'),
+            'handler': /** @param {Event} ev */(ev) => this.toggleOccupants(ev),
+            'icon_class': 'fa-users',
+        });
 
         const conn_status = this.model.session.get('connection_status');
         if (conn_status === converse.ROOMSTATUS.ENTERED) {

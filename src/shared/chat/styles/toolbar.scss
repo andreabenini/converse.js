@@ -1,110 +1,27 @@
-@import "bootstrap/scss/functions";
-@import "bootstrap/scss/variables";
-@import "bootstrap/scss/mixins";
-
 .conversejs {
 
-    .send-button {
-        border-radius: 0;
-        bottom: var(--send-button-bottom);
-        color: var(--inverse-link-color);
-    }
-
-    .chatbox {
-        .send-button {
-            color: var(--background);
-            background-color: var(--chat-toolbar-btn-color);
-        }
-    }
-
-    .chatroom {
-        .send-button {
-            background-color: var(--muc-toolbar-btn-color);
-        }
-    }
-
-    .chat-toolbar {
+    converse-chat-toolbar.btn-toolbar {
+        background-color: var(--chat-background-color);
+        box-sizing: border-box;
+        width: 100%;
+        justify-content: space-between;
+        margin-bottom: 1px; // So that bottom border on toolbar buttons is visible
 
         .toolbar-buttons {
-            width: 100%;
             .message-limit {
                 padding: 0.5em;
                 font-weight: bold;
             }
-            * {
-                float: left;
-            }
-            .right {
-                float: right;
-            }
         }
 
-        .unverified a,
-        .unverified {
-            color: #cf5300;
+        .btn {
+            padding: 0.25em 0.5em !important;
         }
-        .private a,
-        .private {
-            color: #4b7003;
+
+        .send-button {
+            color: var(--background);
+            border-radius: 0;
         }
-        li {
-            cursor: pointer;
-            display: inline-block;
-            list-style: none;
-            padding: 0 0.5em;
-            &:hover {
-                cursor: pointer;
-            }
-            .toolbar-menu {
-                bottom: 1.7rem;
-                box-shadow: -1px -1px 2px 0 rgba(0, 0, 0, 0.4);
-                height: auto;
-                margin-bottom: 0;
-                min-width: 21rem;
-                position: absolute;
-                right: 0;
-                top: auto;
-                z-index: $zindex-dropdown;
-
-                &.otr-menu {
-                    left: -6em;
-                    min-width: 15rem;
-
-                    &.show {
-                        display: flex;
-                        flex-direction: column;
-                    }
-                }
-
-                a {
-                    color: var(--link-color);
-                }
-            }
-            &.toggle-otr {
-                ul {
-                    z-index: 99;
-                    li {
-                        &:hover {
-                            background-color: var(--highlight-color);
-                        }
-                        display: block;
-                        padding: 7px;
-                        a {
-                            display: block;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    converse-chat-toolbar {
-        background-color: var(--chat-background-color);
-        box-sizing: border-box;
-        display: flex;
-        justify-content: space-between;
-        margin: 0;
-        width: 100%;
 
         .fa, .fa:hover,
         .far, .far:hover,
@@ -118,26 +35,21 @@
         .unencrypted a,
         .unencrypted {
             color: var(--text-color);
-            .toolbar-menu {
-                a {
-                    color: var(--link-color);
-                }
-            }
-        }
-
-        button {
-            margin-top: 0.4em;
-            border: 1px transparent solid;
-            background-color: transparent;
-
-            &.send-button {
-                padding-top: 0.2em;
-                padding-bottom: 0.2em;
-                margin: 0;
-                margin-top: -1px;
-            }
         }
     }
+
+    .chatbox {
+        .send-button {
+            background-color: var(--chat-toolbar-btn-color);
+        }
+    }
+
+    .chatroom {
+        .send-button {
+            background-color: var(--muc-toolbar-btn-color);
+        }
+    }
+
 
     .chatbox {
         converse-chat-toolbar {
@@ -190,27 +102,6 @@
                     }
                     svg, svg:hover {
                         fill: var(--muc-toolbar-btn-disabled-color);
-                    }
-                }
-            }
-        }
-    }
-
-    converse-chats {
-        &.converse-overlayed  {
-            .chat-toolbar {
-                li {
-                    .toolbar-menu {
-                        min-width: 235px;
-                    }
-                }
-            }
-            .chatroom {
-                .chat-toolbar {
-                    li {
-                        .toolbar-menu {
-                            min-width: 280px;
-                        }
                     }
                 }
             }

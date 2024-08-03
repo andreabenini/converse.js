@@ -1,9 +1,13 @@
 export default class MUCInviteModal extends BaseModal {
-    chatroomview: any;
+    constructor(options: any);
+    muc: any;
     renderModal(): import("lit").TemplateResult<1>;
     getModalTitle(): any;
     getAutoCompleteList(): any;
-    submitInviteForm(ev: any): void;
+    /**
+     * @param {Event} ev
+     */
+    submitInviteForm(ev: Event): void;
 }
 import BaseModal from "plugins/modal/modal.js";
 //# sourceMappingURL=muc-invite.d.ts.map

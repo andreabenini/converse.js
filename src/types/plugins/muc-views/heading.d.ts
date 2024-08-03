@@ -21,11 +21,11 @@ export default class MUCHeading extends CustomElement {
     /**
      * @param {Event} ev
      */
-    showInviteModal(ev: Event): void;
+    toggleTopic(ev: Event): void;
     /**
      * @param {Event} ev
      */
-    toggleTopic(ev: Event): void;
+    toggleOccupants(ev: Event): void;
     /**
      * @param {Event} ev
      */

@@ -29,17 +29,14 @@ export async function getHeadingDropdownItem (promise_or_data) {
 export async function getHeadingStandaloneButton (promise_or_data) {
     const data = await promise_or_data;
     return html`
-        <a
-            href="#"
-            class="chatbox-btn ${data.a_class}"
-            @click=${data.handler}
-            title="${data.i18n_title}"
-        >
+        <button type="button" class="btn chatbox-btn ${data.a_class}"
+                @click=${data.handler}
+                title="${data.i18n_title}">
             <converse-icon
                 size="1em"
                 class="fa ${data.icon_class}"
             ></converse-icon>
-        </a>
+        </button>
     `;
 }
 
@@ -62,7 +59,9 @@ export function getDropdownButtons (promise) {
     return promise.then((btns) => {
         const dropdown_btns = btns.filter((b) => !b.standalone).map((b) => getHeadingDropdownItem(b));
         return dropdown_btns.length
-            ? html`<converse-dropdown class="chatbox-btn dropleft" .items=${dropdown_btns}></converse-dropdown>`
+            ? html`<converse-dropdown
+                class="chatbox-btn btn-group dropstart"
+                .items=${dropdown_btns}></converse-dropdown>`
             : '';
     });
 }

@@ -1,11 +1,11 @@
+import { html } from 'lit';
+import { until } from 'lit/directives/until.js';
+import { _converse, api, converse } from '@converse/headless';
 import './emoji-picker.js';
 import 'shared/chat/message-limit.js';
 import tplToolbar from './templates/toolbar.js';
 import { CustomElement } from 'shared/components/element.js';
 import { __ } from 'i18n';
-import { _converse, api, converse } from '@converse/headless';
-import { html } from 'lit';
-import { until } from 'lit/directives/until.js';
 
 import './styles/toolbar.scss';
 
@@ -68,7 +68,10 @@ export class ChatToolbar extends CustomElement {
             const color = this.is_groupchat ? '--muc-toolbar-btn-color' : '--chat-toolbar-btn-color';
             const i18n_start_call = __('Start a call');
             buttons.push(html`
-                <button class="toggle-call" @click=${this.toggleCall} title="${i18n_start_call}">
+                <button type="button"
+                        class="btn toggle-call"
+                        @click=${this.toggleCall}
+                        title="${i18n_start_call}">
                     <converse-icon color="var(${color})" class="fa fa-phone" size="1em"></converse-icon>
                 </button>`
             );
@@ -90,21 +93,6 @@ export class ChatToolbar extends CustomElement {
         const http_upload_promise = api.disco.supports(Strophe.NS.HTTPUPLOAD, domain);
         buttons.push(html`${until(http_upload_promise.then(is_supported => this.getHTTPUploadButton(is_supported)),'')}`);
 
-        if (this.is_groupchat && api.settings.get('visible_toolbar_buttons')?.toggle_occupants) {
-            const i18n_hide_occupants = __('Hide participants');
-            const i18n_show_occupants = __('Show participants');
-            buttons.push(html`
-                <button class="toggle_occupants right"
-                        title="${this.hidden_occupants ? i18n_show_occupants : i18n_hide_occupants}"
-                        @click=${this.toggleOccupants}>
-                    <converse-icon
-                        color="var(--muc-toolbar-btn-color)"
-                        class="fa ${this.hidden_occupants ? `fa-angle-double-left` : `fa-angle-double-right`}"
-                        size="1em"></converse-icon>
-                </button>`
-            );
-        }
-
         /**
          * *Hook* which allows plugins to add more buttons to a chat's toolbar
          * @event _converse#getToolbarButtons
@@ -124,13 +112,20 @@ export class ChatToolbar extends CustomElement {
             const i18n_choose_file =  __('Choose a file to send')
             const color = this.is_groupchat ? '--muc-toolbar-btn-color' : '--chat-toolbar-btn-color';
             return html`
-                <button title="${i18n_choose_file}" @click=${this.toggleFileUpload}>
+                <button type="button"
+                        class="btn"
+                        title="${i18n_choose_file}"
+                        @click=${this.toggleFileUpload}>
                     <converse-icon
                         color="var(${color})"
                         class="fa fa-paperclip"
                         size="1em"></converse-icon>
                 </button>
-                <input type="file" @change=${this.onFileSelection} class="fileupload" multiple="" style="display:none"/>`;
+                <input type="file"
+                    @change=${this.onFileSelection}
+                    class="fileupload"
+                    multiple=""
+                    style="display:none"/>`;
         } else {
             return '';
         }
@@ -150,7 +145,8 @@ export class ChatToolbar extends CustomElement {
         }
         const color = this.is_groupchat ? '--muc-toolbar-btn-color' : '--chat-toolbar-btn-color';
         const markup = html`
-            <button class="toggle-compose-spoiler"
+            <button type="button"
+                    class="btn toggle-compose-spoiler"
                     title="${i18n_toggle_spoiler}"
                     @click=${this.toggleComposeSpoilerMessage}>
                 <converse-icon
@@ -188,12 +184,6 @@ export class ChatToolbar extends CustomElement {
         ev?.preventDefault?.();
         ev?.stopPropagation?.();
         this.model.set('composing_spoiler', !this.model.get('composing_spoiler'));
-    }
-
-    toggleOccupants (ev) {
-        ev?.preventDefault?.();
-        ev?.stopPropagation?.();
-        this.model.save({'hidden_occupants': !this.model.get('hidden_occupants')});
     }
 
     toggleCall (ev) {

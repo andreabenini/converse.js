@@ -63,7 +63,7 @@ export default class ChatBottomPanel extends CustomElement {
         chatboxviews.get(this.getAttribute('jid'))?.emitBlurred(ev);
     }
 
-    onDragOver (ev) { // eslint-disable-line class-methods-use-this
+    onDragOver (ev) {
         ev.preventDefault();
     }
 
@@ -82,7 +82,7 @@ export default class ChatBottomPanel extends CustomElement {
                 'query': value
             });
             const emoji_dropdown = /** @type {EmojiDropdown} */(this.querySelector('converse-emoji-dropdown'));
-            emoji_dropdown?.showMenu();
+            emoji_dropdown?.dropdown.show();
         }
     }
 }
