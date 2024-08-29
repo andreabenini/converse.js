@@ -56,16 +56,14 @@ $prefix: 'converse-';
 @import "mixins";
 
 @import "themes/classic";
-@import "themes/concord";
 @import "themes/dracula";
+@import "themes/cyberpunk";
 
 @import "core";
 @import "alerts";
-@import "spinner";
 @import "buttons";
 @import "badges";
 @import "forms";
 @import "lists";
 @import "messages";
-@import "background";
 @import "fonts";

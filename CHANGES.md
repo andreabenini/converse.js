@@ -10,12 +10,14 @@
 - #3033: Add the `muc_grouped_by_domain` option to display MUCs on the same domain in collapsible groups
 - #3155: Some ad-hoc commands not working
 - #3155: Some adhoc commands aren't working
+- #3299: Registration fails when a password contains an &
 - #3300: Adding the maxWait option for `debouncedPruneHistory`
 - #3302: debounce MUC sidebar rendering
 - #3305: New config option [muc_search_service](https://conversejs.org/docs/html/configuration.html#muc-search-service)
 - #3307: Fix inconsistency between browsers on textarea outlines
 - #3337: Correctly display multiline nested quotes
 - #3362: Don't create empty nick element in bookmarks
+- #3476: better UI for form "fixed" fields
 - Fix: MUC occupant list does not sort itself on nicknames or roles changes
 - Fix: refresh the MUC sidebar when participants collection is sorted
 - Fix: room information not correctly refreshed when modifications are made by other users
@@ -24,12 +26,15 @@
 - Fix: incorrect unread messages counter badge on the application icon after switching to new XMPP user
 - Fix: unhandled exception in disconnect function when controlbox is not shown by UI
 - Fix: "Click to mention..." title was misplaced in MUC occupant list.
+- Fix: removing the "add to contact" button in occupant modal in singleton mode (as there is no roster).
 - Add an occupants filter to the MUC sidebar
 - Change contacts filter to rename the anachronistic `Online` state to `Available`.
 - Enable [reuse_scram_keys](https://conversejs.org/docs/html/configuration.html#reuse-scram-keys) by default.
 - New loadEmojis hook, to customize emojis at runtime.
 - New `loadEmojis` hook, to customize emojis at runtime.
 - Upgrade to Bootstrap 5
+- Add a new theme 'Cyberpunk' and remove the old 'Concord' theme.
+- Improved accessibility.
 
 ### Breaking changes:
 

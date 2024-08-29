@@ -25,6 +25,7 @@ function tplBookmark (room) {
     const i18n_bookmark = __('Bookmark');
     return html`
         <a class="list-item-action add-bookmark"
+            tabindex="0"
             data-room-jid="${room.get('jid')}"
             data-bookmark-name="${room.getDisplayName()}"
             @click=${(ev) => addBookmarkViaEvent(ev)}
@@ -75,6 +76,7 @@ function tplRoomItem (el, room) {
             ${ api.settings.get('allow_bookmarks') ? tplBookmark(room) : '' }
 
             <a class="list-item-action close-room"
+                tabindex="0"
                 data-room-jid="${room.get('jid')}"
                 data-room-name="${room.getDisplayName()}"
                 title="${i18n_leave_room}"
@@ -153,20 +155,20 @@ export default (el) => {
     const is_closed = el.model.get('toggle_state') === CLOSED;
 
     const btns = [
-        html`<a class="dropdown-item show-bookmark-list-modal"
+        html`<a class="dropdown-item show-bookmark-list-modal" role="button"
                 @click=${(ev) => api.modal.show('converse-bookmark-list-modal', { 'model': el.model }, ev)}
                 data-toggle="modal">
                     <converse-icon class="fa fa-bookmark" size="1em"></converse-icon>
                     ${i18n_show_bookmarks}
         </a>`,
-        html`<a class="dropdown-item show-list-muc-modal"
+        html`<a class="dropdown-item show-list-muc-modal" role="button"
                 @click=${(ev) => api.modal.show('converse-muc-list-modal', { 'model': el.model }, ev)}
                 data-toggle="modal"
                 data-target="#muc-list-modal">
                     <converse-icon class="fa fa-list-ul" size="1em"></converse-icon>
                     ${i18n_title_list_rooms}
         </a>`,
-        html`<a class="dropdown-item show-add-muc-modal"
+        html`<a class="dropdown-item show-add-muc-modal" role="button"
                 @click=${(ev) => api.modal.show('converse-add-muc-modal', { 'model': el.model }, ev)}
                 data-toggle="modal"
                 data-target="#add-chatrooms-modal">
@@ -178,7 +180,7 @@ export default (el) => {
     return html`
         <div class="d-flex controlbox-padded">
             <span class="w-100 controlbox-heading controlbox-heading--groupchats">
-                <a class="list-toggle open-rooms-toggle"
+                <a class="list-toggle open-rooms-toggle" role="heading" aria-level="3"
                    title="${i18n_desc_rooms}"
                    @click=${ev => el.toggleRoomsList(ev)}>
 
