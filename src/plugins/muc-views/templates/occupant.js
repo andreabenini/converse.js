@@ -1,15 +1,83 @@
 /**
  * @typedef {import('@converse/headless').MUCOccupant} MUCOccupant
  */
+import { api } from '@converse/headless';
 import { PRETTY_CHAT_STATUS } from '../constants.js';
 import { __ } from 'i18n';
 import { html } from "lit";
+import { until } from 'lit/directives/until.js';
 import { showOccupantModal } from '../utils.js';
 import { getAuthorStyle } from 'utils/color.js';
 
 const i18n_occupant_hint = /** @param {MUCOccupant} o */(o) => {
     return __('Click to mention %1$s in your message.', o.get('nick'));
 }
+
+let badges_definitions; // will be initialized at first call (to be sure that the __ function is correctly loaded).
+
+/**
+ * Inits badges definitions.
+ * For short labels, it will use the label first letter. If there is ambigous short labels, it will try to add up to 4 letters.
+ * Letters will be uppercase.
+ */
+function initBadgesDefinitions () {
+    badges_definitions = {}
+    badges_definitions['owner'] = {
+        label: __('Owner'),
+        classname: 'badge-groupchat'
+    };
+    badges_definitions['admin'] = {
+        label: __('Admin'),
+        classname: 'badge-info'
+    };
+    badges_definitions['member'] = {
+        label: __('Member'),
+        classname: 'badge-info'
+    };
+    badges_definitions['moderator'] = {
+        label: __('Moderator'),
+        classname: 'badge-info'
+    };
+    badges_definitions['visitor'] = {
+        label: __('Visitor'),
+        classname: 'badge-secondary'
+    };
+
+    // And now we must compute unique short labels.
+    let seen;
+    for (
+        let current_length = 1;
+        current_length < 5 && (!seen || Object.values(seen).find(count => count > 1));
+        current_length++
+    ) {
+        const currently_seen = {}
+        for (const definition of Object.values(badges_definitions)) {
+            if (!seen || (seen[definition.shortlabel] ?? 0) >= 2) {
+                // (first loop, or count >= 2 in the previous loop)
+                definition.shortlabel = definition.label.substr(0, current_length).toLocaleUpperCase();
+                currently_seen[definition.shortlabel]??= 0;
+                currently_seen[definition.shortlabel]++;
+            }
+        }
+        seen = currently_seen;
+    }
+}
+
+/**
+ * Badge template.
+ * @param {string} badge_code The badge to use ('owner', 'admin', ...)
+ */
+function tplBadge (badge_code) {
+    if (!badges_definitions) {
+        initBadgesDefinitions();
+    }
+    const definition = badges_definitions[badge_code];
+    if (!definition) { return ''; }
+
+    return html`<span title="${definition.label}" aria-label=${definition.label}
+        class="badge ${definition.classname ?? 'badge-info'}">${definition.shortlabel}</span>`;
+}
+
 
 const occupant_title = /** @param {MUCOccupant} o */(o) => {
     const role = o.get('role');
@@ -29,6 +97,45 @@ const occupant_title = /** @param {MUCOccupant} o */(o) => {
     }
 }
 
+/**
+ * @param {MUCOccupant} o
+ */
+async function tplActionButtons (o) {
+    /**
+     * *Hook* which allows plugins to add action buttons on occupants
+     * @event _converse#getOccupantActionButtons
+     * @example
+     *  api.listen.on('getOccupantActionButtons', (el, buttons) => {
+     *      buttons.push({
+     *          'i18n_text': 'Foo',
+     *          'handler': ev => alert('Foo!'),
+     *          'button_class': 'chat-occupant__action-foo',
+     *          'icon_class': 'fa fa-check',
+     *          'name': 'foo'
+     *      });
+     *      return buttons;
+     *  });
+     */
+    const buttons = await api.hook('getOccupantActionButtons', o, []);
+    if (!buttons?.length) { return '' }
+
+    const items = buttons.map(b => {
+        return html`
+        <button class="dropdown-item ${b.button_class}" @click=${b.handler} type="button">
+            <converse-icon
+                class="${b.icon_class}"
+                color="var(--inverse-link-color)"
+                size="1em"
+                aria-hidden="true"
+            ></converse-icon>&nbsp;${b.i18n_text}
+        </button>`
+    });
+
+    return html`<converse-dropdown
+        class="occupant-actions chatbox-btn"
+        .items=${items}
+    ></converse-dropdown>`;
+}
 
 /**
  * @param {MUCOccupant} o
@@ -37,11 +144,6 @@ const occupant_title = /** @param {MUCOccupant} o */(o) => {
 export default (o, chat) => {
     const affiliation = o.get('affiliation');
     const hint_show = PRETTY_CHAT_STATUS[o.get('show')];
-    const i18n_admin = __('Admin');
-    const i18n_member = __('Member');
-    const i18n_moderator = __('Moderator');
-    const i18n_owner = __('Owner');
-    const i18n_visitor = __('Visitor');
     const role = o.get('role');
 
     const show = o.get('show');
@@ -81,12 +183,15 @@ export default (o, chat) => {
                           @click=${chat.onOccupantClicked}
                           style="${getAuthorStyle(o)}">${o.getDisplayName()}</span>
                     <span class="occupant-badges">
-                        ${ (affiliation === "owner") ? html`<span class="badge badge-groupchat">${i18n_owner}</span>` : '' }
-                        ${ (affiliation === "admin") ? html`<span class="badge badge-info">${i18n_admin}</span>` : '' }
-                        ${ (affiliation === "member") ? html`<span class="badge badge-info">${i18n_member}</span>` : '' }
-                        ${ (role === "moderator") ? html`<span class="badge badge-info">${i18n_moderator}</span>` : '' }
-                        ${ (role === "visitor") ? html`<span class="badge badge-secondary">${i18n_visitor}</span>`  : '' }
+                        ${ (affiliation === "owner") ? tplBadge('owner') : '' }
+                        ${ (affiliation === "admin") ? tplBadge('admin') : '' }
+                        ${ (affiliation === "member") ? tplBadge('member') : '' }
+                        ${ (role === "moderator") ? tplBadge('moderator') : '' }
+                        ${ (role === "visitor") ? tplBadge('visitor')  : '' }
                     </span>
+                    ${
+                        until(tplActionButtons(o))
+                    }
                 </div>
             </div>
         </li>

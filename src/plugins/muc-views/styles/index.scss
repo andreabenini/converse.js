@@ -79,8 +79,7 @@ converse-muc-destroyed {
         }
 
         &.converse-embedded,
-        &.converse-fullscreen,
-        &.converse-mobile {
+        &.converse-fullscreen {
 
             .chatroom {
                 .box-flyout {
@@ -132,7 +131,7 @@ converse-muc-destroyed {
                             font-size: 120%;
                         }
                     }
-                    .sendXMPPMessage {
+                    .chat-message-form {
                         .chat-textarea {
                             padding: 0.5em;
                             font-size: 110%;

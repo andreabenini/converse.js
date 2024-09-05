@@ -177,7 +177,7 @@
                 font-size: var(--font-size-huge);
                 line-height: var(--line-height-huge);
             }
-            .sendXMPPMessage {
+            .chat-message-form {
                 ul {
                     width: 100%;
                 }
@@ -211,7 +211,6 @@
             }
         }
 
-        converse-chats.converse-mobile,
         converse-chats.converse-overlayed,
         converse-chats.converse-fullscreen {
             .chat-head {

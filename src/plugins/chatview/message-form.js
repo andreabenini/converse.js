@@ -34,17 +34,7 @@ export default class MessageForm extends CustomElement {
     }
 
     render () {
-        return tplMessageForm(
-            Object.assign(this.model.toJSON(), {
-                'onDrop': ev => this.onDrop(ev),
-                'hint_value': /** @type {HTMLInputElement} */(this.querySelector('.spoiler-hint'))?.value,
-                'message_value': /** @type {HTMLTextAreaElement} */(this.querySelector('.chat-textarea'))?.value,
-                'onChange': ev => this.model.set({'draft': ev.target.value}),
-                'onKeyDown': ev => this.onKeyDown(ev),
-                'onKeyUp': ev => this.onKeyUp(ev),
-                'onPaste': ev => this.onPaste(ev)
-            })
-        );
+        return tplMessageForm(this);
     }
 
     /**
@@ -208,7 +198,7 @@ export default class MessageForm extends CustomElement {
         let spoiler_hint,
             hint_el = {};
         if (this.model.get('composing_spoiler')) {
-            hint_el = /** @type {HTMLInputElement} */(this.querySelector('form.sendXMPPMessage input.spoiler-hint'));
+            hint_el = /** @type {HTMLInputElement} */(this.querySelector('form.chat-message-form input.spoiler-hint'));
             spoiler_hint = hint_el.value;
         }
         u.addClass('disabled', textarea);

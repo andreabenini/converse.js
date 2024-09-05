@@ -2,6 +2,7 @@
 
 ## 11.0.0 (Unreleased)
 
+- #1057: Removed the `mobile` view mode. Instead of setting `view_mode` to `mobile`, set it to `fullscreen`.
 - #1174: Show MUC avatars in the rooms list
 - #1195: Add actions to quote and copy messages
 - #1349: XEP-0392 Consistent Color Generation
@@ -35,6 +36,10 @@
 - Upgrade to Bootstrap 5
 - Add a new theme 'Cyberpunk' and remove the old 'Concord' theme.
 - Improved accessibility.
+- New "getOccupantActionButtons" hook, so that plugins can add actions on MUC occupants.
+- MUC occupants badges: displays short labels, with full label as title.
+
+- New config option [stanza_timeout](https://conversejs.org/docs/html/configuration.html#show-background)
 
 ### Breaking changes:
 
