@@ -5,25 +5,32 @@ $prefix: 'converse-';
 
 .conversejs {
     .modal-header {
+        background-color: var(--primary-color);
+        border-bottom: none;
+        display: flex;
+        justify-content: space-between;
         &.alert-danger {
             background-color: var(--error-color);
-            color: var(--background);
-            border-bottom: none;
-
-            .close {
-                color: var(--background);
-            }
+        }
+        .modal-title {
+            color: var(--background-color);
+        }
+        .btn-close {
+            margin: 0;
+        }
+        .close {
+            color: var(--background-color);
         }
     }
 
     .modal-content {
-        background-color: var(--modal-background-color);
+        background-color: var(--background-color);
     }
 
     .modal-body {
         .row {
-            margin-left: 0;
-            margin-right: 0;
+            margin-inline-start: 0;
+            margin-inline-end: 0;
         }
     }
 
@@ -39,15 +46,15 @@ $prefix: 'converse-';
                 margin: 0.25em;
                 .nav-link {
                     &.active {
-                        color: var(--background);
+                        color: var(--background-color);
                     }
                 }
                 &:hover {
                     .nav-link {
                         color: var(--focus-color);
-                        background-color: var(--background);
+                        background-color: var(--background-color);
                         &.active {
-                            color: var(--background);
+                            color: var(--background-color);
                             background-color: var(--primary-color);
                         }
                     }

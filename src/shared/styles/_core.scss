@@ -2,19 +2,18 @@
     color: var(--text-color);
     font-family: var(--normal-font);
     font-size: var(--font-size);
-    direction: ltr;
 
     .flyout {
         position: absolute;
     }
 
     .img-thumbnail {
-        background-color: var(--img-thumbnail-background-color);
-        border: 1px solid var(--img-thumbnail-border-color);
+        background-color: var(--highlight-color);
+        border: 1px solid black;
     }
 
     textarea:disabled {
-        background-color: var(--chat-textarea-disabled-bg-color) !important;
+        background-color: var(--disabled) !important;
     }
 
     .subdued {
@@ -22,11 +21,11 @@
     }
 
     .close {
-        color: var(--close-color);
+        color: var(--foreground-color);
         text-shadow: none;
 
         &:hover {
-            color: var(--close-color-hover);
+            color: var(--primary-color);
         }
     }
 
@@ -63,7 +62,7 @@
                 font-family: var(--heading-font);
                 font-size: 0.3em;
                 margin-bottom: 0.75em;
-                margin-left: -2.7em;
+                margin-inline-start: -2.7em;
                 opacity: 0.55;
                 word-spacing: 5px;
             }
@@ -81,7 +80,7 @@
         .converse-svg-logo {
             color: var(--link-color);
             height: 1.5em;
-            margin-right: 0.25em;
+            margin-inline-end: 0.25em;
             margin-bottom: -0.25em;
             .cls-1 {
                 isolation: isolate;
@@ -109,16 +108,16 @@
             font-family: var(--heading-font);
             font-size: 0.25em;
             opacity: 0.55;
-            margin-left: -7em;
+            margin-inline-start: -7em;
             word-spacing: 5px;
         }
     }
 
     ::placeholder {
-        color: var(--subdued-color);
+        color: var(--secondary-color);
     }
     ::selection {
-        background-color: var(--highlight-color);
+        background-color: var(--selection-color);
     }
 
     @media screen and (max-width: $mobile-portrait-length) {
@@ -140,7 +139,7 @@
     h4,
     h5,
     h6 {
-        color: var(--header-color);
+        color: var(--heading-color);
     }
 
     ul li {
@@ -190,7 +189,7 @@
         text-shadow: none;
         cursor: pointer;
         &:hover {
-            color: var(--link-hover-color);
+            color: var(--link-color-hover);
             text-decoration: none;
             text-shadow: none;
         }
@@ -198,7 +197,7 @@
         &.fa,
         &.far,
         &.fas {
-            color: var(--subdued-color);
+            color: var(--secondary-color);
             &:hover {
                 color: var(--icon-hover-color);
             }
@@ -218,7 +217,7 @@
     .fa,
     .far,
     .fas {
-        color: var(--subdued-color);
+        color: var(--secondary-color);
     }
 
     q {
@@ -236,7 +235,7 @@
 
     .helptext {
         font-size: var(--font-size-tiny);
-        color: var(--comment);
+        color: var(--secondary-color);
     }
 
     .selected {
@@ -388,7 +387,7 @@
     }
 
     .locked {
-        padding-right: 22px;
+        padding-inline-end: 22px;
     }
 
     @keyframes spin {
@@ -437,7 +436,7 @@
     }
 
     .avatar-autocomplete {
-        margin-right: 0.5em;
+        margin-inline-end: 0.5em;
         vertical-align: middle;
     }
 
@@ -446,7 +445,7 @@
     }
 
     .form-help {
-        color: var(--subdued-color);
+        color: var(--secondary-color);
         font-size: 90%;
     }
 
@@ -480,28 +479,28 @@
 
 @media screen and (min-width: 576px) {
     .conversejs .offset-sm-2 {
-        margin-left: 16.666667%;
+        margin-inline-start: 16.666667%;
     }
 }
 @media screen and (min-width: 768px) {
     .conversejs .offset-md-2 {
-        margin-left: 16.666667%;
+        margin-inline-start: 16.666667%;
     }
     .conversejs .offset-md-3 {
-        margin-left: 25%;
+        margin-inline-start: 25%;
     }
 }
 @media screen and (min-width: 992px) {
     .conversejs .offset-lg-2 {
-        margin-left: 16.666667%;
+        margin-inline-start: 16.666667%;
     }
     .conversejs .offset-lg-3 {
-        margin-left: 25%;
+        margin-inline-start: 25%;
     }
 }
 @media screen and (min-width: 1200px) {
     .conversejs .offset-xl-2 {
-        margin-left: 16.666667%;
+        margin-inline-start: 16.666667%;
     }
 }
 @media screen and (max-height: 450px) {

@@ -22,7 +22,7 @@ const emoji_category = (o) => {
 const emoji_picker_header = (o) => {
     const cats = api.settings.get('emoji_categories');
     const transform = c => cats[c] ? emoji_category(Object.assign({'category': c, 'emoji': o.sn2Emoji(cats[c])}, o)) : '';
-    return html`<ul class="flex-wrap flex-md-nowrap">${ Object.keys(cats).map(transform) }</ul>`;
+    return html`<ul>${ Object.keys(cats).map(transform) }</ul>`;
 }
 
 const emoji_item = (o) => {
@@ -72,7 +72,11 @@ function skintone_emoji (o, skintone, skintone_emoji) {
 }
 
 
-export function tplEmojiPicker (o) {
+/**
+ * @param {import('../emoji-picker').default} el
+ * @param {Object} o
+ */
+export function tplEmojiPicker (el, o) {
     const i18n_search = __('Search');
     const skintones = {
         "tone1": ":raised_hand_tone1:",
@@ -92,8 +96,7 @@ export function tplEmojiPicker (o) {
         </div>
         ${ o.render_emojis ?
             html`<converse-emoji-picker-content
-                .chatview=${o.chatview}
-                .model=${o.model}
+                .model=${el.state}
                 .search_results="${o.search_results}"
                 current_skintone="${o.current_skintone}"
                 query="${o.query}"></converse-emoji-picker-content>` : ''}

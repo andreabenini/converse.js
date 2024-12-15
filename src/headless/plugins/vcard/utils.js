@@ -2,7 +2,7 @@
  * @typedef {import('../../plugins/muc/message').default} MUCMessage
  * @typedef {import('../../plugins/status/status').default} XMPPStatus
  * @typedef {import('../../plugins/vcard/vcards').default} VCards
- * @typedef {import('../chat/model-with-contact.js').default} ModelWithContact
+ * @typedef {import('../../shared/model-with-contact.js').default} ModelWithContact
  * @typedef {import('../muc/occupant.js').default} MUCOccupant
  */
 import _converse from '../../shared/_converse.js';
@@ -77,15 +77,19 @@ export function onOccupantAvatarChanged (occupant) {
 
 
 /**
- * @param {ModelWithContact} model
+ * @param {InstanceType<ReturnType<ModelWithContact>>} model
  */
 export async function setVCardOnModel (model) {
+    if (model instanceof _converse.exports.MUCMessage) {
+        return setVCardOnMUCMessage(/** @type {MUCMessage} */(model));
+    }
+
     let jid;
     if (model instanceof _converse.exports.Message) {
         if (['error', 'info'].includes(model.get('type'))) {
             return;
         }
-        jid = model.get('from');
+        jid = Strophe.getBareJidFromJid(model.get('from'));
     } else {
         jid = model.get('jid');
     }

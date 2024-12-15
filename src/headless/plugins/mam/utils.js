@@ -5,7 +5,6 @@
  */
 import sizzle from 'sizzle';
 import { Strophe, $iq } from 'strophe.js';
-import MAMPlaceholderMessage from './placeholder.js';
 import _converse from '../../shared/_converse.js';
 import api from '../../shared/api/index.js';
 import converse from '../../shared/api/public.js';
@@ -13,6 +12,8 @@ import log from '../../log.js';
 import { parseMUCMessage } from '../../plugins/muc/parsers.js';
 import { parseMessage } from '../../plugins/chat/parsers.js';
 import { CHATROOMS_TYPE } from '../../shared/constants.js';
+import { TimeoutError } from '../../shared/errors.js';
+import MAMPlaceholderMessage from './placeholder.js';
 
 const { NS } = Strophe;
 const u = converse.env.utils;
@@ -94,6 +95,18 @@ export function preMUCJoinMAMFetch(muc) {
     muc.save({ 'prejoin_mam_fetched': true });
 }
 
+async function createMessageFromError (model, error) {
+    if (error instanceof TimeoutError) {
+        const msg = await model.createMessage({
+            'type': 'error',
+            'message': error.message,
+            'retry_event_id': error.retry_event_id,
+            'is_ephemeral': 20000,
+        });
+        msg.error = error;
+    }
+}
+
 /**
  * @param {ChatBox|MUC} model
  * @param {Object} result
@@ -121,32 +134,14 @@ export async function handleMAMResult(model, result, query, options, should_page
     if (result.error) {
         const event_id = (result.error.retry_event_id = u.getUniqueId());
         api.listen.once(event_id, () => fetchArchivedMessages(model, options, should_page));
-        model.createMessageFromError(result.error);
+        createMessageFromError(model, result.error);
     }
 }
 
 /**
- * @typedef {Object} MAMOptions
- * A map of MAM related options that may be passed to fetchArchivedMessages
- * @param {number} [options.max] - The maximum number of items to return.
- *  Defaults to "archived_messages_page_size"
- * @param {string} [options.after] - The XEP-0359 stanza ID of a message
- *  after which messages should be returned. Implies forward paging.
- * @param {string} [options.before] - The XEP-0359 stanza ID of a message
- *  before which messages should be returned. Implies backward paging.
- * @param {string} [options.end] - A date string in ISO-8601 format,
- *  before which messages should be returned. Implies backward paging.
- * @param {string} [options.start] - A date string in ISO-8601 format,
- *  after which messages should be returned. Implies forward paging.
- * @param {string} [options.with] - The JID of the entity with
- *  which messages were exchanged.
- * @param {boolean} [options.groupchat] - True if archive in groupchat.
- */
-
-/**
  * Fetch XEP-0313 archived messages based on the passed in criteria.
- * @param {ChatBox} model
- * @param {MAMOptions} [options]
+ * @param {ChatBox|MUC} model
+ * @param {import('./types').MAMOptions} [options]
  * @param {('forwards'|'backwards'|null)} [should_page=null] - Determines whether
  *  this function should recursively page through the entire result set if a limited
  *  number of results were returned.
@@ -191,8 +186,8 @@ export async function fetchArchivedMessages(model, options = {}, should_page = n
 
 /**
  * Create a placeholder message which is used to indicate gaps in the history.
- * @param {ChatBox} model
- * @param {MAMOptions} options
+ * @param {ChatBox|MUC} model
+ * @param {import('./types').MAMOptions} options
  * @param {object} result - The RSM result object
  */
 async function createPlaceholder(model, options, result) {
@@ -229,7 +224,7 @@ async function createPlaceholder(model, options, result) {
 /**
  * Fetches messages that might have been archived *after*
  * the last archived message in our local cache.
- * @param {ChatBox} model
+ * @param {ChatBox|MUC} model
  */
 export function fetchNewestMessages(model) {
     if (model.disable_mam) {

@@ -1,13 +1,12 @@
 export default class ChatContent extends CustomElement {
     static get properties(): {
-        jid: {
-            type: StringConstructor;
+        model: {
+            type: ObjectConstructor;
         };
     };
-    jid: any;
-    initialize(): Promise<void>;
-    setModels(): Promise<void>;
     model: any;
+    connectedCallback(): void;
+    initialize(): Promise<void>;
     render(): import("lit").TemplateResult<1> | "";
     scrollDown(): void;
 }

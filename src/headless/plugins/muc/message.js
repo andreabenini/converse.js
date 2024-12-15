@@ -1,17 +1,16 @@
+import { Strophe } from 'strophe.js';
 import Message from '../chat/message.js';
 import _converse from '../../shared/_converse.js';
 import api from '../../shared/api/index.js';
-import { Strophe } from 'strophe.js';
 
 
 class MUCMessage extends Message {
     /**
-     * @typedef {import('./muc.js').MUCOccupant} MUCOccupant
+     * @typedef {import('./occupant').default} MUCOccupant
      */
-
     async initialize () { // eslint-disable-line require-await
-        this.chatbox = this.collection?.chatbox;
         if (!this.checkValidity()) return;
+        this.chatbox = this.collection?.chatbox;
 
         if (this.get('file')) {
             this.on('change:put', () => this.uploadFile());
@@ -90,19 +89,23 @@ class MUCMessage extends Message {
      * @return {MUCOccupant}
      */
     setOccupant (occupant) {
-        if (this.get('type') !== 'groupchat' || this.isEphemeral()) {
+        if (!['groupchat', 'chat'].includes(this.get('type')) || this.isEphemeral()) {
             return;
         }
 
         if (occupant) {
             this.occupant = occupant;
 
+        } else if (this.get('type') === 'chat' && this.get('sender') === 'them') {
+            this.occupant = this.chatbox;
+
         } else {
             if (this.occupant) return;
 
+            const occupants = (this.get('type') === 'chat') ? this.chatbox.collection : this.chatbox.occupants;
             const nick = Strophe.getResourceFromJid(this.get('from'));
             const occupant_id = this.get('occupant_id');
-            this.occupant = (nick || occupant_id) ? this.chatbox.occupants.findOccupant({ nick, occupant_id }) : null;
+            this.occupant = nick || occupant_id ? occupants.findOccupant({ nick, occupant_id }) : null;
 
             if (!this.occupant) {
                 const jid = this.get('from_real_jid');

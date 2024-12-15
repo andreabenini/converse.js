@@ -1,23 +1,28 @@
 .conversejs {
     .styling-directive {
-        color: var(--subdued-color);
+        color: var(--secondary-color);
+    }
+
+    .msgs-indicator {
+        color: var(--background-color);
+        background-color: var(--chat-color);
     }
 
     .message {
         .show-msg-author-modal {
             align-self: flex-start; // Don't expand height to that of largest sibling
-                                    // https://stackoverflow.com/questions/27575779/prevent-a-flex-items-height-from-expanding-to-match-other-flex-items/40156422#40156422
-            color: var(--message-author-color) !important;
+            // https://stackoverflow.com/questions/27575779/prevent-a-flex-items-height-from-expanding-to-match-other-flex-items/40156422#40156422
+            color: var(--link-color) !important;
         }
 
         blockquote {
-            margin-left: 0.5em;
-            margin-bottom: 0.25em;
-            padding-right: 1em;
-            color: var(--chat-msg-quote-color);
-            border-left: 0.3em solid var(--chat-msg-quote-color);
-            padding-left: 0.5em;
+            border-inline-start: 0.3em solid var(--info-color);
+            color: var(--info-color);
             display: inline-block;
+            margin-bottom: 0.25em;
+            margin-inline-start: 0;
+            padding-inline-end: 1em;
+            padding-inline-start: 0.5em;
         }
 
         code {
@@ -47,9 +52,9 @@
             }
 
             .separator-text {
-                background: var(--chat-background-color);
+                background: var(--background-color);
                 bottom: 1px; // Offset needed due to .separator border size
-                color: var(--separator-text-color);
+                color: var(--foreground-color);
                 display: inline-block;
                 line-height: 2em;
                 padding: 0 1em;
@@ -59,14 +64,14 @@
         }
 
         &.chat-info {
-            color: var(--chat-info-color);
+            color: var(--info-color);
             font-size: var(--message-font-size);
             line-height: var(--line-height-small);
             font-size: 90%;
             padding: 0.17rem 1rem;
 
             &.badge {
-                color: var(--chat-head-text-color);
+                color: var(--chat-color);
             }
             &.chat-state-notification {
                 font-style: italic;
@@ -95,7 +100,7 @@
             font-style: italic;
 
             .chat-msg__author {
-                padding-right: 0.2em;
+                padding-inline-end: 0.2em;
             }
         }
 
@@ -110,15 +115,10 @@
                 -webkit-animation: colorchange-chatmessage 1s;
             }
             &:hover {
-                background-color: var(--chat-msg-hover-color);
+                background-color: var(--highlight-color-hover);
             }
             &.correcting {
-                &.groupchat  {
-                    background-color: var(--chatroom-correcting-color);
-                }
-                &:not(.groupchat) {
-                    background-color: var(--chat-correcting-color);
-                }
+                background-color: var(--highlight-color);
             }
 
             .spoiler {
@@ -128,13 +128,13 @@
                 margin-bottom: 0.5em;
             }
             .spoiler-toggle {
-                color: var(--background);
+                color: var(--background-color);
                 i {
-                    color: var(--background);
-                    padding-right: 0.5em;
+                    color: var(--background-color);
+                    padding-inline-end: 0.5em;
                 }
                 &:before {
-                    padding-right: 0.25em;
+                    padding-inline-end: 0.25em;
                     white-space: nowrap;
                 }
             }
@@ -142,18 +142,18 @@
             .chat-msg__content--me {
                 .chat-msg__body--groupchat {
                     .chat-msg__text {
-                        color: var(--subdued-color);
+                        color: var(--secondary-color);
                     }
                     &.chat-msg__body--delayed .chat-msg__text,
                     &.chat-msg__body--received .chat-msg__text {
-                        color: var(--message-text-color);
+                        color: var(--foreground-color);
                     }
                 }
             }
 
             .chat-msg__content--action {
                 width: 100%;
-                margin-left: 0;
+                margin-inline-start: 0;
             }
 
             .chat-msg__message {
@@ -163,46 +163,50 @@
                 width: 100%;
                 overflow-wrap: break-word;
                 .chat-msg__body--wrapper {
+                    .chat-msg__text {
+                        color: var(--foreground-color);
+                        padding: 0;
+                        white-space: pre-wrap;
+                        word-wrap: break-word;
+                        word-break: break-word;
+                        a {
+                            word-wrap: break-word;
+                            word-break: break-all;
+                            display: inline;
+                            &.chat-image__link {
+                                width: fit-content;
+                                display: block;
+                            }
+                        }
+                        img {
+                            &.emoji {
+                                height: 1.5em;
+                                width: 1.5em;
+                                margin: 0 0.05em 0 0.1em;
+                                vertical-align: -0.1em;
+                            }
+                        }
+                        .emojione {
+                            margin-bottom: -6px;
+                        }
+                    }
+                    &.error {
+                        .chat-msg__text {
+                            color: var(--disabled-color);
+                        }
+                    }
                     display: flex;
                 }
             }
 
             .chat-msg__edit-modal {
                 cursor: pointer;
-                padding-right: 0.5em;
+                padding-inline-end: 0.5em;
             }
 
             .chat-msg__subject {
                 font-weight: bold;
                 clear: right;
-            }
-
-            .chat-msg__text {
-                color: var(--message-text-color);
-                padding: 0;
-                white-space: pre-wrap;
-                word-wrap: break-word;
-                word-break: break-word;
-                a {
-                    word-wrap: break-word;
-                    word-break: break-all;
-                    display: inline;
-                    &.chat-image__link {
-                        width: fit-content;
-                        display: block;
-                    }
-                }
-                img {
-                    &.emoji {
-                        height: 1.5em;
-                        width: 1.5em;
-                        margin: 0 .05em 0 .1em;
-                        vertical-align: -0.1em;
-                    }
-                }
-                .emojione {
-                    margin-bottom: -6px;
-                }
             }
 
             .chat-msg__text--larger {
@@ -238,16 +242,16 @@
 
             .chat-msg__heading {
                 width: 100%;
-                padding-right: 0.25rem;
+                padding-inline-end: 0.25rem;
 
                 .badge {
-                    margin-left: 0.5em;
+                    margin-inline-start: 0.5em;
                     font-family: var(--normal_font);
                 }
                 .chat-msg__time {
-                    padding-left: 0.25em;
-                    padding-right: 0.25em;
-                    color: var(--comment);
+                    padding-inline-start: 0.25em;
+                    padding-inline-end: 0.25em;
+                    color: var(--secondary-color);
                 }
                 .fa-lock {
                     svg {
@@ -268,14 +272,14 @@
                     width: auto;
 
                     .fa {
-                        margin-left: 0.5em;
+                        margin-inline-start: 0.5em;
                     }
                 }
                 .chat-msg__author {
                     font-size: var(--message-font-size);
                 }
                 .chat-msg__time {
-                    margin-left: 0;
+                    margin-inline-start: 0;
                 }
             }
 
@@ -289,16 +293,15 @@
                     display: none;
                 }
                 &.chat-msg--with-avatar .chat-msg__content {
-                    margin-left: 2.75rem;
+                    margin-inline-start: 2.75rem;
                     width: 100%;
                 }
             }
 
-
             .chat-msg__receipt {
-                margin-left: 0.5em;
-                margin-right: 0.5em;
-                color: var(--message-receipt-color);
+                margin-inline-start: 0.5em;
+                margin-inline-end: 0.5em;
+                color: var(--success-color);
             }
         }
 
@@ -307,7 +310,7 @@
             flex-direction: column;
             justify-content: space-between;
             align-items: stretch;
-            margin-left: 0.5rem;
+            margin-inline-start: 0.5rem;
             &:hover {
                 .btn--standalone {
                     opacity: 1;
@@ -329,7 +332,7 @@
         }
         .separator {
             border-top: 0px;
-            border-bottom: var(--chatroom-separator-border-bottom);
+            border-bottom: 0.15em solid var(--muc-color);
         }
     }
 
@@ -339,7 +342,7 @@
                 &.chat-msg {
                     &.chat-msg--followup {
                         .chat-msg__content {
-                            margin-left: 0;
+                            margin-inline-start: 0;
                         }
                     }
                 }
@@ -348,9 +351,8 @@
     }
 }
 
-
 @media screen and (max-width: 767px) {
-    converse-chats:not(.converse-embedded)  {
+    converse-chats:not(.converse-embedded) {
         .message {
             &.chat-msg {
                 .chat-msg__author {

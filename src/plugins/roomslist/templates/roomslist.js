@@ -8,6 +8,7 @@ import 'plugins/muc-views/modals/add-muc.js';
 import 'plugins/muc-views/modals/muc-list.js';
 import { __ } from 'i18n';
 import { addBookmarkViaEvent } from 'plugins/bookmark-views/utils.js';
+import { getUnreadMsgsDisplay } from "shared/chat/utils";
 
 import '../styles/roomsgroups.scss';
 
@@ -33,13 +34,13 @@ function tplBookmark (room) {
 
             <converse-icon class="fa ${bm ? 'fa-bookmark' : 'fa-bookmark-empty'}"
                            size="1.2em"
-                           color="${ isCurrentlyOpen(room) ? 'var(--inverse-link-color)' : '' }"></converse-icon>
+                           color="${ isCurrentlyOpen(room) ? 'var(--foreground-color)' : '' }"></converse-icon>
         </a>`;
 }
 
 /** @param {MUC} room */
 function tplUnreadIndicator (room) {
-    return html`<span class="list-item-badge badge badge--muc msgs-indicator">${ room.get('num_unread') }</span>`;
+    return html`<span class="list-item-badge badge badge--muc msgs-indicator">${ getUnreadMsgsDisplay(room) }</span>`;
 }
 
 function tplActivityIndicator () {
@@ -59,6 +60,7 @@ function tplRoomItem (el, room) {
 
             <a class="list-item-link open-room available-room w-100"
                 data-room-jid="${room.get('jid')}"
+                data-room-name="${room.getDisplayName()}"
                 title="${__('Click to open this groupchat')}"
                 @click=${ev => el.openRoom(ev)}>
                 <converse-avatar
@@ -84,7 +86,7 @@ function tplRoomItem (el, room) {
                 <converse-icon
                     class="fa fa-sign-out-alt"
                     size="1.2em"
-                    color="${ isCurrentlyOpen(room) ? 'var(--inverse-link-color)' : '' }"></converse-icon>
+                    color="${ isCurrentlyOpen(room) ? 'var(--foreground-color)' : '' }"></converse-icon>
             </a>
         </li>`;
 }
@@ -108,7 +110,7 @@ function tplRoomDomainGroup (el, domain, rooms) {
             <converse-icon
                 class="fa ${ is_collapsed ? 'fa-caret-right' : 'fa-caret-down' }"
                 size="1em"
-                color="var(--groupchats-header-color)"></converse-icon>
+                color="var(--muc-color)"></converse-icon>
             ${domain}
         </a>
         <ul class="items-list muc-domain-group-rooms ${ is_collapsed ? 'collapsed' : '' }" data-domain="${domain}">
@@ -156,20 +158,20 @@ export default (el) => {
 
     const btns = [
         html`<a class="dropdown-item show-bookmark-list-modal" role="button"
-                @click=${(ev) => api.modal.show('converse-bookmark-list-modal', { 'model': el.model }, ev)}
+                @click="${(ev) => api.modal.show('converse-bookmark-list-modal', { 'model': el.model }, ev)}"
                 data-toggle="modal">
                     <converse-icon class="fa fa-bookmark" size="1em"></converse-icon>
                     ${i18n_show_bookmarks}
         </a>`,
         html`<a class="dropdown-item show-list-muc-modal" role="button"
-                @click=${(ev) => api.modal.show('converse-muc-list-modal', { 'model': el.model }, ev)}
+                @click="${(ev) => api.modal.show('converse-muc-list-modal', { 'model': el.model }, ev)}"
                 data-toggle="modal"
                 data-target="#muc-list-modal">
                     <converse-icon class="fa fa-list-ul" size="1em"></converse-icon>
                     ${i18n_title_list_rooms}
         </a>`,
         html`<a class="dropdown-item show-add-muc-modal" role="button"
-                @click=${(ev) => api.modal.show('converse-add-muc-modal', { 'model': el.model }, ev)}
+                @click="${(ev) => api.modal.show('converse-add-muc-modal', { 'model': el.model }, ev)}"
                 data-toggle="modal"
                 data-target="#add-chatrooms-modal">
                     <converse-icon class="fa fa-plus" size="1em"></converse-icon>

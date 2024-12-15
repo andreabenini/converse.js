@@ -12,9 +12,18 @@ const { ACTIVE, COMPOSING } = constants;
 
 export default class MessageForm extends CustomElement {
 
+    static get properties () {
+        return {
+            model: { type: Object },
+        }
+    }
+
+    constructor () {
+        super();
+        this.model = null;
+    }
+
     async initialize () {
-        const { chatboxes } = _converse.state;
-        this.model = chatboxes.get(this.getAttribute('jid'));
         await this.model.initialized;
         this.listenTo(this.model.messages, 'change:correcting', this.onMessageCorrecting);
         this.listenTo(this.model, 'change:composing_spoiler', () => this.requestUpdate());
@@ -137,7 +146,10 @@ export default class MessageForm extends CustomElement {
                 if (value.startsWith(':')) {
                     ev.preventDefault();
                     ev.stopPropagation();
-                    this.model.trigger('emoji-picker-autocomplete', ev.target, value);
+                    this.model.trigger(
+                        'emoji-picker-autocomplete',
+                        { target: ev.target, value },
+                    );
                 }
             } else if (ev.keyCode === converse.keycodes.FORWARD_SLASH) {
                 // Forward slash is used to run commands. Nothing to do here.
@@ -180,7 +192,6 @@ export default class MessageForm extends CustomElement {
     async onFormSubmitted (ev) {
         ev?.preventDefault?.();
         const { chatboxviews } = _converse.state;
-
         const textarea = /** @type {HTMLTextAreaElement} */(this.querySelector('.chat-textarea'));
         const message_text = textarea.value.trim();
         if (
@@ -217,7 +228,7 @@ export default class MessageForm extends CustomElement {
         if (api.settings.get('view_mode') === 'overlayed') {
             // XXX: Chrome flexbug workaround. The .chat-content area
             // doesn't resize when the textarea is resized to its original size.
-            const chatview = chatboxviews.get(this.getAttribute('jid'));
+            const chatview = chatboxviews.get(this.model.get('jid'));
             const msgs_container = chatview.querySelector('.chat-content__messages');
             msgs_container.parentElement.style.display = 'none';
         }
@@ -226,7 +237,7 @@ export default class MessageForm extends CustomElement {
 
         if (api.settings.get('view_mode') === 'overlayed') {
             // XXX: Chrome flexbug workaround.
-            const chatview = chatboxviews.get(this.getAttribute('jid'));
+            const chatview = chatboxviews.get(this.model.get('jid'));
             const msgs_container = chatview.querySelector('.chat-content__messages');
             msgs_container.parentElement.style.display = '';
         }

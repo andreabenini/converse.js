@@ -1,7 +1,8 @@
 /**
  * @module:headless-plugins-chat-utils
  * @typedef {import('./model.js').default} ChatBox
- * @typedef {module:plugin-chat-parsers.MessageAttributes} MessageAttributes
+ * @typedef {import('./types.ts').MessageAttributes} MessageAttributes
+ * @typedef {import('../../shared/parsers').StanzaParseError} StanzaParseError
  * @typedef {import('strophe.js').Builder} Builder
  */
 import sizzle from "sizzle";
@@ -10,7 +11,7 @@ import _converse from '../../shared/_converse.js';
 import api from '../../shared/api/index.js';
 import converse from "../../shared/api/public.js";
 import log from '../../log.js';
-import { isArchived, isHeadline, isServerMessage, } from '../../shared/parsers';
+import { isArchived, isHeadline, isMUCPrivateMessage, isServerMessage, } from '../../shared/parsers';
 import { parseMessage } from './parsers.js';
 import { shouldClearCache } from '../../utils/session.js';
 import { CONTROLBOX_TYPE, PRIVATE_CHAT_TYPE } from "../../shared/constants.js";
@@ -142,6 +143,10 @@ export async function handleMessageStanza (stanza) {
         const from = stanza.getAttribute('from');
         return log.info(`handleMessageStanza: Ignoring incoming server message from JID: ${from}`);
     }
+    if (await isMUCPrivateMessage(stanza)) {
+        return true;
+    }
+
     let attrs;
     try {
         attrs = await parseMessage(stanza);
@@ -149,12 +154,16 @@ export async function handleMessageStanza (stanza) {
         return log.error(e);
     }
     if (u.isErrorObject(attrs)) {
-        attrs.stanza && log.error(attrs.stanza);
-        return log.error(attrs.message);
+        const { stanza, message } = /** @type {StanzaParseError} */(attrs);
+        if (stanza) log.error(stanza);
+        return log.error(message);
     }
+
+    const { body, plaintext, contact_jid, nick } = /** @type {MessageAttributes} */(attrs);
+
     // XXX: Need to take XEP-428 <fallback> into consideration
-    const has_body = !!(attrs.body || attrs.plaintext)
-    const chatbox = await api.chats.get(attrs.contact_jid, { 'nickname': attrs.nick }, has_body);
+    const has_body = !!(body || plaintext);
+    const chatbox = await api.chats.get(contact_jid, { nickname: nick }, has_body);
     await chatbox?.queueMessage(attrs);
     /**
      * @typedef {Object} MessageData

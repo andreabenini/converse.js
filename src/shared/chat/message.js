@@ -1,4 +1,4 @@
-import { api, converse, log, constants } from  '@converse/headless';
+import { api, converse, constants, _converse } from  '@converse/headless';
 import './message-actions.js';
 import './message-body.js';
 import 'shared/components/dropdown.js';
@@ -15,9 +15,8 @@ import tplRetraction from './templates/retraction.js';
 import tplSpinner from 'templates/spinner.js';
 import { CustomElement } from 'shared/components/element.js';
 import { __ } from 'i18n';
-import { getHats } from './utils.js';
 
-const { Strophe, dayjs } = converse.env;
+const { Strophe } = converse.env;
 const { SUCCESS } = constants;
 
 
@@ -25,24 +24,21 @@ export default class Message extends CustomElement {
 
     constructor () {
         super();
-        this.jid = null;
-        this.mid = null;
+        this.model_with_messages = null;
+        this.model = null;
     }
 
     static get properties () {
         return {
-            jid: { type: String },
-            mid: { type: String }
+            model_with_messages: { type: Object },
+            model: { type: Object }
         }
     }
 
     async initialize () {
-        await this.setModels();
-        if (!this.model) {
-            // Happen during tests due to a race condition
-            log.error('Could not find module for converse-chat-message');
-            return;
-        }
+        super.initialize();
+        await this.model_with_messages.initialized;
+        await this.model_with_messages.messages.fetched;
 
         const settings = api.settings.get();
         this.listenTo(settings, 'change:render_media', () => {
@@ -51,20 +47,13 @@ export default class Message extends CustomElement {
             this.requestUpdate();
         });
 
-        this.listenTo(this.chatbox, 'change:first_unread_id', () => this.requestUpdate());
+        this.listenTo(this.model_with_messages, 'change:first_unread_id', () => this.requestUpdate());
         this.listenTo(this.model, 'change', () => this.requestUpdate());
         this.listenTo(this.model, 'contact:change', () => this.requestUpdate());
         this.listenTo(this.model, 'vcard:change', () => this.requestUpdate());
         this.listenTo(this.model, 'occupant:change', () => this.requestUpdate());
         this.listenTo(this.model, 'occupant:add', () => this.requestUpdate());
-    }
-
-    async setModels () {
-        this.chatbox = await api.chatboxes.get(this.jid);
-        await this.chatbox.initialized;
-        await this.chatbox.messages.fetched;
-        this.model = this.chatbox.messages.get(this.mid);
-        this.model && this.requestUpdate();
+        this.requestUpdate();
     }
 
     render () {
@@ -81,13 +70,6 @@ export default class Message extends CustomElement {
         } else {
             return this.renderChatMessage();
         }
-    }
-
-    getProps () {
-        return Object.assign(
-            this.model.toJSON(),
-            this.getDerivedMessageProps()
-        );
     }
 
     renderRetraction () {
@@ -115,7 +97,7 @@ export default class Message extends CustomElement {
     }
 
     renderChatMessage () {
-        return tplMessage(this, this.getProps());
+        return tplMessage(this);
     }
 
     shouldShowAvatar () {
@@ -147,7 +129,7 @@ export default class Message extends CustomElement {
 
     hasMentions () {
         const is_groupchat = this.model.get('type') === 'groupchat';
-        return is_groupchat && this.model.get('sender') === 'them' && this.chatbox.isUserMentioned(this.model);
+        return is_groupchat && this.model.get('sender') === 'them' && this.model_with_messages.isUserMentioned(this.model);
     }
 
     getOccupantAffiliation () {
@@ -179,29 +161,14 @@ export default class Message extends CustomElement {
         return extra_classes.filter(c => c).join(" ");
     }
 
-    getDerivedMessageProps () {
-        const format = api.settings.get('time_format');
-        return {
-            'pretty_time': dayjs(this.model.get('edited') || this.model.get('time')).format(format),
-            'has_mentions': this.hasMentions(),
-            'hats': getHats(this.model),
-            'is_first_unread': this.chatbox.get('first_unread_id') === this.model.get('id'),
-            'is_me_message': this.model.isMeCommand(),
-            'is_retracted': this.isRetracted(),
-            'username': this.model.getDisplayName(),
-            'should_show_avatar': this.shouldShowAvatar(),
-            'colorize_username': api.settings.get('colorize_username'),
-        }
-    }
-
     getRetractionText () {
         if (['groupchat', 'mep'].includes(this.model.get('type')) && this.model.get('moderated_by')) {
             const retracted_by_mod = this.model.get('moderated_by');
-            const chatbox = this.model.collection.chatbox;
             if (!this.model.mod) {
+                const { occupants } = this.model_with_messages;
                 this.model.mod =
-                    chatbox.occupants.findOccupant({'jid': retracted_by_mod}) ||
-                    chatbox.occupants.findOccupant({'nick': Strophe.getResourceFromJid(retracted_by_mod)});
+                    occupants.findOccupant({'jid': retracted_by_mod}) ||
+                    occupants.findOccupant({'nick': Strophe.getResourceFromJid(retracted_by_mod)});
             }
             const modname = this.model.mod ? this.model.mod.getDisplayName() : __('A moderator');
             return __('%1$s has removed this message', modname);
@@ -212,14 +179,13 @@ export default class Message extends CustomElement {
 
     showUserModal (ev) {
         if (this.model.get('sender') === 'me') {
-            api.modal.show('converse-profile-modal', {model: this.model}, ev);
+            api.modal.show('converse-profile-modal', { model: _converse.state.xmppstatus }, ev);
         } else if (this.model.get('type') === 'groupchat') {
             ev.preventDefault();
-            api.modal.show('converse-muc-occupant-modal', { 'model': this.model.getOccupant(), 'message': this.model }, ev);
+            api.modal.show('converse-muc-occupant-modal', { model: this.model.getOccupant(), message: this.model }, ev);
         } else {
             ev.preventDefault();
-            const chatbox = this.model.collection.chatbox;
-            api.modal.show('converse-user-details-modal', { model: chatbox }, ev);
+            api.modal.show('converse-user-details-modal', { model: this.model_with_messages }, ev);
         }
     }
 

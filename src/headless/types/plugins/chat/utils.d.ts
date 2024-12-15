@@ -12,14 +12,15 @@ export function registerMessageHandlers(): void;
  * Handler method for all incoming single-user chat "message" stanzas.
  * @param {Element|Builder} stanza
  */
-export function handleMessageStanza(stanza: Element | Builder): Promise<void>;
+export function handleMessageStanza(stanza: Element | Builder): Promise<true | void>;
 /**
  * Ask the XMPP server to enable Message Carbons
  * See [XEP-0280](https://xmpp.org/extensions/xep-0280.html#enabling)
  */
 export function enableCarbons(): Promise<void>;
 export type ChatBox = import("./model.js").default;
-export type MessageAttributes = any;
+export type MessageAttributes = import("./types.ts").MessageAttributes;
+export type StanzaParseError = import("../../shared/parsers").StanzaParseError;
 export type Builder = import("strophe.js").Builder;
 import { Model } from '@converse/skeletor';
 //# sourceMappingURL=utils.d.ts.map

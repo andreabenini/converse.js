@@ -1,14 +1,15 @@
 import { getOpenPromise } from '@converse/openpromise';
+import { Model } from '@converse/skeletor';
 import '../../plugins/status/api.js';
 import _converse from '../../shared/_converse.js';
 import api from '../../shared/api/index.js';
 import converse from '../../shared/api/public.js';
-import { ColorAwareModel } from '../../shared/color.js';
+import ColorAwareModel from '../../shared/color.js';
 import { rejectPresenceSubscription } from './utils.js';
 
 const { Strophe, $iq, $pres } = converse.env;
 
-class RosterContact extends ColorAwareModel {
+class RosterContact extends ColorAwareModel(Model) {
     get idAttribute () {
         return 'jid';
     }
@@ -95,7 +96,6 @@ class RosterContact extends ColorAwareModel {
 
     /**
      * Send a presence subscription request to this roster contact
-     * @method RosterContacts#subscribe
      * @param {string} message - An optional message to explain the
      *      reason for the subscription request.
      */
@@ -110,7 +110,6 @@ class RosterContact extends ColorAwareModel {
      * the user SHOULD acknowledge receipt of that subscription
      * state notification by sending a presence stanza of type
      * "subscribe" to the contact
-     * @method RosterContacts#ackSubscribe
      */
     ackSubscribe () {
         api.send($pres({
@@ -135,7 +134,6 @@ class RosterContact extends ColorAwareModel {
 
     /**
      * Unauthorize this contact's presence subscription
-     * @method RosterContacts#unauthorize
      * @param {string} message - Optional message to send to the person being unauthorized
      */
     unauthorize (message) {
@@ -145,7 +143,6 @@ class RosterContact extends ColorAwareModel {
 
     /**
      * Authorize presence subscription
-     * @method RosterContacts#authorize
      * @param {string} message - Optional message to send to the person being authorized
      */
     authorize (message) {
@@ -159,7 +156,6 @@ class RosterContact extends ColorAwareModel {
 
     /**
      * Instruct the XMPP server to remove this contact from our roster
-     * @method RosterContacts#removeFromRoster
      * @returns {Promise}
      */
     removeFromRoster () {

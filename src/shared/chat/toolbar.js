@@ -61,12 +61,13 @@ export class ChatToolbar extends CustomElement {
         const buttons = [];
 
         if (this.show_emoji_button) {
-            const chatview = _converse.state.chatboxviews.get(this.model.get('jid'));
-            buttons.push(html`<converse-emoji-dropdown .chatview=${chatview}></converse-emoji-dropdown>`);
+            buttons.push(
+                html`<converse-emoji-dropdown .model=${this.model}></converse-emoji-dropdown>`
+            );
         }
 
         if (this.show_call_button) {
-            const color = this.is_groupchat ? '--muc-toolbar-btn-color' : '--chat-toolbar-btn-color';
+            const color = this.is_groupchat ? '--muc-color' : '--chat-color';
             const i18n_start_call = __('Start a call');
             buttons.push(html`
                 <button type="button"
@@ -145,7 +146,7 @@ export class ChatToolbar extends CustomElement {
         } else {
             i18n_toggle_spoiler = __("Click to write your message as a spoiler");
         }
-        const color = this.is_groupchat ? '--muc-toolbar-btn-color' : '--chat-toolbar-btn-color';
+        const color = this.is_groupchat ? '--muc-color' : '--chat-color';
         const markup = html`
             <button type="button"
                     class="btn toggle-compose-spoiler"

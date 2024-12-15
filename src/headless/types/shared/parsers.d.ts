@@ -9,11 +9,9 @@
 export function getStanzaIDs(stanza: Element, original_stanza: Element): any;
 /**
  * @param {Element} stanza
+ * @returns {import('./types').EncryptionAttrs}
  */
-export function getEncryptionAttributes(stanza: Element): {
-    is_encrypted: boolean;
-    encryption_namespace: any;
-};
+export function getEncryptionAttributes(stanza: Element): import("./types").EncryptionAttrs;
 /**
  * @param {Element} stanza - The message stanza
  * @param {Element} original_stanza - The original stanza, that contains the
@@ -26,7 +24,7 @@ export function getRetractionAttributes(stanza: Element, original_stanza: Elemen
  * @param {Element} original_stanza
  */
 export function getCorrectionAttributes(stanza: Element, original_stanza: Element): {
-    replace_id: any;
+    replace_id: string;
     edited: string;
 } | {
     replace_id?: undefined;
@@ -35,20 +33,20 @@ export function getCorrectionAttributes(stanza: Element, original_stanza: Elemen
 /**
  * @param {Element} stanza
  */
-export function getOpenGraphMetadata(stanza: Element): any;
+export function getOpenGraphMetadata(stanza: Element): {};
 /**
  * @param {Element} stanza
  */
 export function getSpoilerAttributes(stanza: Element): {
     is_spoiler: boolean;
-    spoiler_hint: any;
+    spoiler_hint: string;
 };
 /**
  * @param {Element} stanza
  */
 export function getOutOfBandAttributes(stanza: Element): {
-    oob_url: any;
-    oob_desc: any;
+    oob_url: string;
+    oob_desc: string;
 } | {
     oob_url?: undefined;
     oob_desc?: undefined;
@@ -59,7 +57,7 @@ export function getOutOfBandAttributes(stanza: Element): {
  */
 export function getErrorAttributes(stanza: Element): {
     is_error: boolean;
-    error_text: any;
+    error_text: string;
     error_type: string;
     error_condition: string;
 } | {
@@ -71,13 +69,13 @@ export function getErrorAttributes(stanza: Element): {
 /**
  * Given a message stanza, find and return any XEP-0372 references
  * @param {Element} stanza - The message stanza
- * @returns {Reference}
+ * @returns {import('./types').XEP372Reference[]}
  */
-export function getReferences(stanza: Element): Reference;
+export function getReferences(stanza: Element): import("./types").XEP372Reference[];
 /**
  * @param {Element} stanza
  */
-export function getReceiptId(stanza: Element): any;
+export function getReceiptId(stanza: Element): string;
 /**
  * Determines whether the passed in stanza is a XEP-0280 Carbon
  * @param {Element} stanza - The message stanza
@@ -88,12 +86,12 @@ export function isCarbon(stanza: Element): boolean;
  * Returns the XEP-0085 chat state contained in a message stanza
  * @param {Element} stanza - The message stanza
  */
-export function getChatState(stanza: Element): any;
+export function getChatState(stanza: Element): string;
 /**
  * @param {Element} stanza
  * @param {Object} attrs
  */
-export function isValidReceiptRequest(stanza: Element, attrs: any): any;
+export function isValidReceiptRequest(stanza: Element, attrs: any): number;
 /**
  * Check whether the passed-in stanza is a forwarded message that is "bare",
  * i.e. it's not forwarded as part of a larger protocol, like MAM.
@@ -109,10 +107,17 @@ export function throwErrorIfInvalidForward(stanza: Element): void;
 export function getChatMarker(stanza: Element): Element;
 /**
  * @param {Element} stanza
+ * @returns {boolean}
  */
 export function isHeadline(stanza: Element): boolean;
 /**
  * @param {Element} stanza
+ * @returns {Promise<boolean>}
+ */
+export function isMUCPrivateMessage(stanza: Element): Promise<boolean>;
+/**
+ * @param {Element} stanza
+ * @returns {boolean}
  */
 export function isServerMessage(stanza: Element): boolean;
 /**
@@ -128,9 +133,9 @@ export function isArchived(original_stanza: Element): boolean;
 export function getInputType(field: Element): any;
 /**
 * @param {Element} stanza
-* @returns {XForm}
+* @returns {import('./types').XForm}
 */
-export function parseXForm(stanza: Element): XForm;
+export function parseXForm(stanza: Element): import("./types").XForm;
 export class StanzaParseError extends Error {
     /**
      * @param {string} message
@@ -139,49 +144,4 @@ export class StanzaParseError extends Error {
     constructor(message: string, stanza: Element);
     stanza: Element;
 }
-export type XFormReportedField = {
-    var: string;
-    label: string;
-};
-export type XFormResultItemField = {
-    var: string;
-    value: string;
-};
-export type XFormOption = {
-    value: string;
-    label: string;
-    selected: boolean;
-    required: boolean;
-};
-export type XFormCaptchaURI = {
-    type: string;
-    data: string;
-};
-export type XFormListTypes = "list-single" | "list-multi";
-export type XFormJIDTypes = "jid-single" | "jid-multi";
-export type XFormTextTypes = "text-multi" | "text-private" | "text-single";
-export type XFormDateTypes = "date" | "datetime";
-export type XFormFieldTypes = XFormListTypes | XFormJIDTypes | XFormTextTypes | XFormDateTypes | "fixed" | "boolean" | "url" | "hidden";
-export type XFormField = {
-    var: string;
-    label: string;
-    type?: XFormFieldTypes;
-    text?: string;
-    value?: string;
-    required?: boolean;
-    checked?: boolean;
-    options?: XFormOption[];
-    uri?: XFormCaptchaURI;
-    readonly: boolean;
-};
-export type XFormResponseType = "result" | "form";
-export type XForm = {
-    type: XFormResponseType;
-    title?: string;
-    instructions?: string;
-    reported?: XFormReportedField[];
-    items?: XFormResultItemField[][];
-    fields?: XFormField[];
-};
-export type Reference = any;
 //# sourceMappingURL=parsers.d.ts.map

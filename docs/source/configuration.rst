@@ -1922,6 +1922,14 @@ If set to ``true``, Converse will show any roster groups you might have configur
     elsewhere.
 
 
+rtl_langs
+---------
+
+* Default: ``["ar", "fa", "he", "ur"]``
+
+A list of languages which are written right-to-left and for which the UI should also be shown right-to-left.
+
+
 send_chat_state_notifications
 -----------------------------
 
@@ -2189,9 +2197,9 @@ theme
 -----
 
 * Default: ``default``
-* Valid options: ``default``, ``cyberpunk``, ``dracula``
+* Valid options: ``default``, ``cyberpunk``, ``dracula``, ``nord``
 
-Let's you set a color theme for Converse.
+Lets you set a color theme for Converse.
 
 colorize_username
 -------------------
@@ -2286,14 +2294,14 @@ support.
 view_mode
 ---------
 
-* Default: ``overlayed``
-* Allowed values: ``overlayed``, ``fullscreen``, ``embedded``
+* Default: ``fullscreen``
+* Allowed values: ``fullscreen``, ``overlayed``, ``embedded``
 
 The ``view_mode`` setting configures Converse's mode and resulting behavior.
 
-* ``overlayed`` is the original mode, in which the chats appeared as small boxes overlaying a webpage which can contain arbitrary content.
-* ``fullscreen`` is for a fullpage and single-page app.
-* ``embedded`` is used to embed Converse into a particular part of the web page. Put the custom element ``<converse-root></converse-root>`` into your page HTML there were you want Converse to appear. See `conversejs.org/demo/embedded.html <https://conversejs.org/demo/embedded.html>`_ for an example of this view mode.
+* ``fullscreen``: Is for a fullpage and single-page app.
+* ``overlayed``: Chats appear as boxes overlaying a pre-existing webpage which may contain arbitrary content.
+* ``embedded``: Used to embed Converse into a particular part of the web page. Put the custom element ``<converse-root></converse-root>`` into your page HTML there were you want Converse to appear. See `conversejs.org/demo/embedded.html <https://conversejs.org/demo/embedded.html>`_ for an example of this view mode.
 
 .. _`whitelisted_plugins`:
 

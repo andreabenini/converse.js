@@ -44,12 +44,14 @@ class MessageActions extends CustomElement {
         this.listenTo(settings, 'change:allowed_video_domains', () => this.requestUpdate());
         this.listenTo(settings, 'change:render_media', () => this.requestUpdate());
         this.listenTo(this.model, 'change', () => this.requestUpdate());
+
         // This may change the ability to send messages, and therefore the presence of the quote button.
         // See plugins/muc-views/bottom-panel.js
-        this.listenTo(this.model.collection.chatbox.features, 'change:moderated', () => this.requestUpdate());
-        this.listenTo(this.model.collection.chatbox.occupants, 'add', this.updateIfOwnOccupant);
-        this.listenTo(this.model.collection.chatbox.occupants, 'change:role', this.updateIfOwnOccupant);
-        this.listenTo(this.model.collection.chatbox.session, 'change:connection_status', () => this.requestUpdate());
+        this.listenTo(this.model.chatbox.features, 'change:moderated', () => this.requestUpdate());
+        this.listenTo(this.model.chatbox.occupants, 'add', this.updateIfOwnOccupant);
+        this.listenTo(this.model.chatbox.occupants, 'change:role', this.updateIfOwnOccupant);
+        this.listenTo(this.model.chatbox.session, 'change:connection_status', () => this.requestUpdate());
+
     }
 
     updateIfOwnOccupant (o) {
@@ -86,7 +88,7 @@ class MessageActions extends CustomElement {
             <button type="button" class="dropdown-item chat-msg__action ${o.button_class}" @click=${o.handler}>
                 <converse-icon
                     class="${o.icon_class}"
-                    color="var(--inverse-link-color)"
+                    color="var(--foreground-color)"
                     size="1em"
                 ></converse-icon>&nbsp;${o.i18n_text}
             </button>

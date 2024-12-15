@@ -1,20 +1,16 @@
 export default class Message extends CustomElement {
     static get properties(): {
-        jid: {
-            type: StringConstructor;
+        model_with_messages: {
+            type: ObjectConstructor;
         };
-        mid: {
-            type: StringConstructor;
+        model: {
+            type: ObjectConstructor;
         };
     };
-    jid: any;
-    mid: any;
-    initialize(): Promise<void>;
-    setModels(): Promise<void>;
-    chatbox: any;
+    model_with_messages: any;
     model: any;
+    initialize(): Promise<void>;
     render(): import("lit").TemplateResult<1> | "";
-    getProps(): any;
     renderRetraction(): import("lit").TemplateResult<1>;
     renderMessageText(): import("lit").TemplateResult<1>;
     renderMEPMessage(): import("lit").TemplateResult<1>;
@@ -30,17 +26,6 @@ export default class Message extends CustomElement {
     getOccupantAffiliation(): any;
     getOccupantRole(): any;
     getExtraMessageClasses(): string;
-    getDerivedMessageProps(): {
-        pretty_time: any;
-        has_mentions: any;
-        hats: any[];
-        is_first_unread: boolean;
-        is_me_message: any;
-        is_retracted: any;
-        username: any;
-        should_show_avatar: boolean;
-        colorize_username: any;
-    };
     getRetractionText(): any;
     showUserModal(ev: any): void;
     showMessageVersionsModal(ev: any): void;

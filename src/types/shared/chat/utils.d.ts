@@ -1,21 +1,29 @@
+/**
+ * @param {Model} model
+ */
+export function getUnreadMsgsDisplay(model: Model): any;
 export function getHeadingDropdownItem(promise_or_data: any): Promise<import("lit").TemplateResult<1> | "">;
 export function getHeadingStandaloneButton(promise_or_data: any): Promise<import("lit").TemplateResult<1>>;
 /**
- * @param {Promise} promise
+ * @param {Promise<Array<object>>} promise
  */
-export function getStandaloneButtons(promise: Promise<any>): Promise<any>;
+export function getStandaloneButtons(promise: Promise<Array<object>>): Promise<import("lit/directive.js").DirectiveResult<typeof import("lit/directives/until.js").UntilDirective>[]>;
 /**
- * @param {Promise} promise
+ * @param {Promise<Array<object>>} promise
  */
-export function getDropdownButtons(promise: Promise<any>): Promise<import("lit").TemplateResult<1> | "">;
+export function getDropdownButtons(promise: Promise<Array<object>>): Promise<import("lit").TemplateResult<1> | "">;
 export function onScrolledDown(model: any): void;
 /**
  * Given a message object, returns a TemplateResult indicating a new day if
  * the passed in message is more than a day later than its predecessor.
  * @param {Message} message
+ * @returns {TemplateResult|undefined}
  */
-export function getDayIndicator(message: Message): import("lit").TemplateResult<1>;
-export function getHats(message: any): any[];
+export function getDayIndicator(message: Message): TemplateResult | undefined;
+/**
+ * @param {MUCMessage} message
+ */
+export function getHats(message: MUCMessage): any[];
 export function getTonedEmojis(): any;
 /**
  * @typedef {object} EmojiMarkupOptions
@@ -58,11 +66,22 @@ export function shortnamesToEmojis(str: string, options?: {
     unicode_only: boolean;
     add_title_wrapper: boolean;
 }): any[];
-export const markScrolled: import("lodash").DebouncedFunc<(ev: any) => void>;
+/**
+ * Called when the chat content is scrolled up or down.
+ * We want to record when the user has scrolled away from
+ * the bottom, so that we don't automatically scroll away
+ * from what the user is reading when new messages are received.
+ */
+export const markScrolled: import("lodash").DebouncedFunc<(ev: Event) => void>;
 export type EmojiMarkupOptions = {
     unicode_only?: boolean;
     add_title_wrapper?: boolean;
 };
-export type Message = import("@converse/headless").Message;
+export type ChatView = import("../../plugins/chatview/chat.js").default;
 export type MUCView = import("../../plugins/muc-views/muc.js").default;
+export type MUCOccupantView = import("../../plugins/muc-views/occupant").default;
+export type Message = import("@converse/headless").Message;
+export type MUCMessage = import("@converse/headless").MUCMessage;
+export type Model = import("@converse/skeletor").Model;
+export type TemplateResult = import("lit").TemplateResult;
 //# sourceMappingURL=utils.d.ts.map

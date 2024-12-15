@@ -1,15 +1,14 @@
-/**
- * @typedef {import('@converse/skeletor').Model} Model
- */
 import sizzle from 'sizzle';
-import ModelWithContact from './model-with-contact.js';
-import _converse from '../../shared/_converse.js';
-import api from '../../shared/api/index.js';
+import { Strophe, $iq } from 'strophe.js';
+import { Model } from '@converse/skeletor';
+import { getOpenPromise } from '@converse/openpromise';
 import dayjs from 'dayjs';
 import log from '../../log.js';
-import { getOpenPromise } from '@converse/openpromise';
+import _converse from '../../shared/_converse.js';
+import api from '../../shared/api/index.js';
 import { SUCCESS, FAILURE } from '../../shared/constants.js';
-import { Strophe, $iq } from 'strophe.js';
+import ModelWithContact from '../../shared/model-with-contact.js';
+import ColorAwareModel from '../../shared/color.js';
 import { getUniqueId } from '../../utils/index.js';
 
 /**
@@ -19,7 +18,7 @@ import { getUniqueId } from '../../utils/index.js';
  * @memberOf _converse
  * @example const msg = new Message({'message': 'hello world!'});
  */
-class Message extends ModelWithContact {
+class Message extends ModelWithContact(ColorAwareModel(Model)) {
 
     defaults () {
         return {
@@ -41,6 +40,7 @@ class Message extends ModelWithContact {
     async initialize () {
         super.initialize();
         if (!this.checkValidity()) return;
+        this.chatbox = this.collection?.chatbox;
 
         this.initialized = getOpenPromise();
         if (this.get('file')) {
@@ -64,7 +64,6 @@ class Message extends ModelWithContact {
 
     setContact () {
         if (['chat', 'normal'].includes(this.get('type'))) {
-            ModelWithContact.prototype.initialize.apply(this, arguments);
             return this.setModelContact(Strophe.getBareJidFromJid(this.get('from')));
         }
     }
@@ -144,10 +143,14 @@ class Message extends ModelWithContact {
      * under one author heading.
      * A message is considered a followup of it's predecessor when it's a chat
      * message from the same author, within 10 minutes.
-     * @returns { boolean }
+     * @returns {boolean}
      */
     isFollowup () {
-        const messages = this.collection.models;
+        const messages = this.collection?.models;
+        if (!messages) {
+            // Happens during tests
+            return false;
+        }
         const idx = messages.indexOf(this);
         const prev_model = idx ? messages[idx-1] : null;
         if (prev_model === null) {

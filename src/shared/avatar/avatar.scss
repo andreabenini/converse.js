@@ -3,11 +3,11 @@ converse-avatar {
     background: transparent;
 
     &.avatar-muc {
-        margin-right: 0.5em;
+        margin-inline-end: 0.5em;
     }
 
     &.modal-avatar {
-        display: block;
+        display: flex;
         margin-bottom: 1em;
     }
 

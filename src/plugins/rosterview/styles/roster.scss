@@ -11,7 +11,7 @@
         .open-contacts-toggle {
             white-space: nowrap;
             converse-icon {
-                margin-left: 0.25em;
+                margin-inline-start: 0.25em;
                 padding-bottom: 0.1em;
             }
         }
@@ -19,12 +19,13 @@
     }
 
     #converse-roster {
+        text-align: start;
         width: 100%;
         margin: 0;
         padding: 0;
 
         svg {
-            fill: var(--chat-color);
+            fill: var(--chat-color) !important;
         }
 
         .roster-contacts {
@@ -70,9 +71,9 @@
             }
 
             .group-toggle, .group-toggle .fa {
-                color: var(--chat-head-color-dark) !important;
+                color: var(--chat-color) !important;
                 &:hover {
-                    color: var(--chat-head-color-darker) !important;
+                    color: var(--chat-color-hover) !important;
                 }
             }
 
@@ -85,24 +86,14 @@
                     a {
                         line-height: var(--line-height);
                     }
-                    .req-contact-name {
-                        padding: 0 0.2em 0 0;
-                    }
-                }
-
-                &:hover {
-                    .open-chat {
-                        converse-icon.chat-status {
-                            border: 2px solid var(--controlbox-pane-bg-hover-color);
-                        }
-                    }
                 }
 
                 .open-chat {
                     margin: 0;
                     padding: 0;
                     converse-icon.chat-status {
-                        border: 2px solid var(--controlbox-pane-background-color);
+                        position: relative;
+                        border: 2px solid var(--background-color);
                         svg {
                             display: flex;
                         }
@@ -110,20 +101,10 @@
 
                     &.unread-msgs {
                         font-weight: bold;
-                        color: var(--unread-msgs-color);
+                        color: var(--info-color);
                         .contact-name {
                             width: 70%;
                         }
-                    }
-
-                    .msgs-indicator {
-                        color: var(--text-color-invert);
-                        background-color: var(--chat-color);
-                        opacity: 1;
-                        border-radius: 10%;
-                        padding: 0.2em 0.4em;
-                        font-size: var(--font-size-small);
-                        margin-right: 0;
                     }
 
                     .contact-name {
@@ -136,7 +117,7 @@
                             max-width: 60%;
                         }
                         &.contact-name--offline {
-                            margin-left: 0.25em;
+                            margin-inline-start: 0.25em;
                         }
                     }
                 }
@@ -152,10 +133,10 @@
                     display: inline-block;
                 }
                 .decline-xmpp-request {
-                    margin-left: 5px;
+                    margin-inline-start: 1em;
                 }
                 &:hover {
-                    background-color: var(--controlbox-pane-bg-hover-color);
+                    background-color: var(--highlight-color-hover);
                 }
             }
         }

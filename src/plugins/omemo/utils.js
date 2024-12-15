@@ -1,7 +1,7 @@
 /**
  * @typedef {module:plugins-omemo-index.WindowWithLibsignal} WindowWithLibsignal
- * @typedef {module:plugin-chat-parsers.MessageAttributes} MessageAttributes
- * @typedef {module:plugin-muc-parsers.MUCMessageAttributes} MUCMessageAttributes
+ * @typedef {import('@converse/headless/plugins/chat/types.ts').MessageAttributes} MessageAttributes
+ * @typedef {import('@converse/headless/plugins/muc/types').MUCMessageAttributes} MUCMessageAttributes
  * @typedef {import('@converse/headless').ChatBox} ChatBox
  */
 import { html } from 'lit';
@@ -795,12 +795,12 @@ export function getOMEMOToolbarButton (toolbar_el, buttons) {
     let color;
     if (model.get('omemo_supported')) {
         if (model.get('omemo_active')) {
-            color = is_muc ? `var(--muc-color)` : `var(--chat-toolbar-btn-color)`;
+            color = is_muc ? `var(--muc-color)` : `var(--chat-color)`;
         } else {
             color = `var(--error-color)`;
         }
     } else {
-        color = `var(--muc-toolbar-btn-disabled-color)`;
+        color = `var(--disabled-color)`;
     }
     buttons.push(html`
         <button type="button"

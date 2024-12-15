@@ -1,10 +1,8 @@
 /**
  * Shows headline messages
- * @class
- * @namespace _converse.HeadlinesFeed
- * @memberOf _converse
  */
-export default class HeadlinesFeed extends ChatBox {
+export default class HeadlinesFeed extends ChatBoxBase {
+    constructor(attrs: any, options: any);
     defaults(): {
         bookmarked: boolean;
         hidden: boolean;
@@ -15,5 +13,5 @@ export default class HeadlinesFeed extends ChatBox {
         type: string;
     };
 }
-import ChatBox from '../../plugins/chat/model.js';
+import ChatBoxBase from '../../shared/chatbox.js';
 //# sourceMappingURL=feed.d.ts.map

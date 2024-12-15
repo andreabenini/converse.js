@@ -2,6 +2,8 @@
 
 ## 11.0.0 (Unreleased)
 
+- #122: Set horizontal layout direction based on the language
+- #698: Add support for MUC private messages
 - #1057: Removed the `mobile` view mode. Instead of setting `view_mode` to `mobile`, set it to `fullscreen`.
 - #1174: Show MUC avatars in the rooms list
 - #1195: Add actions to quote and copy messages
@@ -20,6 +22,7 @@
 - #3362: Don't create empty nick element in bookmarks
 - #3476: better UI for form "fixed" fields
 - #3478: MUC participant status indicator misplaced 
+- #3529: Unbookmarked channels no longer change their name when clicked with an unread indicator (or text icon)
 - Fix: MUC occupant list does not sort itself on nicknames or roles changes
 - Fix: refresh the MUC sidebar when participants collection is sorted
 - Fix: room information not correctly refreshed when modifications are made by other users
@@ -34,13 +37,14 @@
 - Enable [reuse_scram_keys](https://conversejs.org/docs/html/configuration.html#reuse-scram-keys) by default.
 - New `loadEmojis` hook, to customize emojis at runtime.
 - Upgrade to Bootstrap 5
-- Add a new theme 'Cyberpunk' and remove the old 'Concord' theme.
+- Add new themes 'Cyberpunk' and 'Nord' and remove the old 'Concord' theme.
 - Improved accessibility.
 - New "getOccupantActionButtons" hook, so that plugins can add actions on MUC occupants.
 - MUC occupants badges: displays short labels, with full label as title.
-- Fix: trying to use an emojis with an uppercase letter breaks the message field.
+- Fix: trying to use emojis with an uppercase letter breaks the message field.
 - Fix: renaming getEmojisByAtrribute to getEmojisByAttribute.
 - New config option [stanza_timeout](https://conversejs.org/docs/html/configuration.html#show-background)
+- Make `fullscreen` the default `view_mode`.
 
 ### Breaking changes:
 
@@ -54,6 +58,16 @@
   `visibilitychange` event on `document` instead.
 - `api.modal.create` no longer takes a class, instead it takes the name of a custom DOM element.
 - `getAssignableRoles` and `getAssignableAffiliations` are no longer on the `_converse` object, but on the Occupant instance.
+- Removed the `chatBoxFocused` and `chatBoxBlurred` events.
+- Changed the signature of the `api.contacts.add` API method.
+- The deprecated API method `api.settings.update` has been removed. Use
+  `api.settings.extend` instead.
+- New config option [rtl_langs](https://conversejs.org/docs/html/configuration.html#rtl-langs) for specifying languages for which
+  Converse's UI should be shown in right-to-left order.
+
+## 10.1.7 (2024-03-15)
+
+- Update to Strophe 2.0.0. Fixes login issue with newer versions of Ejabberd
 
 ## 10.1.6 (2023-08-31)
 

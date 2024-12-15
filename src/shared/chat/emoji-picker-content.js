@@ -1,9 +1,9 @@
 /**
  * @typedef {module:emoji-picker.EmojiPicker} EmojiPicker
  */
-import { CustomElement } from 'shared/components/element.js';
-import { converse, api } from '@converse/headless';
 import { html } from 'lit';
+import { converse, api, u } from '@converse/headless';
+import { CustomElement } from 'shared/components/element.js';
 import { tplAllEmojis, tplSearchResults } from './templates/emoji-picker.js';
 import { getTonedEmojis } from './utils.js';
 import { FILTER_CONTAINS } from 'shared/autocomplete/utils.js';
@@ -13,7 +13,6 @@ const { sizzle } = converse.env;
 export default class EmojiPickerContent extends CustomElement {
     static get properties () {
         return {
-            'chatview': { type: Object },
             'search_results': { type: Array },
             'current_skintone': { type: String },
             'model': { type: Object },
@@ -32,10 +31,10 @@ export default class EmojiPickerContent extends CustomElement {
     render () {
         const props = {
             'current_skintone': this.current_skintone,
-            'insertEmoji': (ev) => this.insertEmoji(ev),
+            'insertEmoji': /** @param {MouseEvent} ev */(ev) => this.insertEmoji(ev),
             'query': this.query,
             'search_results': this.search_results,
-            'shouldBeHidden': (shortname) => this.shouldBeHidden(shortname),
+            'shouldBeHidden': /** @param {string} shortname */(shortname) => this.shouldBeHidden(shortname),
         };
         return html` <div class="emoji-picker__lists">${tplSearchResults(props)} ${tplAllEmojis(props)}</div> `;
     }
@@ -76,18 +75,25 @@ export default class EmojiPickerContent extends CustomElement {
             const category = current.target.getAttribute('data-category');
             if (category !== this.model.get('current_category')) {
                 /** @type {EmojiPicker} */(this.parentElement).preserve_scroll = true;
-                this.model.save({ 'current_category': category });
+                u.safeSave(this.model, { 'current_category': category });
             }
         }
     }
 
+    /**
+     * @param {MouseEvent} ev
+     */
     insertEmoji (ev) {
         ev.preventDefault();
         ev.stopPropagation();
-        const target = ev.target.nodeName === 'IMG' ? ev.target.parentElement : ev.target;
-        /** @type EmojiPicker */(this.parentElement).insertIntoTextArea(target.getAttribute('data-emoji'));
+        const target = /** @type {HTMLElement} */(ev.target);
+        const emoji_el = target.nodeName === 'IMG' ? target.parentElement : target;
+        /** @type EmojiPicker */(this.parentElement).selectEmoji(emoji_el.getAttribute('data-emoji'));
     }
 
+    /**
+     * @param {string} shortname
+     */
     shouldBeHidden (shortname) {
         // Helper method for the template which decides whether an
         // emoji should be hidden, based on which skin tone is

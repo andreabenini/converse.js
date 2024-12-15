@@ -25,10 +25,6 @@ const { u } = converse.env;
  */
 class MUCOccupants extends Collection {
 
-    /**
-     * @param {MUCOccupant[]} attrs
-     * @param {CollectionOptions} options
-     */
     constructor (attrs, options) {
         super(
             attrs,
@@ -130,10 +126,10 @@ class MUCOccupants extends Collection {
     }
 
     /**
-     * @typedef { Object} OccupantData
-     * @property { String } [jid]
-     * @property { String } [nick]
-     * @property { String } [occupant_id] - The XEP-0421 unique occupant id
+     * @typedef {Object} OccupantData
+     * @property {String} [jid]
+     * @property {String} [nick]
+     * @property {String} [occupant_id] - The XEP-0421 unique occupant id
      */
     /**
      * Try to find an existing occupant based on the provided
@@ -175,4 +171,5 @@ class MUCOccupants extends Collection {
 }
 
 
+// @ts-ignore
 export default MUCOccupants;

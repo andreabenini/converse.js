@@ -1,9 +1,8 @@
 /**
  * Parses a passed in message stanza and returns an object of attributes.
- * @method st#parseMessage
- * @param { Element } stanza - The message stanza
- * @returns { Promise<MessageAttributes|Error> }
+ * @param {Element} stanza - The message stanza
+ * @returns {Promise<import('./types.ts').MessageAttributes|StanzaParseError>}
  */
-export function parseMessage(stanza: Element): Promise<MessageAttributes | Error>;
-export type MessageAttributes = any;
+export function parseMessage(stanza: Element): Promise<import("./types.ts").MessageAttributes | StanzaParseError>;
+import { StanzaParseError } from '../../shared/parsers';
 //# sourceMappingURL=parsers.d.ts.map

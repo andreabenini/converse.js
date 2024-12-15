@@ -14,6 +14,17 @@ import './styles/chat-bottom-panel.scss';
 
 export default class ChatBottomPanel extends CustomElement {
 
+    constructor () {
+        super();
+        this.model = null;
+    }
+
+    static get properties () {
+        return {
+            model: { type: Object }
+        }
+    }
+
     async connectedCallback () {
         super.connectedCallback();
         await this.initialize();
@@ -23,14 +34,15 @@ export default class ChatBottomPanel extends CustomElement {
     }
 
     async initialize () {
-        this.model = await api.chatboxes.get(this.getAttribute('jid'));
         await this.model.initialized;
         this.listenTo(this.model, 'change:num_unread', () => this.requestUpdate());
         this.listenTo(this.model, 'emoji-picker-autocomplete', this.autocompleteInPicker);
 
-        this.addEventListener('focusin', ev => this.emitFocused(ev));
-        this.addEventListener('focusout', ev => this.emitBlurred(ev));
         this.addEventListener('click', ev => this.sendButtonClicked(ev));
+        this.addEventListener(
+            'emojipickerblur',
+            () => /** @type {HTMLElement} */(this.querySelector('.chat-textarea')).focus()
+        );
     }
 
     render () {
@@ -53,16 +65,6 @@ export default class ChatBottomPanel extends CustomElement {
         this.model.ui.set({ 'scrolled': false });
     }
 
-    emitFocused (ev) {
-        const { chatboxviews } = _converse.state;
-        chatboxviews.get(this.getAttribute('jid'))?.emitFocused(ev);
-    }
-
-    emitBlurred (ev) {
-        const { chatboxviews } = _converse.state;
-        chatboxviews.get(this.getAttribute('jid'))?.emitBlurred(ev);
-    }
-
     onDragOver (ev) {
         ev.preventDefault();
     }
@@ -72,14 +74,21 @@ export default class ChatBottomPanel extends CustomElement {
         clearMessages(this.model);
     }
 
-    async autocompleteInPicker (input, value) {
+    /**
+     * @typedef {Object} AutocompleteInPickerEvent
+     * @property {HTMLTextAreaElement} target
+     * @property {string} value
+     * @param {AutocompleteInPickerEvent} ev
+     */
+    async autocompleteInPicker (ev) {
+        const { target: input, value } = ev;
         await api.emojis.initialize();
         const emoji_picker = /** @type {EmojiPicker} */(this.querySelector('converse-emoji-picker'));
         if (emoji_picker) {
-            emoji_picker.model.set({
-                'ac_position': input.selectionStart,
-                'autocompleting': value,
-                'query': value
+            emoji_picker.state.set({
+                ac_position: input.selectionStart,
+                autocompleting: value,
+                query: value
             });
             const emoji_dropdown = /** @type {EmojiDropdown} */(this.querySelector('converse-emoji-dropdown'));
             emoji_dropdown?.dropdown.show();

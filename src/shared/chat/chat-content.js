@@ -12,12 +12,12 @@ export default class ChatContent extends CustomElement {
 
     constructor () {
         super();
-        this.jid = null;
+        this.model = null;
     }
 
     static get properties () {
         return {
-            jid: { type: String }
+            model: { type: Object }
         }
     }
 
@@ -26,9 +26,13 @@ export default class ChatContent extends CustomElement {
         this.removeEventListener('scroll', markScrolled);
     }
 
+    connectedCallback () {
+        super.connectedCallback();
+        this.addEventListener('scroll', markScrolled);
+    }
+
     async initialize () {
-        await this.setModels();
-        this.listenTo(this.model, 'change:hidden_occupants', () => this.requestUpdate());
+        await this.model.initialized;
         this.listenTo(this.model.messages, 'add', () => this.requestUpdate());
         this.listenTo(this.model.messages, 'change', () => this.requestUpdate());
         this.listenTo(this.model.messages, 'remove', () => this.requestUpdate());
@@ -37,16 +41,6 @@ export default class ChatContent extends CustomElement {
         this.listenTo(this.model.notifications, 'change', () => this.requestUpdate());
         this.listenTo(this.model.ui, 'change', () => this.requestUpdate());
         this.listenTo(this.model.ui, 'change:scrolled', this.scrollDown);
-
-        if (this.model.occupants) {
-            this.listenTo(this.model.occupants, 'change', () => this.requestUpdate());
-        }
-        this.addEventListener('scroll', markScrolled);
-    }
-
-    async setModels () {
-        this.model = await api.chatboxes.get(this.jid);
-        await this.model.initialized;
         this.requestUpdate();
     }
 

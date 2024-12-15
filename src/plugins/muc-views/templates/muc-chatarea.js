@@ -1,9 +1,10 @@
 import { html } from "lit";
 import { api, constants } from '@converse/headless';
+import 'shared/chat/help-messages.js';
+import 'shared/components/split-resize.js';
 import '../bottom-panel.js';
 import '../sidebar.js';
-import 'shared/chat/chat-content.js';
-import 'shared/chat/help-messages.js';
+import '../muc-chat-content.js';
 
 const { CHATROOMS_TYPE } = constants;
 
@@ -27,9 +28,9 @@ export default (el) => {
     return html`
         <div class="chat-area ${el.shouldShowSidebar() ? chat_area_classes : 'col-xs-12' }">
             <div class="chat-content ${show_send_button ? 'chat-content-sendbutton' : ''}" aria-live="polite">
-                <converse-chat-content
+                <converse-muc-chat-content
                     class="chat-content__messages"
-                    jid="${el.jid}"></converse-chat-content>
+                    .model="${el.model}"></converse-muc-chat-content>
 
                 ${(el.model?.get('show_help_messages')) ?
                     html`<div class="chat-content__help">
@@ -40,11 +41,11 @@ export default (el) => {
                             chat_type="${CHATROOMS_TYPE}"
                         ></converse-chat-help></div>` : '' }
             </div>
-            <converse-muc-bottom-panel jid="${el.jid}" class="bottom-panel"></converse-muc-bottom-panel>
+            <converse-muc-bottom-panel .model=${el.model} class="bottom-panel"></converse-muc-bottom-panel>
         </div>
         ${el.model ? html`
+            <converse-split-resize></converse-split-resize>
             <converse-muc-sidebar
                 class="${el.shouldShowSidebar() ? sidebar_classes : 'col-xs-0 hidden' }"
-                jid=${el.jid}
-                @mousedown=${(ev) => el.onMousedown(ev)}></converse-muc-sidebar>` : '' }`
+                jid=${el.jid}></converse-muc-sidebar>` : '' }`
 };

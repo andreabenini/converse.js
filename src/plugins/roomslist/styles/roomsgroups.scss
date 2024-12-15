@@ -6,29 +6,27 @@
         }
 
         .muc-domain-group-toggle, .muc-domain-group-toggle .fa {
-            color: var(--groupchats-header-color);
+            color: var(--muc-color);
             &:hover {
-                color: var(--chatroom-head-bg-color-dark);
+                color: var(--muc-color-hover);
             }
         }
 
         converse-rooms-list {
             display: block;
-            margin-bottom: 0.5em;
 
             svg {
-                fill: var(--chatroom-head-fg-color);
+                fill: var(--muc-color);
             }
 
             .list-item {
-                padding-top: 0;
-                padding-bottom: 0;
-
+                padding: 0 0.5em;
                 .open-room {
                     display: flex;
                     flex-direction: row;
                     span {
                         padding-top: 0.5em;
+                        padding-inline-end: 0.5em;
                     }
                 }
             }

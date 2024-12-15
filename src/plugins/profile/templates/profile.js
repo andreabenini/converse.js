@@ -19,7 +19,7 @@ export default (el) => {
     } else if (chat_status === 'away') {
         [classes, color] =  ['fa fa-circle chat-status', 'chat-status-away'];
     } else {
-        [classes, color] = ['fa fa-circle chat-status', 'subdued-color'];
+        [classes, color] = ['fa fa-circle chat-status', 'comment'];
     }
     return html`
         <div class="userinfo">
@@ -43,12 +43,14 @@ export default (el) => {
                    data-target="#changeStatusModal"
                    @click=${el.showStatusChangeModal}>
 
-                    <span class="${chat_status} w-100 align-self-center" data-value="${chat_status}">
+                    <span class="${chat_status} w-100" data-value="${chat_status}">
                         <converse-icon
                                 color="var(--${color})"
                                 css="margin-top: -0.1em"
                                 size="0.82em"
-                                class="${classes}"></converse-icon> ${status_message}</span>
+                                class="${classes}"></converse-icon>
+                        <span class="xmpp-status__msg">${status_message}</span>
+                    </span>
                 </a>
             </div>
         </div>`
