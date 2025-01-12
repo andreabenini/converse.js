@@ -19,7 +19,7 @@ const { Strophe } = converse.env;
  * See XEP-0030: https://xmpp.org/extensions/xep-0030.html
  */
 class DiscoEntity extends Model {
-    get idAttribute () { // eslint-disable-line class-methods-use-this
+    get idAttribute () {
         return 'jid';
     }
 
@@ -70,7 +70,7 @@ class DiscoEntity extends Model {
      */
     async getFeature (feature) {
         await this.waitUntilFeaturesDiscovered;
-        if (this.features.findWhere({ 'var': feature })) {
+        if (this.features.findWhere({ var: feature })) {
             return this;
         }
     }

@@ -59,25 +59,15 @@ class RosterContact extends ColorAwareModel(Model) {
         this.presence = presences.findWhere(jid) || presences.create({ jid });
     }
 
-    openChat () {
-        api.chats.open(this.get('jid'), this.attributes, true);
+    getStatus () {
+        return this.presence.get('show') || 'offline';
     }
 
-    /**
-     * Return a string of tab-separated values that are to be used when
-     * matching against filter text.
-     *
-     * The goal is to be able to filter against the VCard fullname,
-     * roster nickname and JID.
-     * @returns {string} Lower-cased, tab-separated values
-     */
-    getFilterCriteria () {
-        const nick = this.get('nickname');
-        const jid = this.get('jid');
-        let criteria = this.getDisplayName();
-        criteria = !criteria.includes(jid) ? criteria.concat(`   ${jid}`) : criteria;
-        criteria = !criteria.includes(nick) ? criteria.concat(`   ${nick}`) : criteria;
-        return criteria.toLowerCase();
+    openChat () {
+        // XXX: Doubtful whether it's necessary to pass in the contact
+        // attributes hers. If so, we should perhaps look them up inside the
+        // `open` API method.
+        api.chats.open(this.get('jid'), this.attributes, true);
     }
 
     getDisplayName () {
@@ -128,13 +118,13 @@ class RosterContact extends ColorAwareModel(Model) {
      */
     ackUnsubscribe () {
         api.send($pres({'type': 'unsubscribe', 'to': this.get('jid')}));
-        this.removeFromRoster();
+        this.sendRosterRemoveStanza();
         this.destroy();
     }
 
     /**
      * Unauthorize this contact's presence subscription
-     * @param {string} message - Optional message to send to the person being unauthorized
+     * @param {string} [message] - Optional message to send to the person being unauthorized
      */
     unauthorize (message) {
         rejectPresenceSubscription(this.get('jid'), message);
@@ -155,10 +145,38 @@ class RosterContact extends ColorAwareModel(Model) {
     }
 
     /**
+     * Remove this contact from the roster
+     * @param {boolean} unauthorize - Whether to also unauthorize the
+     */
+    remove (unauthorize) {
+        const subscription = this.get('subscription');
+        if (subscription === 'none' && this.get('ask') !== 'subscribe') {
+            this.destroy();
+            return;
+        }
+
+        if (unauthorize) {
+            if (subscription === 'from') {
+                this.unauthorize();
+            } else if (subscription === 'both') {
+                this.unauthorize();
+            }
+        }
+
+        this.sendRosterRemoveStanza();
+        if (this.collection) {
+            // The model might have already been removed as
+            // result of a roster push.
+            this.destroy();
+        }
+    }
+
+    /**
      * Instruct the XMPP server to remove this contact from our roster
+     * @async
      * @returns {Promise}
      */
-    removeFromRoster () {
+    sendRosterRemoveStanza () {
         const iq = $iq({type: 'set'})
             .c('query', {xmlns: Strophe.NS.ROSTER})
             .c('item', {jid: this.get('jid'), subscription: "remove"});
