@@ -3,7 +3,7 @@
 const { stx, Strophe, $iq, sizzle, u } = converse.env;
 
 
-describe("The Registration Panel", function () {
+describe("The Registration Form", function () {
 
     beforeEach(() => jasmine.addMatchers({ toEqualStanza: jasmine.toEqualStanza }));
 
@@ -39,13 +39,13 @@ describe("The Registration Panel", function () {
             toggle.click();
         }
         const cbview = _converse.chatboxviews.get('controlbox');
-        expect(cbview.querySelector('converse-register-panel')).toBe(null);
+        expect(cbview.querySelector('converse-registration-form')).toBe(null);
 
         const register_link = await u.waitUntil(() => cbview.querySelector('a.register-account'));
         expect(register_link.textContent).toBe("Create an account");
         register_link.click();
 
-        expect(cbview.querySelector('converse-register-panel')).toBeDefined();
+        expect(cbview.querySelector('converse-registration-form')).toBeDefined();
     }));
 
     it("allows the user to choose an XMPP provider's domain",
@@ -64,10 +64,9 @@ describe("The Registration Panel", function () {
         const cbview = _converse.api.controlbox.get();
         await u.waitUntil(() => u.isVisible(cbview));
 
-        // Open the register panel
         cbview.querySelector('.toggle-register-login').click();
 
-        const registerview = await u.waitUntil(() => cbview.querySelector('converse-register-panel'));
+        const registerview = await u.waitUntil(() => cbview.querySelector('converse-registration-form'));
         spyOn(registerview, 'onProviderChosen').and.callThrough();
         spyOn(registerview, 'fetchRegistrationForm').and.callThrough();
 
@@ -103,7 +102,7 @@ describe("The Registration Panel", function () {
         const cbview = _converse.api.controlbox.get();
         cbview.querySelector('.toggle-register-login').click();
 
-        const registerview = await u.waitUntil(() => cbview.querySelector('converse-register-panel'));
+        const registerview = await u.waitUntil(() => cbview.querySelector('converse-registration-form'));
         spyOn(registerview, 'fetchRegistrationForm').and.callThrough();
         spyOn(registerview, 'onProviderChosen').and.callThrough();
         spyOn(registerview, 'getRegistrationFields').and.callThrough();
@@ -158,7 +157,7 @@ describe("The Registration Panel", function () {
         const login_form = await u.waitUntil(() => cbview.querySelector('.toggle-register-login'));
         login_form.click();
 
-        const registerview = await u.waitUntil(() => cbview.querySelector('converse-register-panel'));
+        const registerview = await u.waitUntil(() => cbview.querySelector('converse-registration-form'));
         spyOn(registerview, 'fetchRegistrationForm').and.callThrough();
         spyOn(registerview, 'onProviderChosen').and.callThrough();
         spyOn(registerview, 'getRegistrationFields').and.callThrough();
@@ -220,7 +219,7 @@ describe("The Registration Panel", function () {
         const login_form = await u.waitUntil(() => cbview.querySelector('.toggle-register-login'));
         login_form.click();
 
-        const registerview = await u.waitUntil(() => cbview.querySelector('converse-register-panel'));
+        const registerview = await u.waitUntil(() => cbview.querySelector('converse-registration-form'));
         spyOn(registerview, 'onProviderChosen').and.callThrough();
         spyOn(registerview, 'getRegistrationFields').and.callThrough();
         spyOn(registerview, 'onRegistrationFields').and.callThrough();
@@ -282,7 +281,7 @@ describe("The Registration Panel", function () {
         const login_form = await u.waitUntil(() => cbview.querySelector('.toggle-register-login'));
         login_form.click();
 
-        const registerview = await u.waitUntil(() => cbview.querySelector('converse-register-panel'));
+        const registerview = await u.waitUntil(() => cbview.querySelector('converse-registration-form'));
         spyOn(registerview, 'onProviderChosen').and.callThrough();
         spyOn(registerview, 'getRegistrationFields').and.callThrough();
         spyOn(registerview, 'onRegistrationFields').and.callThrough();
@@ -365,7 +364,7 @@ describe("The Registration Panel", function () {
         const login_form = await u.waitUntil(() => cbview.querySelector('.toggle-register-login'));
         login_form.click();
 
-        const registerview = await u.waitUntil(() => cbview.querySelector('converse-register-panel'));
+        const registerview = await u.waitUntil(() => cbview.querySelector('converse-registration-form'));
         registerview.querySelector('input[name=domain]').value = 'conversejs.org';
         registerview.querySelector('input[type=submit]').click();
 
@@ -429,7 +428,7 @@ describe("The Registration Panel", function () {
         }
         const cbview = _converse.chatboxviews.get('controlbox');
         cbview.querySelector('.toggle-register-login').click();
-        const registerview = await u.waitUntil(() => cbview.querySelector('converse-register-panel'));
+        const registerview = await u.waitUntil(() => cbview.querySelector('converse-registration-form'));
 
         registerview.querySelector('input[name=domain]').value = 'conversejs.org';
         registerview.querySelector('input[type=submit]').click();
@@ -491,7 +490,7 @@ describe("The Registration Panel", function () {
         }
         const cbview = _converse.chatboxviews.get('controlbox');
         cbview.querySelector('.toggle-register-login').click();
-        const view = await u.waitUntil(() => cbview.querySelector('converse-register-panel'));
+        const view = await u.waitUntil(() => cbview.querySelector('converse-registration-form'));
 
         view.querySelector('input[name=domain]').value = 'conversejs.org';
         view.querySelector('input[type=submit]').click();
@@ -552,7 +551,7 @@ describe("The Registration Panel", function () {
         _converse.api.connection.get()._dataRecv(mock.createRequest(response_IQ));
 
         const alert = await u.waitUntil(() => view.querySelector('.alert'));
-        expect(alert.textContent.trim()).toBe('Too many CAPTCHA requests');
+        expect(alert.textContent.trim()).toBe('Registration failed.\nToo many CAPTCHA requests');
         // Hide the controlbox so that we can see whether the test passed or failed
         u.addClass('hidden', _converse.chatboxviews.get('controlbox'));
         _converse.api.connection.destroy();
@@ -572,7 +571,7 @@ describe("The Registration Panel", function () {
         const login_form = await u.waitUntil(() => cbview.querySelector('.toggle-register-login'));
         login_form.click();
 
-        const registerview = await u.waitUntil(() => cbview.querySelector('converse-register-panel'));
+        const registerview = await u.waitUntil(() => cbview.querySelector('converse-registration-form'));
         spyOn(registerview, 'fetchRegistrationForm').and.callThrough();
 
         expect(registerview._registering).toBeFalsy();

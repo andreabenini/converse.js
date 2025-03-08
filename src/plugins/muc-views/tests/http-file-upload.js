@@ -5,11 +5,13 @@ const { Strophe, sizzle, u, stx } = converse.env;
 
 describe("XEP-0363: HTTP File Upload", function () {
 
+    beforeAll(() => jasmine.addMatchers({ toEqualStanza: jasmine.toEqualStanza }));
+
     describe("When not supported", function () {
         describe("A file upload toolbar button", function () {
 
             it("does not appear in MUC chats", mock.initConverse([], {}, async (_converse) => {
-                await mock.openAndEnterChatRoom(_converse, 'lounge@montague.lit', 'romeo');
+                await mock.openAndEnterMUC(_converse, 'lounge@montague.lit', 'romeo');
                 mock.waitUntilDiscoConfirmed(
                     _converse, _converse.domain,
                     [{'category': 'server', 'type':'IM'}],
@@ -36,7 +38,7 @@ describe("XEP-0363: HTTP File Upload", function () {
 
                 await mock.waitUntilDiscoConfirmed(_converse, _converse.domain, [], [], ['upload.montague.lit'], 'items');
                 await mock.waitUntilDiscoConfirmed(_converse, 'upload.montague.lit', [], [Strophe.NS.HTTPUPLOAD], []);
-                await mock.openAndEnterChatRoom(_converse, 'lounge@montague.lit', 'romeo');
+                await mock.openAndEnterMUC(_converse, 'lounge@montague.lit', 'romeo');
                 await u.waitUntil(() => _converse.chatboxviews.get('lounge@montague.lit').querySelector('.fileupload'));
                 const view = _converse.chatboxviews.get('lounge@montague.lit');
                 expect(view.querySelector('.chat-toolbar .fileupload')).not.toBe(null);
@@ -58,7 +60,7 @@ describe("XEP-0363: HTTP File Upload", function () {
                     const nick = 'romeo';
                     await mock.waitUntilDiscoConfirmed(_converse, _converse.domain, [], [], ['upload.montague.tld'], 'items');
                     await mock.waitUntilDiscoConfirmed(_converse, 'upload.montague.tld', [], [Strophe.NS.HTTPUPLOAD], []);
-                    await mock.openAndEnterChatRoom(_converse, muc_jid, nick);
+                    await mock.openAndEnterMUC(_converse, muc_jid, nick);
 
                     // Wait until MAM query has been sent out
                     const sent_stanzas = _converse.api.connection.get().sent_stanzas;
@@ -124,20 +126,20 @@ describe("XEP-0363: HTTP File Upload", function () {
                     _converse.api.connection.get()._dataRecv(mock.createRequest(stanza));
 
                     await u.waitUntil(() => sent_stanza, 1000);
-                    expect(Strophe.serialize(sent_stanza)).toBe(
-                        `<message `+
-                            `from="${muc_jid}/${nick}" `+
-                            `id="${sent_stanza.getAttribute("id")}" `+
-                            `to="lounge@montague.lit" `+
-                            `type="groupchat" `+
-                            `xmlns="jabber:client">`+
-                                `<body>${message}</body>`+
-                                `<active xmlns="http://jabber.org/protocol/chatstates"/>`+
-                                `<x xmlns="jabber:x:oob">`+
-                                    `<url>${message}</url>`+
-                                `</x>`+
-                                `<origin-id id="${sent_stanza.querySelector('origin-id').getAttribute("id")}" xmlns="urn:xmpp:sid:0"/>`+
-                        `</message>`);
+                    expect(sent_stanza).toEqualStanza(stx`
+                        <message
+                            from="romeo@montague.lit/orchard"
+                            id="${sent_stanza.getAttribute("id")}"
+                            to="lounge@montague.lit"
+                            type="groupchat"
+                            xmlns="jabber:client">
+                                <body>${message}</body>
+                                <active xmlns="http://jabber.org/protocol/chatstates"/>
+                                <x xmlns="jabber:x:oob">
+                                    <url>${message}</url>
+                                </x>
+                                <origin-id id="${sent_stanza.querySelector('origin-id').getAttribute("id")}" xmlns="urn:xmpp:sid:0"/>
+                        </message>`);
                     const img_link_el = await u.waitUntil(() => view.querySelector('converse-chat-message-body .chat-image__link'), 1000);
                     // Check that the image renders
                     expect(img_link_el.outerHTML.replace(/<!-.*?->/g, '').trim()).toEqual(

@@ -4,11 +4,13 @@ const { Strophe, u, stx } = converse.env;
 
 describe("A Groupchat Message", function () {
 
+    beforeAll(() => jasmine.addMatchers({ toEqualStanza: jasmine.toEqualStanza }));
+
     it("can be replaced with a correction",
             mock.initConverse([], {}, async function (_converse) {
 
         const muc_jid = 'lounge@montague.lit';
-        const model = await mock.openAndEnterChatRoom(_converse, muc_jid, 'romeo');
+        const model = await mock.openAndEnterMUC(_converse, muc_jid, 'romeo');
         _converse.api.connection.get()._dataRecv(mock.createRequest(stx`
             <presence
                 to="romeo@montague.lit/_converse.js-29092160"
@@ -81,7 +83,7 @@ describe("A Groupchat Message", function () {
             mock.initConverse([], {}, async function (_converse) {
 
         const muc_jid = 'lounge@montague.lit';
-        await mock.openAndEnterChatRoom(_converse, muc_jid, 'romeo');
+        await mock.openAndEnterMUC(_converse, muc_jid, 'romeo');
         const view = _converse.chatboxviews.get(muc_jid);
         _converse.api.connection.get()._dataRecv(mock.createRequest(stx`
             <presence
@@ -173,9 +175,11 @@ describe("A Groupchat Message", function () {
     it("can be sent as a correction by using the up arrow",
             mock.initConverse([], {}, async function (_converse) {
 
+        const { api } = _converse;
+        const { jid: own_jid } = api.connection.get();
         const nick = 'romeo'
         const muc_jid = 'lounge@montague.lit';
-        await mock.openAndEnterChatRoom(_converse, muc_jid, nick);
+        await mock.openAndEnterMUC(_converse, muc_jid, nick);
         const view = _converse.chatboxviews.get(muc_jid);
         const textarea = await u.waitUntil(() => view.querySelector('textarea.chat-textarea'));
         expect(textarea.value).toBe('');
@@ -220,15 +224,15 @@ describe("A Groupchat Message", function () {
 
         expect(_converse.api.connection.get().send).toHaveBeenCalled();
         const msg = _converse.api.connection.get().send.calls.all()[0].args[0];
-        expect(Strophe.serialize(msg)).toBe(
-            `<message from="${muc_jid}/${nick}" id="${msg.getAttribute("id")}" `+
-                `to="lounge@montague.lit" type="groupchat" `+
-                `xmlns="jabber:client">`+
-                    `<body>But soft, what light through yonder window breaks?</body>`+
-                    `<active xmlns="http://jabber.org/protocol/chatstates"/>`+
-                    `<replace id="${first_msg.get("msgid")}" xmlns="urn:xmpp:message-correct:0"/>`+
-                    `<origin-id id="${msg.querySelector('origin-id').getAttribute("id")}" xmlns="urn:xmpp:sid:0"/>`+
-            `</message>`);
+        expect(msg).toEqualStanza(stx`
+            <message from="${own_jid}" id="${msg.getAttribute("id")}"
+                to="lounge@montague.lit" type="groupchat"
+                xmlns="jabber:client">
+                    <body>But soft, what light through yonder window breaks?</body>
+                    <active xmlns="http://jabber.org/protocol/chatstates"/>
+                    <replace id="${first_msg.get("msgid")}" xmlns="urn:xmpp:message-correct:0"/>
+                    <origin-id id="${msg.querySelector('origin-id').getAttribute("id")}" xmlns="urn:xmpp:sid:0"/>
+            </message>`);
 
         expect(view.model.messages.models.length).toBe(1);
         const corrected_message = view.model.messages.at(0);
@@ -284,7 +288,7 @@ describe('A Groupchat Message XEP-0308 correction ', function () {
         mock.initConverse([], {}, async function (_converse) {
             const muc_jid = 'lounge@montague.lit';
             const features = [...mock.default_muc_features, Strophe.NS.OCCUPANTID];
-            const model = await mock.openAndEnterChatRoom(_converse, muc_jid, 'romeo', features);
+            const model = await mock.openAndEnterMUC(_converse, muc_jid, 'romeo', features);
 
             const msg_id = u.getUniqueId();
             await model.handleMessageStanza(
@@ -364,7 +368,7 @@ describe('A Groupchat Message XEP-0308 correction ', function () {
             const nick = 'romeo';
             const muc_jid = 'lounge@montague.lit';
             const features = [...mock.default_muc_features, Strophe.NS.OCCUPANTID];
-            const model = await mock.openAndEnterChatRoom(_converse, muc_jid, nick, features);
+            const model = await mock.openAndEnterMUC(_converse, muc_jid, nick, features);
 
             expect(model.get('occupant_id')).toBe(model.occupants.at(0).get('occupant_id'));
 

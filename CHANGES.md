@@ -5,18 +5,26 @@
 ### Github Issues
 - #122: Set horizontal layout direction based on the language
 - #317: Add the ability to render audio streams. New config option [fetch_url_headers](https://conversejs.org/docs/html/configuration.html#fetch-url-headers)
+- #690: Allow setting a custom name and the group for an existing contact
 - #698: Add support for MUC private messages
 - #1021: Message from non-roster contacts don't appear in fullscreen view_mode
 - #1038: Support setting node config manually
 - #1057: Removed the `mobile` view mode. Instead of setting `view_mode` to `mobile`, set it to `fullscreen`.
 - #1174: Show MUC avatars in the rooms list
+- #1181: Show OMEMO fingerprint as QR code
 - #1195: Add actions to quote and copy messages
 - #1303: Display non-contacts who sent us a message somehow in fullscreen 
 - #1349: XEP-0392 Consistent Color Generation
+- #1700: Deleted pending contacts reappear after page reload
+- #1810: Create clickable link to load older MAM messages if there is no scrollbars.
+- #2118: Show reflected message in MUC 
+- #2335: Support list virtualization of the message history
 - #2383: Add modal to start chats with JIDs not in the roster
 - #2586: Add support for XEP-0402 Bookmarks
 - #2623: Merge MUC join and bookmark, leave and unset autojoin 
 - #2716: Fix issue with chat display when opening via URL
+- #2844: Contact stays in "pending contacts"
+- #2940: Avoid gaps in history when new message is received before MAM query is made
 - #2980: Allow setting an avatar for MUCs
 - #3033: Add the `muc_grouped_by_domain` option to display MUCs on the same domain in collapsible groups
 - #3038: Message to self from other client is ignored
@@ -31,9 +39,14 @@
 - #3307: Fix inconsistency between browsers on textarea outlines
 - #3337: Correctly display multiline nested quotes
 - #3362: Don't create empty nick element in bookmarks
+- #3386: Registration form is not fetched
+- #3464: Missing localization: the online status is not localized
 - #3476: better UI for form "fixed" fields
 - #3478: MUC participant status indicator misplaced 
+- #3510: MUC's configuration panel loads endlessly, if it's jthe second one you want to configure 
 - #3529: Unbookmarked channels no longer change their name when clicked with an unread indicator (or text icon)
+- #3579: Changing nickname in a groupchat once, forbids to change nickname in another groupchat afterwards
+- #3589: Hats namespace change
 
 ### Bugfixes
 - Fix: MUC occupant list does not sort itself on nicknames or roles changes
@@ -49,6 +62,9 @@
 - Fix: renaming getEmojisByAtrribute to getEmojisByAttribute.
 
 ### Changes and features
+- Upgrade to the latest versions of XEP-0424 and XEP-0425 (Message Retraction and Message Moderation).
+  Converse loses the ability to retract or moderate messages in the older format,
+  so you might need to upgrade your XMPP server's implementation of these as well.
 - Embed the Spotify player for links to Spotify tracks. New config option [embed_3rd_party_media_players](https://conversejs.org/docs/html/configuration.html#embed-3rd-party-media-players).
 - Add support for XEP-0191 Blocking Command
 - Upgrade to Bootstrap 5
@@ -56,11 +72,13 @@
 - Change contacts filter to rename the anachronistic `Online` state to `Available`.
 - Enable [reuse_scram_keys](https://conversejs.org/docs/html/configuration.html#reuse-scram-keys) by default.
 - New `loadEmojis` hook, to customize emojis at runtime.
-- Add new themes 'Cyberpunk' and 'Nord' and remove the old 'Concord' theme.
+- Add new themes 'Cyberpunk' and 'Nordic' and remove the old 'Concord' theme.
 - Improved accessibility.
 - New "getOccupantActionButtons" hook, so that plugins can add actions on MUC occupants.
 - MUC occupants badges: displays short labels, with full label as title.
 - New config option [stanza_timeout](https://conversejs.org/docs/html/configuration.html#show-background)
+- New config option [lazy_load_vcards](https://conversejs.org/docs/html/configuration.html#lazy-load-vcards)
+- Update the "Add MUC" modal to add validation and to allow specifying only the MUC name and not the whole address.
 
 ### Default config changes
 - Make `fullscreen` the default `view_mode`.

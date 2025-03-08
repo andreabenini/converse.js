@@ -1,7 +1,14 @@
 export default class MUCConfigModal extends BaseModal {
+    /**
+     * @typedef {import('@converse/headless/types/plugins/vcard/api').VCardData} VCardData
+     */
     constructor(options: any);
+    addListeners(): void;
     renderModal(): import("lit").TemplateResult<1>;
-    connectedCallback(): void;
+    /**
+     * @param {Map<string, any>} changed
+     */
+    shouldUpdate(changed: Map<string, any>): boolean;
     getModalTitle(): any;
     getConfig(): Promise<void>;
     /**
@@ -13,6 +20,5 @@ export default class MUCConfigModal extends BaseModal {
      */
     submitConfigForm(ev: SubmitEvent): Promise<void>;
 }
-export type VCardData = import("@converse/headless/types/plugins/vcard/api").VCardData;
 import BaseModal from 'plugins/modal/modal.js';
 //# sourceMappingURL=config.d.ts.map

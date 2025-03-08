@@ -26,6 +26,8 @@
     --danger-color: var(--red);
     --warning-color: var(--orange);
     --info-color: var(--yellow);
+
+    --converse-body-bg: var(--background-color);
     --converse-highlight-color: var(--yellow) !important;
     .list-group-item {
         --converse-list-group-color: var(--foreground-color);
@@ -47,6 +49,7 @@
     --heading-color: var(--purple);
     --headlines-color: var(--pink);
     --link-color: var(--cyan);
+    --subdued-color: var(--gray);
 
     // The background when selecting text with your mouse
     --selection-color: black;

@@ -4,13 +4,15 @@ const { Strophe, sizzle, stx, u } = converse.env;
 
 describe("Groupchats", function () {
 
+    beforeAll(() => jasmine.addMatchers({ toEqualStanza: jasmine.toEqualStanza }));
+
     it("keeps track of unread messages and mentions",
             mock.initConverse(['chatBoxesFetched'], {}, async function (_converse) {
 
         const nick = 'romeo';
         const muc_jid = 'lounge@montague.lit';
         // Open a hidden room
-        await mock.openAndEnterChatRoom(_converse, muc_jid, nick, [], [], false, {'hidden': true});
+        await mock.openAndEnterMUC(_converse, muc_jid, nick, [], [], false, {'hidden': true});
         const model = _converse.chatboxes.get(muc_jid);
 
         _converse.api.connection.get()._dataRecv(mock.createRequest(stx`
@@ -48,15 +50,15 @@ describe("Groupchats", function () {
             const sent_stanzas = _converse.api.connection.get().sent_stanzas;
             while (sent_stanzas.length) sent_stanzas.pop();
 
-            const muc = await mock.openAndEnterChatRoom(_converse, muc_jid, 'romeo');
+            const muc = await mock.openAndEnterMUC(_converse, muc_jid, 'romeo');
 
             let pres = await u.waitUntil(() => sent_stanzas.filter(s => s.nodeName === 'presence').pop());
-            expect(Strophe.serialize(pres)).toBe(
-                `<presence from="${_converse.jid}" id="${pres.getAttribute('id')}" to="${muc_jid}/romeo" xmlns="jabber:client">`+
-                    `<x xmlns="http://jabber.org/protocol/muc"><history maxstanzas="0"/></x>`+
-                    `<show>away</show>`+
-                    `<c hash="sha-1" node="https://conversejs.org" ver="TfHz9vOOfqIG0Z9lW5CuPaWGnrQ=" xmlns="http://jabber.org/protocol/caps"/>`+
-                `</presence>`);
+            expect(pres).toEqualStanza(stx`
+                <presence from="${_converse.jid}" id="${pres.getAttribute('id')}" to="${muc_jid}/romeo" xmlns="jabber:client">
+                    <x xmlns="http://jabber.org/protocol/muc"><history maxstanzas="0"/></x>
+                    <show>away</show>
+                    <c hash="sha-1" node="https://conversejs.org" ver="TfHz9vOOfqIG0Z9lW5CuPaWGnrQ=" xmlns="http://jabber.org/protocol/caps"/>
+                </presence>`);
 
             expect(muc.getOwnOccupant().get('show')).toBe('away');
 
@@ -77,7 +79,7 @@ describe("Groupchats", function () {
             while (sent_stanzas.length) sent_stanzas.pop();
 
             const muc2_jid = 'cave@chat.shakespeare.lit';
-            const muc2 = await mock.openAndEnterChatRoom(_converse, muc2_jid, 'romeo');
+            const muc2 = await mock.openAndEnterMUC(_converse, muc2_jid, 'romeo');
 
             pres = await u.waitUntil(() => sent_stanzas.filter(s => s.nodeName === 'presence').pop());
             expect(Strophe.serialize(pres)).toBe(
@@ -96,7 +98,7 @@ describe("Groupchats", function () {
                 mock.initConverse([], {}, async function (_converse) {
 
             const muc_jid = 'coven@chat.shakespeare.lit';
-            await mock.openAndEnterChatRoom(_converse, muc_jid, 'romeo');
+            await mock.openAndEnterMUC(_converse, muc_jid, 'romeo');
             const model = _converse.chatboxes.get(muc_jid);
             expect(model.session.get('connection_status')).toBe(converse.ROOMSTATUS.ENTERED);
             model.sendMessage({'body': 'hello world'});
@@ -134,7 +136,7 @@ describe("Groupchats", function () {
 
             _converse.api.connection.get().IQ_stanzas = [];
             _converse.api.connection.get()._dataRecv(mock.createRequest(result));
-            await mock.getRoomFeatures(_converse, muc_jid);
+            await mock.waitForMUCDiscoInfo(_converse, muc_jid);
 
             const pres = await u.waitUntil(
                 () => sent_stanzas.slice(index).filter(s => s.nodeName === 'presence').pop());

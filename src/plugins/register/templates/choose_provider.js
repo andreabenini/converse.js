@@ -1,11 +1,15 @@
-import tplRegistrationForm from './registration_form.js';
-import tplSpinner from 'templates/spinner.js';
-import tplSwitchForm from './switch_form.js';
-import { __ } from 'i18n';
-import { api } from '@converse/headless';
 import { html } from 'lit';
+import { api } from '@converse/headless';
+import tplSpinner from 'templates/spinner.js';
+import { __ } from 'i18n';
+import { tplConnectionURLInput } from '../../controlbox/templates/loginform.js';
+import tplSwitchForm from './switch_form.js';
+import tplRegistrationForm from './registration_form.js';
 
-const tplFormRequest = (el) => {
+/**
+ * @param {import('../form.js').default} el
+ */
+function tplFormRequest(el) {
     const default_domain = api.settings.get('registration_domain');
     const i18n_cancel = __('Cancel');
     return html`
@@ -21,21 +25,30 @@ const tplFormRequest = (el) => {
     `;
 };
 
-const tplDomainInput = () => {
+/**
+ * @param {import('../form.js').default} el
+ */
+function tplDomainInput(el) {
     const domain_placeholder = api.settings.get('domain_placeholder');
     const i18n_providers = __('Tip: A list of public XMPP providers is available');
     const i18n_providers_link = __('here');
     const href_providers = api.settings.get('providers_link');
     return html`
-        <input class="form-control" required="required" type="text" name="domain" placeholder="${domain_placeholder}" />
+        <input class="form-control"
+            required="required"
+            type="text" name="domain"
+            placeholder="${domain_placeholder}"
+            value="${el.domain}"
+        />
         <p class="form-text text-muted">
             ${i18n_providers}
             <a href="${href_providers}" class="url" target="_blank" rel="noopener">${i18n_providers_link}</a>.
         </p>
+        ${api.settings.get('show_connection_url_input') ? tplConnectionURLInput() : ''}
     `;
 };
 
-const tplFetchFormButtons = () => {
+function tplFetchFormButtons() {
     const i18n_register = __('Fetch registration form');
     const i18n_existing_account = __('Already have a chat account?');
     const i18n_login = __('Log in here');
@@ -50,7 +63,10 @@ const tplFetchFormButtons = () => {
     `;
 };
 
-const tplChooseProvider = (el) => {
+/**
+ * @param {import('../form.js').default} el
+ */
+function tplChooseProvider(el) {
     const default_domain = api.settings.get('registration_domain');
     const i18n_create_account = __('Create your account');
     const i18n_choose_provider = __('Please enter the XMPP provider to register with:');
@@ -61,8 +77,7 @@ const tplChooseProvider = (el) => {
             <legend class="col-form-label">${i18n_create_account}</legend>
             <div>
                 <label class="form-label">${i18n_choose_provider}</label>
-
-                ${default_domain ? default_domain : tplDomainInput()}
+                ${default_domain ? default_domain : tplDomainInput(el)}
             </div>
             ${show_form_buttons ? tplFetchFormButtons() : ''}
         </form>
@@ -74,6 +89,9 @@ const FETCHING_FORM = 1;
 const REGISTRATION_FORM = 2;
 const REGISTRATION_FORM_ERROR = 3;
 
+/**
+ * @param {import('../form.js').default} el
+ */
 export default (el) => {
     return html`
         <converse-brand-logo></converse-brand-logo>

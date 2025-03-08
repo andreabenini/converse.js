@@ -8,11 +8,15 @@ import u from './utils/index.js';
 import converse from './shared/api/public.js';
 import log from './log.js';
 
+import BaseMessage from './shared/message.js';
+export { BaseMessage };
+
+import ModelWithMessages from './shared/model-with-messages.js';
+export { ModelWithMessages };
 
 // START: Removable components
 // ---------------------------
 // The following components may be removed if they're not needed.
-
 export { EmojiPicker } from './plugins/emoji/index.js';
 export { Bookmark, Bookmarks } from './plugins/bookmarks/index.js'; // XEP-0199 XMPP Ping
 import './plugins/blocklist/index.js';
@@ -23,9 +27,6 @@ import './plugins/chatboxes/index.js';
 import './plugins/disco/index.js'; // XEP-0030 Service discovery
 import './plugins/adhoc/index.js'; // XEP-0050 Ad Hoc Commands
 import './plugins/headlines/index.js'; // Support for headline messages
-
-import ModelWithMessages from './shared/model-with-messages.js';
-export { ModelWithMessages };
 
 // XEP-0313 Message Archive Management
 export { MAMPlaceholderMessage } from './plugins/mam/index.js';
@@ -50,6 +51,7 @@ const constants = Object.assign({}, shared_constants, muc_constants);
 
 Object.assign(_converse.constants, constants);
 
-export { api, converse, _converse, i18n, log, u, constants, parsers };
+import * as errors from './shared/errors.js';
+export { api, converse, _converse, i18n, log, u, constants, parsers, errors };
 
 export default converse;

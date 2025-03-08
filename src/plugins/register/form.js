@@ -1,11 +1,8 @@
-/**
- * @typedef {import('strophe.js').Request} Request
- */
-import { _converse, api, converse, log, constants, u, parsers } from "@converse/headless";
+import { _converse, api, converse, log, constants, u, parsers, errors } from "@converse/headless";
 import tplFormInput from "templates/form_input.js";
 import tplFormUrl from "templates/form_url.js";
 import tplFormUsername from "templates/form_username.js";
-import tplRegisterPanel from "./templates/register_panel.js";
+import tplChooseProvider from "./templates/choose_provider.js";
 import { CustomElement } from 'shared/components/element.js';
 import { __ } from 'i18n';
 import { setActiveForm } from './utils.js';
@@ -22,16 +19,16 @@ const REGISTRATION_FORM = 2;
 const REGISTRATION_FORM_ERROR = 3;
 
 
-/**
- * @class
- * @namespace _converse.RegisterPanel
- * @memberOf _converse
- */
-class RegisterPanel extends CustomElement {
+class RegistrationForm extends CustomElement {
+    /**
+     * @typedef {import('strophe.js').Request} Request
+     */
 
     static get properties () {
         return {
             status : { type: String },
+            domain: { type: String },
+            service_url: { type: String },
             alert_message: { type: String },
             alert_type: { type: String },
         }
@@ -43,13 +40,16 @@ class RegisterPanel extends CustomElement {
         this.fields = {};
         this.domain = null;
         this.alert_type = 'info';
-        this.setErrorMessage = (m) => this.setMessage(m, 'danger');
-        this.setFeedbackMessage = (m) => this.setMessage(m, 'info');
+        this.setErrorMessage = /** @param {string} m */(m) => this.setMessage(m, 'danger');
+        this.setFeedbackMessage = /** @param {string} m */(m) => this.setMessage(m, 'info');
     }
 
     initialize () {
         this.reset();
         this.listenTo(_converse, 'connectionInitialized', () => this.registerHooks());
+
+        const settings = api.settings.get();
+        this.listenTo(settings, 'change:show_connection_url_input', () => this.requestUpdate());
 
         const domain = api.settings.get('registration_domain');
         if (domain) {
@@ -60,9 +60,13 @@ class RegisterPanel extends CustomElement {
     }
 
     render () {
-        return tplRegisterPanel(this);
+        return tplChooseProvider(this);
     }
 
+    /**
+     * @param {string} message
+     * @param {'info'|'danger'} type
+     */
     setMessage(message, type) {
         this.alert_type = type;
         this.alert_message = message;
@@ -86,7 +90,7 @@ class RegisterPanel extends CustomElement {
 
     /**
      * Send an IQ stanza to the XMPP server asking for the registration fields.
-     * @method _converse.RegisterPanel#getRegistrationFields
+     * @method _converse.RegistrationForm#getRegistrationFields
      * @param {Request} req - The current request
      * @param {Function} callback - The callback function
      */
@@ -94,8 +98,11 @@ class RegisterPanel extends CustomElement {
         const conn = api.connection.get();
         conn.connected = true;
 
-        const body = conn._proto._reqToData(req);
+        const body = /** @type {Element} */ (
+            '_reqToData' in conn._proto ? conn._proto._reqToData(/** @type {Request} */ (req)) : req
+        );
         if (!body) { return; }
+
         if (conn._proto._connect_cb(body) === Strophe.Status.CONNFAIL) {
             this.status = CHOOSE_PROVIDER;
             this.setErrorMessage(__("Sorry, we're unable to connect to your chosen provider."));
@@ -126,8 +133,8 @@ class RegisterPanel extends CustomElement {
     }
 
     /**
-     * Handler for {@link _converse.RegisterPanel#getRegistrationFields}
-     * @method _converse.RegisterPanel#onRegistrationFields
+     * Handler for {@link _converse.RegistrationForm#getRegistrationFields}
+     * @method _converse.RegistrationForm#onRegistrationFields
      * @param {Element} stanza - The query stanza.
      */
     onRegistrationFields (stanza) {
@@ -170,61 +177,92 @@ class RegisterPanel extends CustomElement {
     onFormSubmission (ev) {
         ev?.preventDefault?.();
         const form = /** @type {HTMLFormElement} */(ev.target);
-        if (form.querySelector('input[name=domain]') === null) {
+
+        const domain_input = /** @type {HTMLInputElement} */(form.querySelector('input[name=domain]'));
+        if (domain_input === null) {
             this.submitRegistrationForm(form);
         } else {
             this.onProviderChosen(form);
         }
-
     }
 
     /**
      * Callback method that gets called when the user has chosen an XMPP provider
-     * @method _converse.RegisterPanel#onProviderChosen
-     * @param {HTMLElement} form - The form that was submitted
+     * @param {HTMLFormElement} form - The form that was submitted
      */
     onProviderChosen (form) {
         const domain = /** @type {HTMLInputElement} */(form.querySelector('input[name=domain]'))?.value;
-        if (domain) this.fetchRegistrationForm(domain.trim());
+        if (domain) {
+            const form_data = new FormData(form);
+            let service_url = null;
+            if (api.settings.get('show_connection_url_input')) {
+                service_url = /** @type {string} */(form_data.get('connection-url'));
+                if (service_url.startsWith('wss:')) {
+                    api.settings.set("websocket_url", service_url);
+                } else if (service_url.startsWith('https:')) {
+                    api.settings.set('bosh_service_url', service_url);
+                } else {
+                    this.alert_message = __('Invalid connection URL, only HTTPS and WSS accepted');
+                    this.alert_type = 'danger';
+                    this.status = CHOOSE_PROVIDER;
+                    this.requestUpdate();
+                    return;
+                }
+            }
+            this.fetchRegistrationForm(domain.trim(), service_url?.trim());
+        } else {
+            this.status = CHOOSE_PROVIDER;
+        }
     }
 
     /**
      * Fetch a registration form from the requested domain
-     * @method _converse.RegisterPanel#fetchRegistrationForm
      * @param {string} domain_name - XMPP server domain
+     * @param {string|null} [service_url]
      */
-    fetchRegistrationForm (domain_name) {
+    fetchRegistrationForm (domain_name, service_url) {
         this.status = FETCHING_FORM;
         this.reset({
-            'domain': Strophe.getDomainFromJid(domain_name),
-            '_registering': true
+            _registering: true,
+            domain: Strophe.getDomainFromJid(domain_name),
+            service_url,
         });
+
         api.connection.init();
+
         // When testing, the test tears down before the async function
         // above finishes. So we use optional chaining here
-        api.connection.get()?.connect(this.domain, "", (s) => this.onConnectStatusChanged(s));
+        api.connection.get()?.connect(
+            this.domain,
+            '',
+            /**
+             * @param {number} s
+             * @param {string} m
+             */
+            (s, m) => this.onConnectStatusChanged(s, m)
+        );
         return false;
     }
 
     /**
      * Callback function called by Strophe whenever the connection status changes.
      * Passed to Strophe specifically during a registration attempt.
-     * @method _converse.RegisterPanel#onConnectStatusChanged
      * @param {number} status_code - The Strophe.Status status code
+     * @param {string} message
      */
-    onConnectStatusChanged(status_code) {
+    onConnectStatusChanged(status_code, message) {
         log.debug('converse-register: onConnectStatusChanged');
         if ([Strophe.Status.DISCONNECTED,
-             Strophe.Status.CONNFAIL,
-             Strophe.Status.REGIFAIL,
+            Strophe.Status.CONNFAIL,
+            Strophe.Status.REGIFAIL,
              Strophe.Status.NOTACCEPTABLE,
              Strophe.Status.CONFLICT
             ].includes(status_code)) {
 
-            log.error(
+            log.warn(
                 `Problem during registration: Strophe.Status is ${CONNECTION_STATUS[status_code]}`
             );
-            this.abortRegistration();
+            this.abortRegistration(message);
         } else if (status_code === Strophe.Status.REGISTERED) {
             log.debug("Registered successfully.");
             api.connection.get().reset();
@@ -291,7 +329,6 @@ class RegisterPanel extends CustomElement {
     /**
      * Renders the registration form based on the XForm fields
      * received from the XMPP server.
-     * @method _converse.RegisterPanel#renderRegistrationForm
      * @param {Element} stanza - The IQ stanza received from the XMPP server.
      */
     renderRegistrationForm (stanza) {
@@ -302,19 +339,30 @@ class RegisterPanel extends CustomElement {
     /**
      * Report back to the user any error messages received from the
      * XMPP server after attempted registration.
-     * @method _converse.RegisterPanel#reportErrors
      * @param {Element} stanza - The IQ stanza received from the XMPP server
      */
-    reportErrors (stanza) {
-        const errors = Array.from(stanza.querySelectorAll('error'));
-        if (errors.length) {
-            this.setErrorMessage(errors.reduce((result, e) => `${result}\n${e.textContent}`, ''));
+    async reportErrors (stanza) {
+        const error = await parsers.parseErrorStanza(stanza);
+        if (error instanceof errors.ConflictError) {
+            this.setErrorMessage(
+                `${__('Registration failed.')} ${__('Please try a different username.')}`)
+            return;
+        }
+
+        const error_els = Array.from(stanza.querySelectorAll('error'));
+        if (error_els.length) {
+            this.setErrorMessage(
+                `${__('Registration failed.')}${error_els.reduce((result, e) => `${result}\n${e.textContent}`, '')}`
+            );
         } else {
             this.setErrorMessage(__('The provider rejected your registration attempt. '+
                 'Please check the values you entered for correctness.'));
         }
     }
 
+    /**
+     * @param {Event} ev
+     */
     renderProviderChoiceForm (ev) {
         ev?.preventDefault?.();
         const connection = api.connection.get();
@@ -323,23 +371,29 @@ class RegisterPanel extends CustomElement {
         this.status = CHOOSE_PROVIDER;
     }
 
-    abortRegistration () {
+    /**
+     * @param {string} message
+     */
+    abortRegistration (message) {
         const connection = api.connection.get();
         connection._proto._abortAllRequests();
         connection.reset();
         if ([FETCHING_FORM, REGISTRATION_FORM].includes(this.status)) {
             if (api.settings.get('registration_domain')) {
                 this.fetchRegistrationForm(api.settings.get('registration_domain'));
+                return;
             }
-        } else {
-            this.requestUpdate();
         }
+        this.alert_message = message;
+        this.alert_type = 'danger';
+        this.status = CHOOSE_PROVIDER;
+        this.requestUpdate();
     }
 
     /**
      * Handler, when the user submits the registration form.
      * Provides form error feedback or starts the registration process.
-     * @method _converse.RegisterPanel#submitRegistrationForm
+     * @method _converse.RegistrationForm#submitRegistrationForm
      * @param {HTMLElement} form - The HTML form that was submitted
      */
     submitRegistrationForm (form) {
@@ -357,14 +411,14 @@ class RegisterPanel extends CustomElement {
         }
 
         const connection = api.connection.get();
-        connection._addSysHandler(/** @param {Element} iq */(iq) => this._onRegisterIQ(iq), null, "iq", null, null);
+        connection._addSysHandler(/** @param {Element} iq */(iq) => this.#onRegisterIQ(iq), null, "iq", null, null);
         connection.send(iq);
         this.setFields(iq.tree());
     }
 
     /**
      * Stores the values that will be sent to the XMPP server during attempted registration.
-     * @method _converse.RegisterPanel#setFields
+     * @method _converse.RegistrationForm#setFields
      * @param {Element} stanza - the IQ stanza that will be sent to the XMPP server.
      */
     setFields (stanza) {
@@ -418,13 +472,12 @@ class RegisterPanel extends CustomElement {
      * Callback method that gets called when a return IQ stanza
      * is received from the XMPP server, after attempting to
      * register a new user.
-     * @method _converse.RegisterPanel#reportErrors
      * @param {Element} stanza - The IQ stanza.
      */
-    _onRegisterIQ (stanza) {
+    #onRegisterIQ (stanza) {
         const connection = api.connection.get();
         if (stanza.getAttribute("type") === "error") {
-            log.error("Registration failed.");
+            log.info("Registration failed.");
             this.reportErrors(stanza);
 
             const error_els = stanza.getElementsByTagName("error");
@@ -448,4 +501,6 @@ class RegisterPanel extends CustomElement {
     }
 }
 
-api.elements.define('converse-register-panel', RegisterPanel);
+api.elements.define('converse-registration-form', RegistrationForm);
+
+export default RegistrationForm;

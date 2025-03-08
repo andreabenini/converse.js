@@ -71,7 +71,6 @@ class MUCOccupants extends Collection {
         const muc_jid = this.chatroom.get('jid');
         const aff_lists = await Promise.all(affiliations.map(a => getAffiliationList(a, muc_jid)));
 
-
         const new_members = aff_lists.reduce(
             /**
              * @param {MemberListItem[]} acc
@@ -80,7 +79,6 @@ class MUCOccupants extends Collection {
              */
             (acc, val) => {
                 if (val instanceof Error) {
-                    log.error(val);
                     return acc;
                 }
                 return [...val, ...acc];
@@ -143,7 +141,7 @@ class MUCOccupants extends Collection {
      * Lookup by occupant_id is done first, then jid, and then nick.
      *
      * @method _converse.MUCOccupants#findOccupant
-     * @param { OccupantData } data
+     * @param {OccupantData} data
      */
     findOccupant (data) {
         if (data.occupant_id) {
@@ -162,10 +160,9 @@ class MUCOccupants extends Collection {
      * @returns {MUCOccupant}
      */
     getOwnOccupant () {
-        const bare_jid = _converse.session.get('bare_jid');
         return this.findOccupant({
-            'jid': bare_jid,
-            'occupant_id': this.chatroom.get('occupant_id')
+            jid: _converse.session.get('bare_jid'),
+            occupant_id: this.chatroom.get('occupant_id')
         });
     }
 }

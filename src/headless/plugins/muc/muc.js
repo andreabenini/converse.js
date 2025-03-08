@@ -23,7 +23,7 @@ import {
 } from './constants.js';
 import { CHATROOMS_TYPE, GONE, INACTIVE, METADATA_ATTRIBUTES } from '../../shared/constants.js';
 import { Strophe, $build, $iq, $msg, $pres } from 'strophe.js';
-import { TimeoutError } from '../../shared/errors.js';
+import { TimeoutError, ItemNotFoundError, StanzaError } from '../../shared/errors.js';
 import { computeAffiliationsDelta, setAffiliations, getAffiliationList } from './affiliations/utils.js';
 import { initStorage, createStore } from '../../utils/storage.js';
 import { isArchived, parseErrorStanza } from '../../shared/parsers.js';
@@ -31,9 +31,10 @@ import { getUniqueId, isErrorObject, safeSave } from '../../utils/index.js';
 import { isUniView } from '../../utils/session.js';
 import { parseMUCMessage, parseMUCPresence } from './parsers.js';
 import { sendMarker } from '../../shared/actions.js';
-import ModelWithMessages from '../../shared/model-with-messages';
-import ColorAwareModel from '../../shared/color';
 import ChatBoxBase from '../../shared/chatbox';
+import ColorAwareModel from '../../shared/color';
+import ModelWithMessages from '../../shared/model-with-messages';
+import ModelWithVCard from '../../shared/model-with-vcard';
 import { shouldCreateGroupchatMessage, isInfoVisible } from './utils.js';
 import MUCSession from './session';
 
@@ -42,15 +43,14 @@ const { u, stx } = converse.env;
 /**
  * Represents a groupchat conversation.
  */
-class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
+class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))) {
     /**
-     * @typedef {import('../vcard/vcard').default} VCard
-     * @typedef {import('../chat/message.js').default} Message
+     * @typedef {import('../../shared/message.js').default} BaseMessage
      * @typedef {import('./message.js').default} MUCMessage
      * @typedef {import('./occupant.js').default} MUCOccupant
-     * @typedef {import('./affiliations/utils.js').NonOutcastAffiliation} NonOutcastAffiliation
+     * @typedef {import('./types').NonOutcastAffiliation} NonOutcastAffiliation
      * @typedef {import('./types').MemberListItem} MemberListItem
-     * @typedef {import('../chat/types').MessageAttributes} MessageAttributes
+     * @typedef {import('../../shared/types').MessageAttributes} MessageAttributes
      * @typedef {import('./types').MUCMessageAttributes} MUCMessageAttributes
      * @typedef {import('./types').MUCPresenceAttributes} MUCPresenceAttributes
      * @typedef {module:shared.converse.UserMessage} UserMessage
@@ -87,12 +87,6 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
     async initialize () {
         super.initialize();
 
-        /**
-         * @public
-         * @type {VCard}
-         */
-        this.vcard = null;
-
         this.initialized = getOpenPromise();
 
         this.debouncedRejoin = debounce(this.rejoin, 250);
@@ -116,7 +110,7 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
 
         const restored = await this.restoreFromCache();
         if (!restored) {
-            this.join();
+            await this.join();
         }
         /**
          * Triggered once a {@link MUC} has been created and initialized.
@@ -124,7 +118,7 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
          * @type { MUC }
          * @example _converse.api.listen.on('chatRoomInitialized', model => { ... });
          */
-        await api.trigger('chatRoomInitialized', this, { 'Synchronous': true });
+        await api.trigger('chatRoomInitialized', this, { synchronous: true });
         this.initialized.resolve();
     }
 
@@ -170,26 +164,28 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
      * @param {String} [password] - Optional password, if required by the groupchat.
      *  Will fall back to the `password` value stored in the room
      *  model (if available).
+     *  @returns {Promise<void>}
      */
     async join (nick, password) {
         if (this.isEntered()) {
             // We have restored a groupchat from session storage,
             // so we don't send out a presence stanza again.
-            return this;
+            return;
         }
         // Set this early, so we don't rejoin in onHiddenChange
         this.session.save('connection_status', ROOMSTATUS.CONNECTING);
-        await this.refreshDiscoInfo();
+
+        const is_new = (await this.refreshDiscoInfo() instanceof ItemNotFoundError);
         nick = await this.getAndPersistNickname(nick);
         if (!nick) {
             safeSave(this.session, { 'connection_status': ROOMSTATUS.NICKNAME_REQUIRED });
-            if (api.settings.get('muc_show_logs_before_join')) {
+            if (!is_new && api.settings.get('muc_show_logs_before_join')) {
                 await this.fetchMessages();
             }
-            return this;
+            return;
         }
-        api.send(await this.constructJoinPresence(password));
-        return this;
+        api.send(await this.constructJoinPresence(password, is_new));
+        if (is_new) await this.refreshDiscoInfo();
     }
 
     /**
@@ -204,16 +200,19 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
 
     /**
      * @param {string} password
+     * @param {boolean} is_new
      */
-    async constructJoinPresence (password) {
+    async constructJoinPresence (password, is_new) {
+        const maxstanzas = (is_new || this.features.get('mam_enabled'))
+            ? 0
+            : api.settings.get('muc_history_max_stanzas');
+
         let stanza = $pres({
             'id': getUniqueId(),
             'from': api.connection.get().jid,
             'to': this.getRoomJIDAndNick()
         }).c('x', { 'xmlns': Strophe.NS.MUC })
-          .c('history', {
-                'maxstanzas': this.features.get('mam_enabled') ? 0 : api.settings.get('muc_history_max_stanzas')
-            }).up();
+          .c('history', { maxstanzas }).up();
 
         password = password || this.get('password');
         if (password) {
@@ -242,7 +241,7 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
     /**
      * Given the passed in MUC message, send a XEP-0333 chat marker.
      * @async
-     * @param {Message} msg
+     * @param {BaseMessage} msg
      * @param {('received'|'displayed'|'acknowledged')} [type='displayed']
      * @param {boolean} [force=false] - Whether a marker should be sent for the
      *  message, even if it didn't include a `markable` element.
@@ -308,9 +307,8 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
                 }
             }
         } else {
-            if (conn_status === roomstatus.DISCONNECTED) {
-                this.rejoin();
-            }
+            await this.initialized;
+            if (conn_status === roomstatus.DISCONNECTED) this.rejoin();
             this.clearUnreadMsgCounter();
         }
     }
@@ -452,26 +450,41 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
     }
 
     /**
+     * If a user's affiliation has been changed, a <presence> stanza is sent
+     * out, but if the user is not in a room, a <message> stanza MAY be sent
+     * out. This handler handles such message stanzas. See "Example 176" in
+     * XEP-0045.
      * @param {Element} stanza
+     * @returns {void}
      */
     handleAffiliationChangedMessage (stanza) {
+        if (stanza.querySelector('body')) {
+            // If there's a body, we don't treat it as an affiliation change message.
+            return;
+        }
+
         const item = sizzle(`x[xmlns="${Strophe.NS.MUC_USER}"] item`, stanza).pop();
         if (item) {
             const from = stanza.getAttribute('from');
-            const type = stanza.getAttribute('type');
-            const affiliation = item.getAttribute('affiliation');
             const jid = item.getAttribute('jid');
             const data = {
                 from,
-                type,
-                affiliation,
-                'states': [],
-                'show': type == 'unavailable' ? 'offline' : 'online',
-                'role': item.getAttribute('role'),
-                'jid': Strophe.getBareJidFromJid(jid),
-                'resource': Strophe.getResourceFromJid(jid)
+                states: [],
+                jid: Strophe.getBareJidFromJid(jid),
+                resource: Strophe.getResourceFromJid(jid)
             };
-            const occupant = this.occupants.findOccupant({ 'jid': data.jid });
+
+            const affiliation = item.getAttribute('affiliation');
+            if (affiliation) {
+                data.affiliation = affiliation;
+            }
+
+            const role = item.getAttribute('role');
+            if (role) {
+                data.role = role;
+            }
+
+            const occupant = this.occupants.findOccupant({ jid: data.jid });
             if (occupant) {
                 occupant.save(data);
             } else {
@@ -804,34 +817,31 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
 
     /**
      * Retract one of your messages in this groupchat
-     * @param {MUCMessage} message - The message which we're retracting.
+     * @param {BaseMessage} message - The message which we're retracting.
      */
     async retractOwnMessage(message) {
         const __ = _converse.__;
-        const origin_id = message.get('origin_id');
-        if (!origin_id) {
-            throw new Error("Can't retract message without a XEP-0359 Origin ID");
-        }
         const editable = message.get('editable');
-        const stanza = $msg({
-            'id': getUniqueId(),
-            'to': this.get('jid'),
-            'type': 'groupchat',
-        })
-            .c('store', { xmlns: Strophe.NS.HINTS })
-            .up()
-            .c('apply-to', {
-                'id': origin_id,
-                'xmlns': Strophe.NS.FASTEN,
-            })
-            .c('retract', { xmlns: Strophe.NS.RETRACT });
+        const retraction_id = getUniqueId();
+        const id = message.get('id');
+
+        const stanza = stx`
+            <message id="${retraction_id}"
+                     to="${this.get('jid')}"
+                     type="groupchat"
+                     xmlns="jabber:client">
+                <retract id="${id}" xmlns="${Strophe.NS.RETRACT}"/>
+                <body>/me retracted a message</body>
+                <store xmlns="${Strophe.NS.HINTS}"/>
+                <fallback xmlns="${Strophe.NS.FALLBACK}" for="${Strophe.NS.RETRACT}" />
+            </message>`;
 
         // Optimistic save
         message.set({
-            'retracted': new Date().toISOString(),
-            'retracted_id': origin_id,
-            'retraction_id': stanza.tree().getAttribute('id'),
-            'editable': false
+            retracted: new Date().toISOString(),
+            retracted_id: id,
+            retraction_id: retraction_id,
+            editable: false
         });
         const result = await this.sendTimedMessage(stanza);
 
@@ -841,11 +851,11 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
             log.error(result);
             message.save({
                 editable,
-                'error_type': 'timeout',
-                'error': __('A timeout happened while while trying to retract your message.'),
-                'retracted': undefined,
-                'retracted_id': undefined,
-                'retraction_id': undefined
+                error_type: 'timeout',
+                error: __('A timeout happened while trying to retract your message.'),
+                retracted: undefined,
+                retracted_id: undefined,
+                retraction_id: undefined
             });
         }
     }
@@ -890,16 +900,13 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
      * @param {string} [reason] - The reason for retracting the message.
      */
     sendRetractionIQ (message, reason) {
-        const iq = $iq({ 'to': this.get('jid'), 'type': 'set' })
-            .c('apply-to', {
-                'id': message.get(`stanza_id ${this.get('jid')}`),
-                'xmlns': Strophe.NS.FASTEN,
-            })
-            .c('moderate', { xmlns: Strophe.NS.MODERATE })
-            .c('retract', { xmlns: Strophe.NS.RETRACT })
-            .up()
-            .c('reason')
-            .t(reason || '');
+        const iq = stx`
+            <iq to="${this.get('jid')}" type="set" xmlns="jabber:client">
+                <moderate id="${message.get(`stanza_id ${this.get('jid')}`)}" xmlns="${Strophe.NS.MODERATE}">
+                    <retract xmlns="${Strophe.NS.RETRACT}"/>
+                    ${reason ? stx`<reason>${reason}</reason>` : ''}
+                </moderate>
+            </iq>`;
         return api.sendIQ(iq, null, false);
     }
 
@@ -1212,11 +1219,12 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
      * *fields* are stored on the config {@link Model} attribute on this {@link MUC}.
      * @returns {Promise}
      */
-    refreshDiscoInfo () {
-        return api.disco
-            .refresh(this.get('jid'))
-            .then(() => this.getDiscoInfo())
-            .catch((e) => log.error(e));
+    async refreshDiscoInfo () {
+        const result = await api.disco.refresh(this.get('jid'));
+        if (result instanceof StanzaError) {
+            return result;
+        }
+        return this.getDiscoInfo().catch((e) => log.error(e));
     }
 
     /**
@@ -1227,7 +1235,7 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
     getDiscoInfo () {
         return api.disco
             .getIdentity('conference', 'text', this.get('jid'))
-            .then((identity) => this.save({ 'name': identity?.get('name') }))
+            .then((identity) => this.save({ name: identity?.get('name') }))
             .then(() => this.getDiscoInfoFields())
             .then(() => this.getDiscoInfoFeatures())
             .catch((e) => log.error(e));
@@ -1241,14 +1249,20 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
      */
     async getDiscoInfoFields () {
         const fields = await api.disco.getFields(this.get('jid'));
+
         const config = fields.reduce((config, f) => {
             const name = f.get('var');
+            if (name === 'muc#roomconfig_roomname') {
+                config['roomname'] = f.get('value');
+            }
             if (name?.startsWith('muc#roominfo_')) {
                 config[name.replace('muc#roominfo_', '')] = f.get('value');
             }
             return config;
         }, {});
+
         this.config.save(config);
+        if (config['roomname']) this.save({ name: config['roomname'] });
     }
 
     /**
@@ -1637,6 +1651,21 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
     }
 
     /**
+     * Triggers a hook which gives 3rd party plugins an opportunity to determine
+     * the nickname to use.
+     * @return {Promise<string>} A promise which resolves with the nickname
+     */
+    async getNicknameFromHook() {
+        /**
+         * *Hook* which allows plugins to determine which nickname to use for
+         * the given MUC
+         * @event _converse#getNicknameForMUC
+         * @type {string} The nickname to use
+         */
+        return await api.hook('getNicknameForMUC', this, null);
+    }
+
+    /**
      * Given a nick name, save it to the model state, otherwise, look
      * for a server-side reserved nickname or default configured
      * nickname and if found, persist that to the model state.
@@ -1644,8 +1673,13 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
      * @returns {Promise<string>} A promise which resolves with the nickname
      */
     async getAndPersistNickname (nick) {
-        nick = nick || this.get('nick') || (await this.getReservedNick()) || _converse.exports.getDefaultMUCNickname();
-        if (nick) safeSave(this, { nick }, { 'silent': true });
+        nick = nick ||
+            this.get('nick') ||
+            await this.getReservedNick() ||
+            await this.getNicknameFromHook() ||
+            _converse.exports.getDefaultMUCNickname();
+
+        if (nick) safeSave(this, { nick }, { silent: true });
         return nick;
     }
 
@@ -1970,7 +2004,11 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
 
         if (this.isOwnMessage(attrs)) {
             const stanza_id_keys = Object.keys(attrs).filter((k) => k.startsWith('stanza_id'));
-            Object.assign(new_attrs, pick(attrs, stanza_id_keys));
+            Object.assign(
+                new_attrs,
+                { ...pick(attrs, stanza_id_keys) },
+                { body: attrs.body }
+            );
             if (!message.get('received')) {
                 new_attrs.received = new Date().toISOString();
             }
@@ -2084,7 +2122,14 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
      *  whether a message was moderated or not.
      */
     async handleModeration (attrs) {
-        const MODERATION_ATTRIBUTES = ['editable', 'moderated', 'moderated_by', 'moderated_id', 'moderation_reason'];
+        const MODERATION_ATTRIBUTES = [
+            'editable',
+            'moderated',
+            'moderated_by',
+            'moderated_by_id',
+            'moderated_id',
+            'moderation_reason'
+        ];
         if (attrs.moderated === 'retracted') {
             const query = {};
             const key = `stanza_id ${this.get('jid')}`;
@@ -2102,7 +2147,7 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
             const message = this.findDanglingModeration(attrs);
             if (message) {
                 const moderation_attrs = pick(message.attributes, MODERATION_ATTRIBUTES);
-                const new_attrs = Object.assign({ 'dangling_moderation': false }, attrs, moderation_attrs);
+                const new_attrs = Object.assign({ dangling_moderation: false }, attrs, moderation_attrs);
                 delete new_attrs['id']; // Delete id, otherwise a new cache entry gets created
                 message.save(new_attrs);
                 return true;
@@ -2297,11 +2342,11 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
      * passed in attributes map.
      * @param {object} attrs - Attributes representing a received
      *  message, as returned by {@link parseMUCMessage}
-     * @returns {Message}
+     * @returns {MUCMessage|BaseMessage}
      */
     getDuplicateMessage (attrs) {
         if (attrs.activities?.length) {
-            return this.messages.findWhere({ 'type': 'mep', 'msgid': attrs.msgid });
+            return this.messages.findWhere({ type: 'mep', msgid: attrs.msgid });
         } else {
             return super.getDuplicateMessage(attrs);
         }
@@ -2335,8 +2380,8 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
             this.handleMUCPrivateMessage(attrs) ||
             this.handleMetadataFastening(attrs) ||
             this.handleMEPNotification(attrs) ||
-            (await this.handleRetraction(attrs)) ||
             (await this.handleModeration(attrs)) ||
+            (await this.handleRetraction(attrs)) ||
             (await this.handleSubjectChange(attrs))
         ) {
             attrs.nick && this.removeNotification(attrs.nick, ['composing', 'paused']);
@@ -2434,18 +2479,18 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
         const current_affiliation = occupant.get('affiliation');
         if (previous_affiliation === 'admin' && isInfoVisible(converse.AFFILIATION_CHANGES.EXADMIN)) {
             this.createMessage({
-                'type': 'info',
-                'message': __('%1$s is no longer an admin of this groupchat', occupant.get('nick')),
+                type: 'info',
+                message: __('%1$s is no longer an admin of this groupchat', occupant.get('nick')),
             });
         } else if (previous_affiliation === 'owner' && isInfoVisible(converse.AFFILIATION_CHANGES.EXOWNER)) {
             this.createMessage({
-                'type': 'info',
-                'message': __('%1$s is no longer an owner of this groupchat', occupant.get('nick')),
+                type: 'info',
+                message: __('%1$s is no longer an owner of this groupchat', occupant.get('nick')),
             });
         } else if (previous_affiliation === 'outcast' && isInfoVisible(converse.AFFILIATION_CHANGES.EXOUTCAST)) {
             this.createMessage({
-                'type': 'info',
-                'message': __('%1$s is no longer banned from this groupchat', occupant.get('nick')),
+                type: 'info',
+                message: __('%1$s is no longer banned from this groupchat', occupant.get('nick')),
             });
         }
 
@@ -2455,15 +2500,15 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
             isInfoVisible(converse.AFFILIATION_CHANGES.EXMEMBER)
         ) {
             this.createMessage({
-                'type': 'info',
-                'message': __('%1$s is no longer a member of this groupchat', occupant.get('nick')),
+                type: 'info',
+                message: __('%1$s is no longer a member of this groupchat', occupant.get('nick')),
             });
         }
 
         if (current_affiliation === 'member' && isInfoVisible(converse.AFFILIATION_CHANGES.MEMBER)) {
             this.createMessage({
-                'type': 'info',
-                'message': __('%1$s is now a member of this groupchat', occupant.get('nick')),
+                type: 'info',
+                message: __('%1$s is now a member of this groupchat', occupant.get('nick')),
             });
         } else if (
             (current_affiliation === 'admin' && isInfoVisible(converse.AFFILIATION_CHANGES.ADMIN)) ||
@@ -2471,8 +2516,8 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
         ) {
             // For example: AppleJack is now an (admin|owner) of this groupchat
             this.createMessage({
-                'type': 'info',
-                'message': __('%1$s is now an %2$s of this groupchat', occupant.get('nick'), current_affiliation),
+                type: 'info',
+                message: __('%1$s is now an %2$s of this groupchat', occupant.get('nick'), current_affiliation),
             });
         }
     }
@@ -2772,7 +2817,7 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
     /**
      * Returns a boolean to indicate whether the current user
      * was mentioned in a message.
-     * @param {MUCMessage} message - The text message
+     * @param {BaseMessage} message - The text message
      */
     isUserMentioned (message) {
         const nick = this.get('nick');
@@ -2788,7 +2833,7 @@ class MUC extends ModelWithMessages(ColorAwareModel(ChatBoxBase)) {
     }
 
     /**
-     * @param {MUCMessage} message - The text message
+     * @param {BaseMessage} message - The text message
      */
     incrementUnreadMsgsCounter (message) {
         const settings = {

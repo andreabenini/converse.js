@@ -81,39 +81,74 @@ function getJIDFromMUCUserData(stanza) {
  *  message stanza, if it was contained, otherwise it's the message stanza itself.
  * @returns {Object}
  */
-function getModerationAttributes(stanza) {
+function getDeprecatedModerationAttributes(stanza) {
     const fastening = sizzle(`apply-to[xmlns="${Strophe.NS.FASTEN}"]`, stanza).pop();
     if (fastening) {
         const applies_to_id = fastening.getAttribute('id');
-        const moderated = sizzle(`moderated[xmlns="${Strophe.NS.MODERATE}"]`, fastening).pop();
+        const moderated = sizzle(`moderated[xmlns="${Strophe.NS.MODERATE0}"]`, fastening).pop();
         if (moderated) {
-            const retracted = sizzle(`retract[xmlns="${Strophe.NS.RETRACT}"]`, moderated).pop();
+            const retracted = sizzle(`retract[xmlns="${Strophe.NS.RETRACT0}"]`, moderated).pop();
             if (retracted) {
                 return {
-                    'editable': false,
-                    'moderated': 'retracted',
-                    'moderated_by': moderated.getAttribute('by'),
-                    'moderated_id': applies_to_id,
-                    'moderation_reason': moderated.querySelector('reason')?.textContent,
+                    editable: false,
+                    moderated: 'retracted',
+                    moderated_by: moderated.getAttribute('by'),
+                    moderated_id: applies_to_id,
+                    moderation_reason: moderated.querySelector('reason')?.textContent,
                 };
             }
         }
     } else {
-        const tombstone = sizzle(`> moderated[xmlns="${Strophe.NS.MODERATE}"]`, stanza).pop();
+        const tombstone = sizzle(`> moderated[xmlns="${Strophe.NS.MODERATE0}"]`, stanza).pop();
         if (tombstone) {
-            const retracted = sizzle(`retracted[xmlns="${Strophe.NS.RETRACT}"]`, tombstone).pop();
+            const retracted = sizzle(`retracted[xmlns="${Strophe.NS.RETRACT0}"]`, tombstone).pop();
             if (retracted) {
                 return {
-                    'editable': false,
-                    'is_tombstone': true,
-                    'moderated_by': tombstone.getAttribute('by'),
-                    'retracted': tombstone.getAttribute('stamp'),
-                    'moderation_reason': tombstone.querySelector('reason')?.textContent,
+                    editable: false,
+                    is_tombstone: true,
+                    moderated_by: tombstone.getAttribute('by'),
+                    retracted: tombstone.getAttribute('stamp'),
+                    moderation_reason: tombstone.querySelector('reason')?.textContent,
                 };
             }
         }
     }
     return {};
+}
+
+/**
+ * @param {Element} stanza - The message stanza
+ *  message stanza, if it was contained, otherwise it's the message stanza itself.
+ * @returns {Object}
+ */
+function getModerationAttributes(stanza) {
+    const retract = sizzle(`> retract[xmlns="${Strophe.NS.RETRACT}"]`, stanza).pop();
+    if (retract) {
+        const moderated = sizzle(`moderated[xmlns="${Strophe.NS.MODERATE}"]`, retract).pop();
+        if (moderated) {
+            return {
+                editable: false,
+                moderated: 'retracted',
+                moderated_by: moderated.getAttribute('by'),
+                moderated_by_id: moderated.querySelector('occupant-id')?.getAttribute('id'),
+                moderated_id: retract.getAttribute('id'),
+                moderation_reason: retract.querySelector('reason')?.textContent,
+            };
+        }
+    } else {
+        const tombstone = sizzle(`retracted[xmlns="${Strophe.NS.RETRACT}"]`, stanza).pop();
+        if (tombstone) {
+            return {
+                editable: false,
+                is_tombstone: true,
+                moderated_by: tombstone.getAttribute('by'),
+                moderated_by_id: tombstone.querySelector('occupant-id')?.getAttribute('id'),
+                retracted: tombstone.getAttribute('stamp'),
+                moderation_reason: tombstone.querySelector('reason')?.textContent,
+            };
+        }
+    }
+    return getDeprecatedModerationAttributes(stanza);
 }
 
 /**
@@ -234,7 +269,6 @@ export async function parseMUCMessage(original_stanza, chatbox) {
                 'is_marker': !!marker,
                 'is_unstyled': !!sizzle(`message > unstyled[xmlns="${Strophe.NS.STYLING}"]`, stanza).length,
                 'marker_id': marker && marker.getAttribute('id'),
-                'msgid': stanza.getAttribute('id') || original_stanza.getAttribute('id'),
                 'nick': Strophe.unescapeNode(Strophe.getResourceFromJid(from)),
                 'occupant_id': getOccupantID(stanza, chatbox),
                 'receipt_id': getReceiptId(stanza),
@@ -375,6 +409,8 @@ function parsePresenceUserItem(stanza, nick) {
  * @returns {Promise<import('./types').MUCPresenceAttributes>}
  */
 export async function parseMUCPresence(stanza, chatbox) {
+    await chatbox.initialized;
+
     /**
      * @typedef {import('./types').MUCPresenceAttributes} MUCPresenceAttributes
      */

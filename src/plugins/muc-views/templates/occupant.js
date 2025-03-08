@@ -2,7 +2,7 @@
  * @typedef {import('@converse/headless').MUCOccupant} MUCOccupant
  */
 import { api } from '@converse/headless';
-import { PRETTY_CHAT_STATUS } from '../constants.js';
+import { PRETTY_CHAT_STATUS } from 'shared/constants.js';
 import { __ } from 'i18n';
 import { html } from 'lit';
 import { until } from 'lit/directives/until.js';
@@ -146,10 +146,10 @@ async function tplActionButtons(o) {
 }
 
 /**
- * @param {import('../occupants').default} el
- * @param {MUCOccupant} o
+ * @param {import('../sidebar-occupant').default} el
  */
-export default (el, o) => {
+export default (el) => {
+    const o = el.model;
     const affiliation = o.get('affiliation');
     const hint_show = PRETTY_CHAT_STATUS[o.get('show')];
     const role = o.get('role');
@@ -183,7 +183,6 @@ export default (el, o) => {
                         <converse-icon
                             title="${hint_show}"
                             color="var(--${color})"
-                            style="margin-top: -0.1em"
                             size="0.82em"
                             class="${classes} chat-status chat-status--avatar"
                         ></converse-icon>

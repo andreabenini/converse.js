@@ -1,15 +1,15 @@
 export default MUCMessage;
-declare class MUCMessage extends Message {
+declare class MUCMessage extends BaseMessage<any> {
+    constructor(models?: import("@converse/skeletor").Model[], options?: object);
     get occupants(): any;
+    getDisplayName(): any;
     /**
      * Determines whether this messsage may be moderated,
      * based on configuration settings and server support.
-     * @async
      * @method _converse.ChatRoomMessages#mayBeModerated
-     * @returns {boolean}
+     * @returns {Promise<boolean>}
      */
-    mayBeModerated(): boolean;
-    checkValidity(): any;
+    mayBeModerated(): Promise<boolean>;
     onOccupantRemoved(): void;
     /**
      * @param {MUCOccupant} [occupant]
@@ -23,5 +23,5 @@ declare class MUCMessage extends Message {
     setOccupant(occupant?: import("./occupant").default): import("./occupant").default;
     occupant: any;
 }
-import Message from '../chat/message.js';
+import BaseMessage from '../../shared/message.js';
 //# sourceMappingURL=message.d.ts.map

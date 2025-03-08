@@ -1,11 +1,11 @@
 /**
- * @param {Element|Error} stanza - The stanza to be parsed. As a convenience,
+ * @param {Element|Error|null} stanza - The stanza to be parsed. As a convenience,
  * an Error element can be passed in as well, so that this function can be
  * called in a catch block without first checking if a stanza or Error
  * element was received.
  * @returns {Promise<Error|errors.StanzaError|null>}
  */
-export function parseErrorStanza(stanza: Element | Error): Promise<Error | errors.StanzaError | null>;
+export function parseErrorStanza(stanza: Element | Error | null): Promise<Error | errors.StanzaError | null>;
 /**
  * Extract the XEP-0359 stanza IDs from the passed in stanza
  * and return a map containing them.
@@ -24,9 +24,16 @@ export function getEncryptionAttributes(stanza: Element): import("./types").Encr
  * @param {Element} stanza - The message stanza
  * @param {Element} original_stanza - The original stanza, that contains the
  *  message stanza, if it was contained, otherwise it's the message stanza itself.
- * @returns {Object}
+ * @returns {import('./types').RetractionAttrs | {}}
  */
-export function getRetractionAttributes(stanza: Element, original_stanza: Element): any;
+export function getDeprecatedRetractionAttributes(stanza: Element, original_stanza: Element): import("./types").RetractionAttrs | {};
+/**
+ * @param {Element} stanza - The message stanza
+ * @param {Element} original_stanza - The original stanza, that contains the
+ *  message stanza, if it was contained, otherwise it's the message stanza itself.
+ * @returns {import('./types').RetractionAttrs | {}}
+ */
+export function getRetractionAttributes(stanza: Element, original_stanza: Element): import("./types").RetractionAttrs | {};
 /**
  * @param {Element} stanza
  * @param {Element} original_stanza

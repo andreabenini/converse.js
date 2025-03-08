@@ -5,34 +5,34 @@ import _converse from '../../shared/_converse.js';
 import api from '../../shared/api/index.js';
 import converse from '../../shared/api/public.js';
 import ColorAwareModel from '../../shared/color.js';
+import ModelWithVCard from '../../shared/model-with-vcard.js';
 import { rejectPresenceSubscription } from './utils.js';
 
-const { Strophe, $iq, $pres } = converse.env;
+const { Strophe, $iq, $pres, stx } = converse.env;
 
-class RosterContact extends ColorAwareModel(Model) {
+class RosterContact extends ModelWithVCard(ColorAwareModel(Model)) {
     get idAttribute () {
         return 'jid';
     }
 
     defaults () {
         return {
-            'chat_state': undefined,
-            'groups': [],
-            'num_unread': 0,
-            'status': undefined,
+            groups: [],
+            num_unread: 0,
         }
     }
 
-    async initialize (attributes) {
+    async initialize (attrs) {
+        this.lazy_load_vcard = true;
         super.initialize();
         this.initialized = getOpenPromise();
         this.setPresence();
-        const { jid } = attributes;
+        const { jid } = attrs;
         this.set({
-            ...attributes,
+            ...attrs,
             ...{
-                'jid': Strophe.getBareJidFromJid(jid).toLowerCase(),
-                'user_id': Strophe.getNodeFromJid(jid)
+                jid: Strophe.getBareJidFromJid(jid).toLowerCase(),
+                user_id: Strophe.getNodeFromJid(jid)
             }
         });
         /**
@@ -49,7 +49,7 @@ class RosterContact extends ColorAwareModel(Model) {
          * @event _converse#rosterContactInitialized
          * @param {RosterContact} contact
          */
-        await api.trigger('rosterContactInitialized', this, {'Synchronous': true});
+        await api.trigger('rosterContactInitialized', this, {synchronous: true});
         this.initialized.resolve();
     }
 
@@ -64,24 +64,14 @@ class RosterContact extends ColorAwareModel(Model) {
     }
 
     openChat () {
-        // XXX: Doubtful whether it's necessary to pass in the contact
-        // attributes hers. If so, we should perhaps look them up inside the
-        // `open` API method.
-        api.chats.open(this.get('jid'), this.attributes, true);
+        api.chats.open(this.get('jid'), {}, true);
     }
 
-    getDisplayName () {
-        // Gets overridden in converse-vcard where the fullname is may be returned
-        if (this.get('nickname')) {
-            return this.get('nickname');
-        } else {
-            return this.get('jid');
-        }
-    }
-
-    getFullname () {
-        // Gets overridden in converse-vcard where the fullname may be returned
-        return this.get('jid');
+    /**
+     * @returns {string|null}
+     */
+    getDisplayName (jid_fallback=true) {
+        return this.get('nickname') || this.vcard?.getDisplayName() || (jid_fallback ? this.get('jid') : null);
     }
 
     /**
@@ -114,7 +104,6 @@ class RosterContact extends ColorAwareModel(Model) {
      * notification by sending a presence stanza of type "unsubscribe"
      * this step lets the user's server know that it MUST no longer
      * send notification of the subscription state change to the user.
-     * @method RosterContacts#ackUnsubscribe
      */
     ackUnsubscribe () {
         api.send($pres({'type': 'unsubscribe', 'to': this.get('jid')}));
@@ -136,11 +125,18 @@ class RosterContact extends ColorAwareModel(Model) {
      * @param {string} message - Optional message to send to the person being authorized
      */
     authorize (message) {
-        const pres = $pres({'to': this.get('jid'), 'type': "subscribed"});
-        if (message && message !== "") {
-            pres.c("status").t(message);
-        }
-        api.send(pres);
+        api.send(stx`
+            <presence
+                to="${this.get('jid')}"
+                type="subscribed"
+                xmlns="jabber:client">
+                    ${message && message !== "" ? stx`<status>${message}</status>` : '' }
+            </presence>`);
+
+        this.save({
+            requesting: false,
+            subscription: 'from',
+        });
         return this;
     }
 
@@ -156,7 +152,12 @@ class RosterContact extends ColorAwareModel(Model) {
             this.destroy();
             return;
         }
+        if (this.get('ask') === 'subscribe' || subscription === 'to') {
+            // See: https://datatracker.ietf.org/doc/html/rfc6121#section-3.3.1
+            api.send($pres({ type: 'unsubscribe',  to: this.get('jid')}));
+        }
         if (unauthorize && ['from', 'both'].includes(subscription)) {
+            // See: https://datatracker.ietf.org/doc/html/rfc6121#section-3.2.1
             this.unauthorize();
         }
         const promise = this.sendRosterRemoveStanza();
@@ -166,15 +167,33 @@ class RosterContact extends ColorAwareModel(Model) {
     }
 
     /**
-     * Instruct the XMPP server to remove this contact from our roster
-     * @async
+     * @param {import('./types').RosterContactUpdateAttrs} attrs
      * @returns {Promise}
      */
-    sendRosterRemoveStanza () {
-        const iq = $iq({type: 'set'})
-            .c('query', {xmlns: Strophe.NS.ROSTER})
-            .c('item', {jid: this.get('jid'), subscription: "remove"});
-        return api.sendIQ(iq);
+    async update (attrs) {
+        this.save(attrs);
+        return await api.sendIQ(
+            stx`<iq xmlns="jabber:client" type="set">
+                <query xmlns="${Strophe.NS.ROSTER}">
+                    <item jid="${this.get("jid")}" name="${this.get("nickname")}">
+                        ${this.get("groups")?.map(/** @param {string} group */ (group) => stx`<group>${group}</group>`)}
+                    </item>
+                </query>
+            </iq>`
+        );
+    }
+
+    /**
+     * Instruct the XMPP server to remove this contact from our roster
+     * @returns {Promise}
+     */
+    async sendRosterRemoveStanza () {
+        const iq = stx`<iq type="set" xmlns="jabber:client">
+            <query xmlns="${Strophe.NS.ROSTER}">
+                <item jid="${this.get('jid')}" subscription="remove"/>
+            </query>
+        </iq>`;
+        return await api.sendIQ(iq);
     }
 }
 

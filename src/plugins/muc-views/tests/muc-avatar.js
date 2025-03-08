@@ -8,7 +8,7 @@ describe('Groupchats', () => {
             'has an avatar image',
             mock.initConverse(['chatBoxesFetched'], { vcard: { nickname: '' } }, async function (_converse) {
                 const muc_jid = 'lounge@montague.lit';
-                await mock.openAndEnterChatRoom(_converse, muc_jid, 'romeo');
+                await mock.openAndEnterMUC(_converse, muc_jid, 'romeo');
 
                 const view = _converse.chatboxviews.get(muc_jid);
                 const avatar = view.querySelector('.chat-head converse-avatar .avatar-initials');
@@ -44,7 +44,7 @@ describe('Groupchats', () => {
                     const muc_jid = 'coven@chat.shakespeare.lit';
                     await mock.waitForRoster(_converse, 'current', 0);
                     await mock.openControlBox(_converse);
-                    await _converse.api.rooms.open(muc_jid, { 'nick': 'some1' });
+                    const promise = _converse.api.rooms.open(muc_jid, { nick: 'some1' });
 
                     const selector = `iq[to="${muc_jid}"] query[xmlns="http://jabber.org/protocol/disco#info"]`;
                     const features_query = await u.waitUntil(() =>
@@ -82,7 +82,7 @@ describe('Groupchats', () => {
                         </iq>`;
                     _converse.api.connection.get()._dataRecv(mock.createRequest(features_stanza));
 
-                    const view = _converse.chatboxviews.get(muc_jid);
+                    const view = await u.waitUntil(() => _converse.chatboxviews.get(muc_jid));
                     await u.waitUntil(
                         () => view.model.session.get('connection_status') === converse.ROOMSTATUS.CONNECTING
                     );
@@ -104,7 +104,7 @@ describe('Groupchats', () => {
 
                     const initials_el = avatar_el.querySelector('.avatar-initials');
                     expect(initials_el.textContent).toBe('AC');
-                    expect(getComputedStyle(initials_el).backgroundColor).toBe('rgb(75, 103, 255)');
+                    await u.waitUntil(() => getComputedStyle(initials_el).backgroundColor === 'rgb(75, 103, 255)');
                     avatar_el.click();
 
                     const modal = _converse.api.modal.get('converse-muc-details-modal');
@@ -118,11 +118,11 @@ describe('Groupchats', () => {
                     let els = modal.querySelectorAll('p.room-info');
                     expect(els[0].textContent).toBe('Name: A Dark Cave');
 
-                    expect(els[1].querySelector('strong').textContent).toBe('XMPP address');
+                    expect(els[1].querySelector('strong').textContent).toBe('XMPP address:');
                     expect(els[1].querySelector('converse-texture').textContent.trim()).toBe(
                         'xmpp:coven@chat.shakespeare.lit?join'
                     );
-                    expect(els[2].querySelector('strong').textContent).toBe('Description');
+                    expect(els[2].querySelector('strong').textContent).toBe('Description:');
                     expect(els[2].querySelector('converse-texture').textContent).toBe('This is the description');
 
                     expect(els[3].textContent).toBe('Online users: 1');
@@ -150,20 +150,20 @@ describe('Groupchats', () => {
                     expect(els[3].textContent).toBe('Online users: 2');
 
                     view.model.set({ 'subject': { 'author': 'someone', 'text': 'Hatching dark plots' } });
+                    await u.waitUntil(() => modal.querySelectorAll('p.room-info').length === 7);
+
                     els = modal.querySelectorAll('p.room-info');
                     expect(els[0].textContent).toBe('Name: A Dark Cave');
-
-                    expect(els[1].querySelector('strong').textContent).toBe('XMPP address');
+                    expect(els[1].querySelector('strong').textContent).toBe('XMPP address:');
                     expect(els[1].querySelector('converse-texture').textContent.trim()).toBe(
                         'xmpp:coven@chat.shakespeare.lit?join'
                     );
-                    expect(els[2].querySelector('strong').textContent).toBe('Description');
+                    expect(els[2].querySelector('strong').textContent).toBe('Description:');
                     expect(els[2].querySelector('converse-texture').textContent).toBe('This is the description');
-                    expect(els[3].querySelector('strong').textContent).toBe('Topic');
+                    expect(els[3].querySelector('strong').textContent).toBe('Topic:');
                     await u.waitUntil(
                         () => els[3].querySelector('converse-texture').textContent === 'Hatching dark plots'
                     );
-
                     expect(els[4].textContent).toBe('Topic author: someone');
                     expect(els[5].textContent).toBe('Online users: 2');
                 }

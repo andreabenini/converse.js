@@ -38,10 +38,11 @@
     --controlbox-color: var(--light-blue);
     --disabled-color: gray;
     --error-color: var(--dark-red);
-    --focus-color: #aaa;
+    --focus-color: var(--light-blue);
     --heading-color: var(--background-color);
     --headlines-color: var(--orange);
-    --link-color: var(--dark-blue);
+    --link-color: #2D3991;
+    --subdued-color: gray;
 
     // The background when selecting text with your mouse
     --selection-color: black;

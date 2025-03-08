@@ -7,7 +7,10 @@ import { __ } from 'i18n';
 
 const { ANONYMOUS, EXTERNAL, LOGIN, PREBIND, CONNECTION_STATUS } = constants;
 
-const trust_checkbox = (checked) => {
+/**
+ * @param {boolean} checked
+ */
+function tplTrustCheckbox(checked) {
     const i18n_hint_trusted = __(
         'To improve performance, we cache your data in this browser. ' +
             'Uncheck this box if this is a public computer or if you want your data to be deleted when you log out. ' +
@@ -16,7 +19,7 @@ const trust_checkbox = (checked) => {
     );
     const i18n_trusted = __('This is a trusted device');
     return html`
-        <div class="form-group form-check login-trusted">
+        <div class="form-check login-trusted">
             <input
                 id="converse-login-trusted"
                 type="checkbox"
@@ -25,25 +28,21 @@ const trust_checkbox = (checked) => {
                 ?checked=${checked}
             />
             <label for="converse-login-trusted" class="form-check-label login-trusted__desc">${i18n_trusted}</label>
-            <button type="button" class="btn p-0"
-                data-toggle="popover"
-                title="${i18n_hint_trusted}"
-                data-content="${i18n_hint_trusted}">
-                <converse-icon class="fa fa-info-circle" size="1.2em"></converse-icon>
-            </button>
+            <converse-popover title="${__('Info')}" text="${i18n_hint_trusted}"></converse-popover>
         </div>
     `;
 };
 
-const connection_url_input = () => {
+export function tplConnectionURLInput() {
     const i18n_connection_url = __('Connection URL');
     const i18n_form_help = __('HTTP or websocket URL that is used to connect to your XMPP server');
     const i18n_placeholder = __('e.g. wss://example.org/xmpp-websocket');
     return html`
-        <div class="form-group fade-in">
+        <div class="mb-3 fade-in">
             <label for="converse-conn-url" class="form-label">${i18n_connection_url}</label>
             <p class="form-help instructions">${i18n_form_help}</p>
             <input
+                required
                 id="converse-conn-url"
                 class="form-control"
                 type="url"
@@ -54,10 +53,10 @@ const connection_url_input = () => {
     `;
 };
 
-const password_input = () => {
+function tplPasswordInput() {
     const i18n_password = __('Password');
     return html`
-        <div>
+        <div class="mb-3">
             <label for="converse-login-password" class="form-label">${i18n_password}</label>
             <input
                 id="converse-login-password"
@@ -72,7 +71,7 @@ const password_input = () => {
     `;
 };
 
-const tplRegisterLink = () => {
+function tplRegisterLink() {
     const i18n_create_account = __('Create an account');
     const i18n_hint_no_account = __("Don't have a chat account?");
     return html`
@@ -85,7 +84,7 @@ const tplRegisterLink = () => {
     `;
 };
 
-const tplShowRegisterLink = () => {
+function tplShowRegisterLink() {
     return (
         api.settings.get('allow_registration') &&
         !api.settings.get('auto_login') &&
@@ -93,7 +92,7 @@ const tplShowRegisterLink = () => {
     );
 };
 
-const auth_fields = (el) => {
+function tplAuthFields() {
     const authentication = api.settings.get('authentication');
     const i18n_login = __('Log in');
     const i18n_xmpp_address = __('XMPP Address');
@@ -104,22 +103,23 @@ const auth_fields = (el) => {
 
     return html`
         <fieldset class="form-group">
+            <div class="mb-3">
             <label for="converse-login-jid" class="form-label">${i18n_xmpp_address}:</label>
-            <input
-                id="converse-login-jid"
-                ?autofocus=${api.settings.get('auto_focus') ? true : false}
-                @changed=${el.validate}
-                value="${api.settings.get('jid') ?? ''}"
-                required
-                class="form-control"
-                type="text"
-                name="jid"
-                placeholder="${placeholder_username}"
-            />
+                <input
+                    id="converse-login-jid"
+                    ?autofocus=${api.settings.get('auto_focus') ? true : false}
+                    value="${api.settings.get('jid') ?? ''}"
+                    required
+                    class="form-control"
+                    type="text"
+                    name="jid"
+                    placeholder="${placeholder_username}"
+                />
+            </div>
+            ${authentication !== EXTERNAL ? tplPasswordInput() : ''}
+            ${api.settings.get('show_connection_url_input') ? tplConnectionURLInput() : ''}
+            ${show_trust_checkbox ? tplTrustCheckbox(show_trust_checkbox === 'off' ? false : true) : ''}
         </fieldset>
-        ${authentication !== EXTERNAL ? password_input() : ''}
-        ${api.settings.get('show_connection_url_input') ? connection_url_input() : ''}
-        ${show_trust_checkbox ? trust_checkbox(show_trust_checkbox === 'off' ? false : true) : ''}
         <fieldset class="form-group buttons">
             <input class="btn btn-primary" type="submit" value="${i18n_login}" />
         </fieldset>
@@ -127,12 +127,12 @@ const auth_fields = (el) => {
     `;
 };
 
-const form_fields = (el) => {
+function tplFormFields() {
     const authentication = api.settings.get('authentication');
     const i18n_disconnected = __('Disconnected');
     const i18n_anon_login = __('Click here to log in anonymously');
     return html`
-        ${authentication == LOGIN || authentication == EXTERNAL ? auth_fields(el) : ''}
+        ${authentication == LOGIN || authentication == EXTERNAL ? tplAuthFields() : ''}
         ${authentication == ANONYMOUS
             ? html`<input class="btn btn-primary login-anon" type="submit" value="${i18n_anon_login}" />`
             : ''}
@@ -140,6 +140,9 @@ const form_fields = (el) => {
     `;
 };
 
+/**
+ * @param {import('../loginform.js').default} el
+ */
 export default (el) => {
     const { connfeedback } = _converse.state;
     const connection_status = connfeedback.get('connection_status');
@@ -157,6 +160,6 @@ export default (el) => {
             </div>
             ${CONNECTION_STATUS[connection_status] === 'CONNECTING'
                 ? tplSpinner()
-                : form_fields(el)}
+                : tplFormFields()}
         </form>`;
 };

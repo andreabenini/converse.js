@@ -1,16 +1,15 @@
-/**
- * @typedef {import('@converse/headless/types/plugins/vcard/api').VCardData} VCardData
- */
+import { api, converse, log } from '@converse/headless';
 import tplMUCConfigForm from './templates/muc-config.js';
 import BaseModal from 'plugins/modal/modal.js';
 import { __ } from 'i18n';
-import { api, converse, log } from '@converse/headless';
 import { compressImage, isImageWithAlphaChannel } from 'utils/file.js';
 
-const { sizzle } = converse.env;
-const u = converse.env.utils;
+const { sizzle, u } = converse.env;
 
 export default class MUCConfigModal extends BaseModal {
+    /**
+     * @typedef {import('@converse/headless/types/plugins/vcard/api').VCardData} VCardData
+     */
 
     constructor (options) {
         super(options);
@@ -19,18 +18,29 @@ export default class MUCConfigModal extends BaseModal {
 
     initialize () {
         super.initialize();
-        this.listenTo(this.model, 'change', () => this.render());
-        this.listenTo(this.model.features, 'change:passwordprotected', () => this.render());
-        this.listenTo(this.model.session, 'change:config_stanza', () => this.render());
+        this.addListeners();
+    }
+
+    addListeners () {
+        this.listenTo(this.model, 'change', () => this.requestUpdate());
+        this.listenTo(this.model.features, 'change:passwordprotected', () => this.requestUpdate());
+        this.listenTo(this.model.session, 'change:config_stanza', () => this.requestUpdate());
     }
 
     renderModal () {
         return tplMUCConfigForm(this);
     }
 
-    connectedCallback () {
-        super.connectedCallback();
-        this.getConfig();
+    /**
+     * @param {Map<string, any>} changed
+     */
+    shouldUpdate(changed) {
+        if (changed.has('model') && this.model) {
+            this.stopListening();
+            this.addListeners();
+            this.getConfig();
+        }
+        return true;
     }
 
     getModalTitle () {

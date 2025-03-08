@@ -1,5 +1,5 @@
 import { CHAT_STATES } from '../../shared/constants';
-import { MessageAttributes } from '../chat/types';
+import { MessageAttributes } from '../../shared/types';
 import MUC from './muc';
 
 export type MUCStatusCode =
@@ -69,6 +69,9 @@ export type MUCMessageAttributes = MessageAttributes & ExtraMUCAttributes;
 
 export type MUCAffiliation = 'owner'|'admin'|'member'|'outcast'|'none';
 export type MUCRole = 'moderator'|'participant'|'visitor'|'none';
+
+
+ export type NonOutcastAffiliation = 'admin' | 'owner' | 'member';
 
 /**
  * Either the JID or the nickname (or both) will be available.

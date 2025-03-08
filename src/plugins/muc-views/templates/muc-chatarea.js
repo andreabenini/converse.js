@@ -20,16 +20,18 @@ export default (el) => {
     if (view_mode === 'overlayed') {
         chat_area_classes = 'd-none d-md-flex col-s-10 col-md-8';
         sidebar_classes = 'col-xs-12 col-s-2 col-md-4';
-    } else {
+    } else if (view_mode === 'fullscreen') {
         chat_area_classes = 'd-none d-md-flex col-md-8 col-xl-10';
         sidebar_classes = 'col-xs-12 col-md-4 col-xl-2';
+    } else if (view_mode === 'embedded') {
+        chat_area_classes = 'd-flex col-8';
+        sidebar_classes = 'col-4';
     }
 
     return html`
         <div class="chat-area ${el.shouldShowSidebar() ? chat_area_classes : 'col-xs-12' }">
             <div class="chat-content ${show_send_button ? 'chat-content-sendbutton' : ''}" aria-live="polite">
                 <converse-muc-chat-content
-                    class="chat-content__messages"
                     .model="${el.model}"></converse-muc-chat-content>
 
                 ${(el.model?.get('show_help_messages')) ?

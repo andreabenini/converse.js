@@ -1,6 +1,75 @@
 export default MUC;
 declare const MUC_base: {
     new (...args: any[]): {
+        _vcard: import("../vcard").VCard;
+        lazy_load_vcard: boolean;
+        initialize(): void;
+        readonly vcard: import("../vcard").VCard;
+        getVCard(): Promise<import("../vcard").VCard | null>;
+        cid: any;
+        attributes: {};
+        validationError: string;
+        collection: any;
+        changed: {};
+        browserStorage: Storage;
+        _browserStorage: Storage;
+        readonly idAttribute: string;
+        readonly cidPrefix: string;
+        preinitialize(): void;
+        validate(attrs: object, options?: object): string;
+        toJSON(): any;
+        sync(method: "create" | "update" | "patch" | "delete" | "read", model: Model, options: import("@converse/skeletor/src/types/model").Options): any;
+        get(attr: string): any;
+        keys(): string[];
+        values(): any[];
+        pairs(): [string, any][];
+        entries(): [string, any][];
+        invert(): any;
+        pick(...args: any[]): any;
+        omit(...args: any[]): any;
+        isEmpty(): any;
+        has(attr: string): boolean;
+        matches(attrs: import("@converse/skeletor/src/types/model").Attributes): boolean;
+        set(key: string | any, val?: string | any, options?: import("@converse/skeletor/src/types/model").Options): false | any;
+        _changing: boolean;
+        _previousAttributes: any;
+        id: any;
+        _pending: boolean | import("@converse/skeletor/src/types/model").Options;
+        unset(attr: string, options?: import("@converse/skeletor/src/types/model").Options): false | any;
+        clear(options: import("@converse/skeletor/src/types/model").Options): false | any;
+        hasChanged(attr?: string): any;
+        changedAttributes(diff: any): any;
+        previous(attr?: string): any;
+        previousAttributes(): any;
+        fetch(options?: import("@converse/skeletor/src/types/model").Options): any;
+        save(key?: string | import("@converse/skeletor/src/types/model").Attributes, val?: boolean | number | string | import("@converse/skeletor/src/types/model").Options, options?: import("@converse/skeletor/src/types/model").Options): any;
+        destroy(options?: import("@converse/skeletor/src/types/model").Options): boolean;
+        url(): any;
+        parse(resp: import("@converse/skeletor/src/types/model").Options, options?: import("@converse/skeletor/src/types/model").Options): import("@converse/skeletor/src/types/model").Options;
+        isNew(): boolean;
+        isValid(options?: import("@converse/skeletor/src/types/model").Options): boolean;
+        _validate(attrs: import("@converse/skeletor/src/types/model").Attributes, options?: import("@converse/skeletor/src/types/model").Options): boolean;
+        on(name: string, callback: (event: any, model: Model, collection: import("@converse/skeletor").Collection, options: Record<string, any>) => any, context: any): any;
+        _events: any;
+        _listeners: {};
+        listenTo(obj: any, name: string, callback?: (event: any, model: Model, collection: import("@converse/skeletor").Collection, options: Record<string, any>) => any): any;
+        _listeningTo: {};
+        _listenId: any;
+        off(name: string, callback: (event: any, model: Model, collection: import("@converse/skeletor").Collection, options: Record<string, any>) => any, context?: any): any;
+        stopListening(obj?: any, name?: string, callback?: (event: any, model: Model, collection: import("@converse/skeletor").Collection, options: Record<string, any>) => any): any;
+        once(name: string, callback: (event: any, model: Model, collection: import("@converse/skeletor").Collection, options: Record<string, any>) => any, context: any): any;
+        listenToOnce(obj: any, name: string, callback?: (event: any, model: Model, collection: import("@converse/skeletor").Collection, options: Record<string, any>) => any): any;
+        trigger(name: string, ...args: any[]): any;
+        constructor: Function;
+        toString(): string;
+        toLocaleString(): string;
+        valueOf(): Object;
+        hasOwnProperty(v: PropertyKey): boolean;
+        isPrototypeOf(v: Object): boolean;
+        propertyIsEnumerable(v: PropertyKey): boolean;
+    };
+} & {
+    new (...args: any[]): {
         disable_mam: boolean;
         initialize(): Promise<void>;
         initNotifications(): void;
@@ -17,32 +86,32 @@ declare const MUC_base: {
         messages: any;
         fetchMessages(): any;
         afterMessagesFetched(): void;
-        onMessage(_attrs_or_error: import("../chat/types").MessageAttributes | Error): Promise<void>;
-        getUpdatedMessageAttributes(message: import("../chat/message.js").default, attrs: import("../chat/types").MessageAttributes): object;
-        updateMessage(message: import("../chat/message.js").default, attrs: import("../chat/types").MessageAttributes): void;
-        handleCorrection(attrs: import("../chat/types").MessageAttributes | import("./types").MUCMessageAttributes): Promise<import("../chat/message.js").default | void>;
-        queueMessage(attrs: import("../chat/types").MessageAttributes): any;
+        onMessage(_attrs_or_error: import("../../shared/types").MessageAttributes | Error): Promise<void>;
+        getUpdatedMessageAttributes(message: import("../../shared/message.js").default<any>, attrs: import("../../shared/types").MessageAttributes): object;
+        updateMessage(message: import("../../shared/message.js").default<any>, attrs: import("../../shared/types").MessageAttributes): void;
+        handleCorrection(attrs: import("../../shared/types").MessageAttributes | import("./types").MUCMessageAttributes): Promise<import("../../shared/message.js").default<any> | void>;
+        queueMessage(attrs: import("../../shared/types").MessageAttributes): any;
         msg_chain: any;
-        getOutgoingMessageAttributes(_attrs?: import("../chat/types").MessageAttributes): Promise<import("../chat/types").MessageAttributes>;
-        sendMessage(attrs?: any): Promise<import("../chat/message.js").default>;
-        retractOwnMessage(message: import("../chat/message.js").default): void;
+        getOutgoingMessageAttributes(_attrs?: import("../../shared/types").MessageAttributes): Promise<import("../../shared/types").MessageAttributes>;
+        sendMessage(attrs?: any): Promise<import("../../shared/message.js").default<any>>;
+        retractOwnMessage(message: import("../../shared/message.js").default<any>): void;
         sendFiles(files: File[]): Promise<void>;
         setEditable(attrs: any, send_time: string): void;
         setChatState(state: string, options?: object): any;
         chat_state_timeout: NodeJS.Timeout;
-        onMessageAdded(message: import("../chat/message.js").default): void;
-        onMessageUploadChanged(message: import("../chat/message.js").default): Promise<void>;
+        onMessageAdded(message: import("../../shared/message.js").default<any>): void;
+        onMessageUploadChanged(message: import("../../shared/message.js").default<any>): Promise<void>;
         onScrolledChanged(): void;
         pruneHistoryWhenScrolledDown(): void;
-        shouldShowErrorMessage(attrs: import("../chat/types").MessageAttributes): Promise<boolean>;
+        shouldShowErrorMessage(attrs: import("../../shared/types").MessageAttributes): Promise<boolean>;
         clearMessages(): Promise<void>;
         editEarlierMessage(): void;
         editLaterMessage(): any;
         getOldestMessage(): any;
         getMostRecentMessage(): any;
         getMessageReferencedByError(attrs: object): any;
-        findDanglingRetraction(attrs: object): import("../chat/message.js").default | null;
-        getDuplicateMessage(attrs: object): import("../chat/message.js").default;
+        findDanglingRetraction(attrs: object): import("../../shared/message.js").default<any> | null;
+        getDuplicateMessage(attrs: object): import("../../shared/message.js").default<any>;
         getOriginIdQueryAttrs(attrs: object): {
             origin_id: any;
             from: any;
@@ -52,15 +121,15 @@ declare const MUC_base: {
             from: any;
             msgid: any;
         };
-        sendMarkerForMessage(msg: import("../chat/message.js").default, type?: ("received" | "displayed" | "acknowledged"), force?: boolean): Promise<void>;
-        handleUnreadMessage(message: import("../chat/message.js").default): void;
-        getErrorAttributesForMessage(message: import("../chat/message.js").default, attrs: import("../chat/types").MessageAttributes): Promise<any>;
+        sendMarkerForMessage(msg: import("../../shared/message.js").default<any>, type?: ("received" | "displayed" | "acknowledged"), force?: boolean): Promise<void>;
+        handleUnreadMessage(message: import("../../shared/message.js").default<any>): void;
+        getErrorAttributesForMessage(message: import("../../shared/message.js").default<any>, attrs: import("../../shared/types").MessageAttributes): Promise<any>;
         handleErrorMessageStanza(stanza: Element): Promise<void>;
-        incrementUnreadMsgsCounter(message: import("../chat/message.js").default): void;
+        incrementUnreadMsgsCounter(message: import("../../shared/message.js").default<any>): void;
         clearUnreadMsgCounter(): void;
-        handleRetraction(attrs: import("../chat/types").MessageAttributes): Promise<boolean>;
-        handleReceipt(attrs: import("../chat/types").MessageAttributes): boolean;
-        createMessageStanza(message: import("../chat/message.js").default): Promise<any>;
+        handleRetraction(attrs: import("../../shared/types").MessageAttributes): Promise<boolean>;
+        handleReceipt(attrs: import("../../shared/types").MessageAttributes): boolean;
+        createMessageStanza(message: import("../../shared/message.js").default<any>): Promise<any>;
         pruneHistory(): void;
         debouncedPruneHistory: import("lodash").DebouncedFunc<() => void>;
         isScrolledUp(): any;
@@ -202,13 +271,12 @@ declare const MUC_base: {
  */
 declare class MUC extends MUC_base {
     /**
-     * @typedef {import('../vcard/vcard').default} VCard
-     * @typedef {import('../chat/message.js').default} Message
+     * @typedef {import('../../shared/message.js').default} BaseMessage
      * @typedef {import('./message.js').default} MUCMessage
      * @typedef {import('./occupant.js').default} MUCOccupant
-     * @typedef {import('./affiliations/utils.js').NonOutcastAffiliation} NonOutcastAffiliation
+     * @typedef {import('./types').NonOutcastAffiliation} NonOutcastAffiliation
      * @typedef {import('./types').MemberListItem} MemberListItem
-     * @typedef {import('../chat/types').MessageAttributes} MessageAttributes
+     * @typedef {import('../../shared/types').MessageAttributes} MessageAttributes
      * @typedef {import('./types').MUCMessageAttributes} MUCMessageAttributes
      * @typedef {import('./types').MUCPresenceAttributes} MUCPresenceAttributes
      * @typedef {module:shared.converse.UserMessage} UserMessage
@@ -231,13 +299,8 @@ declare class MUC extends MUC_base {
         type: string;
     };
     initialize(): Promise<void>;
-    /**
-     * @public
-     * @type {VCard}
-     */
-    public vcard: import("../vcard/vcard").default;
     initialized: any;
-    debouncedRejoin: import("lodash").DebouncedFunc<() => Promise<this>>;
+    debouncedRejoin: import("lodash").DebouncedFunc<() => Promise<void>>;
     isEntered(): boolean;
     /**
      * Checks whether this MUC qualifies for subscribing to XEP-0437 Room Activity Indicators (RAI)
@@ -255,26 +318,28 @@ declare class MUC extends MUC_base {
      * @param {String} [password] - Optional password, if required by the groupchat.
      *  Will fall back to the `password` value stored in the room
      *  model (if available).
+     *  @returns {Promise<void>}
      */
-    join(nick?: string, password?: string): Promise<this>;
+    join(nick?: string, password?: string): Promise<void>;
     /**
      * Clear stale cache and re-join a MUC we've been in before.
      */
-    rejoin(): Promise<this>;
+    rejoin(): Promise<void>;
     /**
      * @param {string} password
+     * @param {boolean} is_new
      */
-    constructJoinPresence(password: string): Promise<import("strophe.js").Builder>;
+    constructJoinPresence(password: string, is_new: boolean): Promise<import("strophe.js").Builder>;
     clearOccupantsCache(): void;
     /**
      * Given the passed in MUC message, send a XEP-0333 chat marker.
      * @async
-     * @param {Message} msg
+     * @param {BaseMessage} msg
      * @param {('received'|'displayed'|'acknowledged')} [type='displayed']
      * @param {boolean} [force=false] - Whether a marker should be sent for the
      *  message, even if it didn't include a `markable` element.
      */
-    sendMarkerForMessage(msg: import("../chat/message.js").default, type?: ("received" | "displayed" | "acknowledged"), force?: boolean): Promise<void>;
+    sendMarkerForMessage(msg: import("../../shared/message.js").default<any>, type?: ("received" | "displayed" | "acknowledged"), force?: boolean): Promise<void>;
     /**
      * Finds the last eligible message and then sends a XEP-0333 chat marker for it.
      * @param { ('received'|'displayed'|'acknowledged') } [type='displayed']
@@ -318,7 +383,12 @@ declare class MUC extends MUC_base {
     occupants: any;
     fetchOccupants(): any;
     /**
+     * If a user's affiliation has been changed, a <presence> stanza is sent
+     * out, but if the user is not in a room, a <message> stanza MAY be sent
+     * out. This handler handles such message stanzas. See "Example 176" in
+     * XEP-0045.
      * @param {Element} stanza
+     * @returns {void}
      */
     handleAffiliationChangedMessage(stanza: Element): void;
     /**
@@ -363,9 +433,9 @@ declare class MUC extends MUC_base {
     sendTimedMessage(message: import("strophe.js").Builder | Element): Promise<Element> | Promise<TimeoutError>;
     /**
      * Retract one of your messages in this groupchat
-     * @param {MUCMessage} message - The message which we're retracting.
+     * @param {BaseMessage} message - The message which we're retracting.
      */
-    retractOwnMessage(message: import("./message.js").default): Promise<void>;
+    retractOwnMessage(message: import("../../shared/message.js").default<any>): Promise<void>;
     /**
      * Retract someone else's message in this groupchat.
      * @param {MUCMessage} message - The message which we're retracting.
@@ -432,7 +502,7 @@ declare class MUC extends MUC_base {
     /**
      * @param {MessageAttributes} [attrs] - A map of attributes to be saved on the message
      */
-    getOutgoingMessageAttributes(attrs?: import("../chat/types").MessageAttributes): Promise<import("../chat/types").MessageAttributes>;
+    getOutgoingMessageAttributes(attrs?: import("../../shared/types").MessageAttributes): Promise<import("../../shared/types").MessageAttributes>;
     /**
      * Utility method to construct the JID for the current user as occupant of the groupchat.
      * @returns {string} - The groupchat JID with the user's nickname added at the end.
@@ -587,6 +657,12 @@ declare class MUC extends MUC_base {
      */
     updateMemberLists(members: object): Promise<any>;
     /**
+     * Triggers a hook which gives 3rd party plugins an opportunity to determine
+     * the nickname to use.
+     * @return {Promise<string>} A promise which resolves with the nickname
+     */
+    getNicknameFromHook(): Promise<string>;
+    /**
      * Given a nick name, save it to the model state, otherwise, look
      * for a server-side reserved nickname or default configured
      * nickname and if found, persist that to the model state.
@@ -732,12 +808,12 @@ declare class MUC extends MUC_base {
      * @param {MessageAttributes} attrs
      * @returns {boolean}
      */
-    handleMUCPrivateMessage(attrs: import("../chat/types").MessageAttributes): boolean;
+    handleMUCPrivateMessage(attrs: import("../../shared/types").MessageAttributes): boolean;
     /**
      * @param {MessageAttributes} attrs
      * @returns {boolean}
      */
-    handleMetadataFastening(attrs: import("../chat/types").MessageAttributes): boolean;
+    handleMetadataFastening(attrs: import("../../shared/types").MessageAttributes): boolean;
     /**
      * Given {@link MessageAttributes} look for XEP-0316 Room Notifications and create info
      * messages for them.
@@ -750,9 +826,9 @@ declare class MUC extends MUC_base {
      * passed in attributes map.
      * @param {object} attrs - Attributes representing a received
      *  message, as returned by {@link parseMUCMessage}
-     * @returns {Message}
+     * @returns {MUCMessage|BaseMessage}
      */
-    getDuplicateMessage(attrs: object): import("../chat/message.js").default;
+    getDuplicateMessage(attrs: object): import("./message.js").default | import("../../shared/message.js").default<any>;
     /**
      * Handler for all MUC messages sent to this groupchat. This method
      * shouldn't be called directly, instead {@link MUC#queueMessage}
@@ -839,13 +915,13 @@ declare class MUC extends MUC_base {
     /**
      * Returns a boolean to indicate whether the current user
      * was mentioned in a message.
-     * @param {MUCMessage} message - The text message
+     * @param {BaseMessage} message - The text message
      */
-    isUserMentioned(message: import("./message.js").default): any;
+    isUserMentioned(message: import("../../shared/message.js").default<any>): any;
     /**
-     * @param {MUCMessage} message - The text message
+     * @param {BaseMessage} message - The text message
      */
-    incrementUnreadMsgsCounter(message: import("./message.js").default): void;
+    incrementUnreadMsgsCounter(message: import("../../shared/message.js").default<any>): void;
     clearUnreadMsgCounter(): Promise<void>;
 }
 import { Model } from '@converse/skeletor';

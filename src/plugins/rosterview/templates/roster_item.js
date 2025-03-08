@@ -31,7 +31,7 @@ export default  (el) => {
     } else if (show === 'away') {
         [classes, color] =  ['fa fa-circle', 'chat-status-away'];
     } else {
-        [classes, color] = ['fa fa-circle', 'comment'];
+        [classes, color] = ['fa fa-circle', 'chat-status-offline'];
     }
 
    const is_self = bare_jid === el.model.get('jid');
@@ -63,7 +63,7 @@ export default  (el) => {
             class="${classes} chat-status chat-status--avatar"></converse-icon>
       </span>
       ${ num_unread ? html`<span class="msgs-indicator badge">${ num_unread }</span>` : '' }
-   <span class="contact-name contact-name--${show} ${ num_unread ? 'unread-msgs' : ''}">${display_name + (is_self ? ` ${__('(me)')}` : '')}</span>
+      <span class="contact-name contact-name--${show} ${ num_unread ? 'unread-msgs' : ''}">${display_name + (is_self ? ` ${__('(me)')}` : '')}</span>
    </a>
    <span class="contact-actions">
       ${ api.settings.get('allow_contact_removal') && !is_self ? tplRemoveLink(el) : '' }

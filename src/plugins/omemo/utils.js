@@ -1,6 +1,6 @@
 /**
  * @typedef {module:plugins-omemo-index.WindowWithLibsignal} WindowWithLibsignal
- * @typedef {import('@converse/headless/plugins/chat/types.ts').MessageAttributes} MessageAttributes
+ * @typedef {import('@converse/headless/shared/types').MessageAttributes} MessageAttributes
  * @typedef {import('@converse/headless/plugins/muc/types').MUCMessageAttributes} MUCMessageAttributes
  * @typedef {import('@converse/headless').ChatBox} ChatBox
  */
@@ -42,6 +42,13 @@ export function formatFingerprint (fp) {
         fp = fp.slice(0, idx) + ' ' + fp.slice(idx);
     }
     return fp;
+}
+
+export function formatFingerprintForQRCode (fp) {
+    const sid = _converse.state.omemo_store.get('device_id');
+    const jid = _converse.session.get('bare_jid');
+    fp = fp.replace(/^05/, '');
+    return `xmpp:${jid}?omemo-sid-${sid}=${fp}`;
 }
 
 /**

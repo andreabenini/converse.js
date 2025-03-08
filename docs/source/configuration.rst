@@ -328,6 +328,14 @@ autocomplete_add_contact
 
 Determines whether search suggestions are shown in the "Add Contact" modal.
 
+auto_fill_history_gaps
+----------------------
+
+* Default:  ``true``
+
+Determins whether Converse automatically fills gaps in the chat history.
+If set to false, a placeholder appears which can be clicked to fetch the
+missing messages.
 
 auto_focus
 ----------
@@ -742,6 +750,17 @@ a chat state indication of ``active`` will be sent out.
 
 A value of ``0`` means that this feature is disabled.
 
+.. _`lazy_load_vcards`:
+
+lazy_load_vcards
+----------------
+
+* Default:  ``true``
+
+Determines whether vCards are fetched lazily, i.e. only when their data should
+be shown in the UI, or eagerly, which is immediately once the entity the vCard
+relates to is known.
+
 .. _`loglevel`:
 
 loglevel
@@ -794,9 +813,6 @@ discover_connection_methods
 Use `XEP-0156 <https://xmpp.org/extensions/xep-0156.html>`_ to discover whether
 the XMPP host for the current user advertises any Websocket or BOSH connection
 URLs that can be used.
-
-If this is set to ``false``, then a `websocket_url`_ or `bosh_service_url`_ need to be
-set.
 
 Currently only the XML encoded host-meta resource is supported as shown in
 `Example 2 under section 3.3 <https://xmpp.org/extensions/xep-0156.html#httpexamples>`_.
@@ -1105,25 +1121,16 @@ If no nickame value is found, then an error will be raised.
 mam_request_all_pages
 ---------------------
 
-* Default: ``true``
+* Default: ``false``
 
-When requesting messages from the archive, Converse will ask only for messages
+When requesting messages from the archive, Converse will query for messages
 newer than the most recent cached message.
 
-When there are many archived messages since that one, the returned results will
+When there are many archived messages that matches the query, the returned results will
 be broken up in to pages, set by `archived_messages_page_size`_.
 
-By default Converse will request all the pages until all messages have been
-fetched, however for large archives this can slow things down dramatically.
-
-This setting turns the paging off, and Converse will only fetch the latest
-page.
-
-.. note::
-
-  If paging is turned off, there will appear gaps in the message history.
-  Converse currently doesn't yet have a way to inform the user of these gaps or
-  to let them be filled.
+Set this option to ``true`` to request all pages of archived messages, but be
+aware that this can have performance implications.
 
 
 muc_hats
@@ -1750,8 +1757,14 @@ that number. As new messages come in, older messages will be deleted to
 maintain the history size.
 
 .. note::
-  When deleting locally stored decrypted OMEMO messages, you will **not** be
-  able to decrypt them again after fetching them from the server archive.
+    When deleting locally stored decrypted OMEMO messages, you will **not** be
+    able to decrypt them again after fetching them from the server archive.
+
+.. note::
+    This feature was implemented before we had list virtualization for the chat
+    history (release in version 11) and was largely a backstop until that
+    feature became available. This feature can therefore be considered
+    DEPRECATED and will likely be removed in future versions.
 
 pruning_behavior
 ----------------
@@ -1766,7 +1779,6 @@ If set to ``'scrolled'``, then pruning will also happen when the chat is
 scrolled up. Be aware that this will interfere with MAM-based infinite
 scrolling, and this setting only makes sense when infinite scrolling with MAM
 is disabled.
-
 
 push_app_servers
 ----------------

@@ -1,4 +1,5 @@
 export function formatFingerprint(fp: any): any;
+export function formatFingerprintForQRCode(fp: any): string;
 /**
  * @param {Error|IQError|UserFacingError} e
  * @param {ChatBox} chat
@@ -55,7 +56,7 @@ export namespace omemo {
     export { formatFingerprint };
 }
 export type WindowWithLibsignal = any;
-export type MessageAttributes = import("@converse/headless/plugins/chat/types.ts").MessageAttributes;
+export type MessageAttributes = import("@converse/headless/shared/types").MessageAttributes;
 export type MUCMessageAttributes = import("@converse/headless/plugins/muc/types").MUCMessageAttributes;
 export type ChatBox = import("@converse/headless").ChatBox;
 import { IQError } from 'shared/errors.js';

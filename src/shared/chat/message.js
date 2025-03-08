@@ -13,23 +13,28 @@ import tplMessage from './templates/message.js';
 import tplMessageText from './templates/message-text.js';
 import tplRetraction from './templates/retraction.js';
 import tplSpinner from 'templates/spinner.js';
-import { CustomElement } from 'shared/components/element.js';
+import { ObservableElement } from 'shared/components/observable.js';
 import { __ } from 'i18n';
 
 const { Strophe } = converse.env;
 const { SUCCESS } = constants;
 
 
-export default class Message extends CustomElement {
+export default class Message extends ObservableElement {
+    /**
+     * @typedef {import('shared/components/types').ObservableProperty} ObservableProperty
+     */
 
     constructor () {
         super();
         this.model_with_messages = null;
         this.model = null;
+        this.observable = /** @type {ObservableProperty} */ ("once");
     }
 
     static get properties () {
         return {
+            ...super.properties,
             model_with_messages: { type: Object },
             model: { type: Object }
         }
@@ -50,9 +55,10 @@ export default class Message extends CustomElement {
         this.listenTo(this.model_with_messages, 'change:first_unread_id', () => this.requestUpdate());
         this.listenTo(this.model, 'change', () => this.requestUpdate());
         this.listenTo(this.model, 'contact:change', () => this.requestUpdate());
-        this.listenTo(this.model, 'vcard:change', () => this.requestUpdate());
-        this.listenTo(this.model, 'occupant:change', () => this.requestUpdate());
         this.listenTo(this.model, 'occupant:add', () => this.requestUpdate());
+        this.listenTo(this.model, 'occupant:change', () => this.requestUpdate());
+        this.listenTo(this.model, 'vcard:add',  () => this.requestUpdate());
+        this.listenTo(this.model, 'vcard:change', () => this.requestUpdate());
         this.requestUpdate();
     }
 
@@ -123,10 +129,6 @@ export default class Message extends CustomElement {
         this.parentElement.removeChild(this);
     }
 
-    isRetracted () {
-        return this.model.get('retracted') || this.model.get('moderated') === 'retracted';
-    }
-
     hasMentions () {
         const is_groupchat = this.model.get('type') === 'groupchat';
         return is_groupchat && this.model.get('sender') === 'them' && this.model_with_messages.isUserMentioned(this.model);
@@ -141,11 +143,12 @@ export default class Message extends CustomElement {
     }
 
     getExtraMessageClasses () {
+        const is_action = this.model.isMeCommand() || this.model.isRetracted();
         const extra_classes = [
             this.model.isFollowup() ? 'chat-msg--followup' : null,
             this.model.get('is_delayed') ? 'delayed' : null,
-            this.model.isMeCommand() ? 'chat-msg--action' : null,
-            this.isRetracted() ? 'chat-msg--retracted' : null,
+            is_action ? 'chat-msg--action' : null,
+            this.model.isRetracted() ? 'chat-msg--retracted' : null,
             this.model.get('type'),
             this.shouldShowAvatar() ? 'chat-msg--with-avatar' : null,
         ].map(c => c);
@@ -171,9 +174,11 @@ export default class Message extends CustomElement {
                     occupants.findOccupant({'nick': Strophe.getResourceFromJid(retracted_by_mod)});
             }
             const modname = this.model.mod ? this.model.mod.getDisplayName() : __('A moderator');
-            return __('%1$s has removed this message', modname);
+            return __('%1$s has removed a message', modname);
         } else {
-            return __('%1$s has removed this message', this.model.getDisplayName());
+            return this.model.get('sender') === 'me' ?
+                __('You have removed a message') :
+                __('%1$s has removed a message', this.model.getDisplayName());
         }
     }
 

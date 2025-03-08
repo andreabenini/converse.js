@@ -56,14 +56,14 @@ export class Connection extends Strophe.Connection {
         const text = await response.text();
         const xrd = (new DOMParser()).parseFromString(text, "text/xml").firstElementChild;
         if (xrd.nodeName != "XRD" || xrd.namespaceURI != "http://docs.oasis-open.org/ns/xri/xrd-1.0") {
-            return log.warn("Could not discover XEP-0156 connection methods");
+            return log.info("Could not discover XEP-0156 connection methods");
         }
         const bosh_links = sizzle(`Link[rel="urn:xmpp:alt-connections:xbosh"]`, xrd);
         const ws_links = sizzle(`Link[rel="urn:xmpp:alt-connections:websocket"]`, xrd);
         const bosh_methods = bosh_links.map(el => el.getAttribute('href')).filter(uri => uri.startsWith('https:'));
         const ws_methods = ws_links.map(el => el.getAttribute('href')).filter(uri => uri.startsWith('wss:'));
         if (bosh_methods.length === 0 && ws_methods.length === 0) {
-            log.warn("Neither BOSH nor WebSocket connection methods have been specified with XEP-0156.");
+            log.info("Neither BOSH nor WebSocket connection methods have been specified with XEP-0156.");
         } else {
             // TODO: support multiple endpoints
             api.settings.set("websocket_url", ws_methods.pop());
@@ -84,9 +84,9 @@ export class Connection extends Strophe.Connection {
     async discoverConnectionMethods (domain) {
         // Use XEP-0156 to check whether this host advertises websocket or BOSH connection methods.
         const options = {
-            'mode': /** @type {RequestMode} */('cors'),
-            'headers': {
-                'Accept': 'application/xrd+xml, text/xml'
+            mode: /** @type {RequestMode} */('cors'),
+            headers: {
+                Accept: 'application/xrd+xml, text/xml'
             }
         };
         const url = `https://${domain}/.well-known/host-meta`;
@@ -94,14 +94,14 @@ export class Connection extends Strophe.Connection {
         try {
             response = await fetch(url, options);
         } catch (e) {
-            log.error(`Failed to discover alternative connection methods at ${url}`);
+            log.info(`Failed to discover alternative connection methods at ${url}`);
             log.error(e);
             return;
         }
         if (response.status >= 200 && response.status < 400) {
             await this.onDomainDiscovered(response);
         } else {
-            log.warn("Could not discover XEP-0156 connection methods");
+            log.info("Could not discover XEP-0156 connection methods");
         }
     }
 
@@ -114,14 +114,21 @@ export class Connection extends Strophe.Connection {
      * @param {Function} callback
      */
     async connect (jid, password, callback) {
-        const { api } = _converse;
+        const { __, api } = _converse;
 
         if (api.settings.get("discover_connection_methods")) {
             const domain = Strophe.getDomainFromJid(jid);
             await this.discoverConnectionMethods(domain);
         }
         if (!api.settings.get('bosh_service_url') && !api.settings.get("websocket_url")) {
-            throw new Error("You must supply a value for either the bosh_service_url or websocket_url or both.");
+            // If we don't have a connection URL, we show an input for the user
+            // to manually provide it.
+            api.settings.set('show_connection_url_input', true);
+            (callback || this.onConnectStatusChanged.bind(this))(
+                Strophe.Status.DISCONNECTED,
+                __('Could not automatically determine a connection URL')
+            );
+            return;
         }
         super.connect(jid, password, callback || this.onConnectStatusChanged, BOSH_WAIT);
     }
@@ -344,7 +351,7 @@ export class Connection extends Strophe.Connection {
      * through various states while establishing or tearing down a
      * connection.
      * @param {Number} status
-     * @param {String} message
+     * @param {String} [message]
      */
     onConnectStatusChanged (status, message) {
         const { __ } = _converse;

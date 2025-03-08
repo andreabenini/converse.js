@@ -15,7 +15,8 @@ import { FILTER_STARTSWITH } from 'shared/autocomplete/utils';
 export default (el) => {
     const i18n_add = __('Add');
     const i18n_contact_placeholder = __('name@example.org');
-    const i18n_group = __('Group');
+    const i18n_groups = __('Groups');
+    const i18n_groups_help = __("Use commas to separate multiple values");
     const i18n_nickname = __('Name');
     const i18n_xmpp_address = __('XMPP Address');
     const error = el.model.get('error');
@@ -24,7 +25,7 @@ export default (el) => {
         <div class="modal-body">
             ${error ? html`<div class="alert alert-danger" role="alert">${error}</div>` : ''}
             <form class="converse-form add-xmpp-contact" @submit=${ev => el.addContactFromForm(ev)}>
-                <div class="add-xmpp-contact__jid mb-3">
+                <div class="mb-3">
                     <label class="form-label clearfix" for="jid">${i18n_xmpp_address}:</label>
                     ${api.settings.get('autocomplete_add_contact') ?
                         html`<converse-autocomplete
@@ -45,27 +46,28 @@ export default (el) => {
                     }
                 </div>
 
-                <div class="add-xmpp-contact__name mb-3">
+                <div class="mb-3">
                     <label class="form-label clearfix" for="name">${i18n_nickname}:</label>
                     ${api.settings.get('autocomplete_add_contact') && typeof api.settings.get('xhr_user_search_url') === 'string' ?
                         html`<converse-autocomplete
                             .getAutoCompleteList=${getNamesAutoCompleteList}
                             filter=${FILTER_STARTSWITH}
                             value="${el.model.get('nickname') || ''}"
-                            placeholder="${i18n_contact_placeholder}"
                             name="name"></converse-autocomplete>` :
 
                         html`<input type="text" name="name"
                             value="${el.model.get('nickname') || ''}"
-                            class="form-control"
-                            placeholder="${i18n_contact_placeholder}"/>`
+                            class="form-control" />`
                     }
                 </div>
-                <div class="add-xmpp-contact__group mb-3">
-                    <label class="form-label clearfix" for="name">${i18n_group}:</label>
+                <div class="mb-3">
+                    <label class="form-label clearfix" for="name">${i18n_groups}:</label>
+                    <div class="mb-1">
+                        <small class="form-text text-muted">${i18n_groups_help}</small>
+                    </div>
                     <converse-autocomplete
                         .list=${getGroupsAutoCompleteList()}
-                        name="group"></converse-autocomplete>
+                        name="groups"></converse-autocomplete>
                 </div>
                 <button type="submit" class="btn btn-primary">${i18n_add}</button>
             </form>

@@ -30,13 +30,12 @@ const { Strophe, stx, u } = converse.env;
  */
 export default function ModelWithMessages(BaseModel) {
     /**
-     * @typedef {import('./errors').StanzaParseError} StanzaParseError
-     * @typedef {import('../plugins/chat/message').default} Message
      * @typedef {import('../plugins/chat/model').default} ChatBox
      * @typedef {import('../plugins/muc/muc').default} MUC
-     * @typedef {import('../plugins/muc/message').default} MUCMessage
-     * @typedef {import('../plugins/chat/types.ts').MessageAttributes} MessageAttributes
      * @typedef {import('../plugins/muc/parsers').MUCMessageAttributes} MUCMessageAttributes
+     * @typedef {import('../shared/types').MessageAttributes} MessageAttributes
+     * @typedef {import('./errors').StanzaParseError} StanzaParseError
+     * @typedef {import('./message').default} BaseMessage
      * @typedef {import('strophe.js').Builder} Builder
      */
 
@@ -129,12 +128,12 @@ export default function ModelWithMessages(BaseModel) {
             this.messages.fetched_flag = true;
             const resolve = this.messages.fetched.resolve;
             this.messages.fetch({
-                'add': true,
-                'success': () => {
+                add: true,
+                success: () => {
                     this.afterMessagesFetched();
                     resolve();
                 },
-                'error': () => {
+                error: () => {
                     this.afterMessagesFetched();
                     resolve();
                 },
@@ -162,7 +161,7 @@ export default function ModelWithMessages(BaseModel) {
         }
 
         /**
-         * @param {Message} message
+         * @param {BaseMessage} message
          * @param {MessageAttributes} attrs
          * @returns {object}
          */
@@ -186,7 +185,7 @@ export default function ModelWithMessages(BaseModel) {
         }
 
         /**
-         * @param {Message} message
+         * @param {BaseMessage} message
          * @param {MessageAttributes} attrs
          */
         updateMessage(message, attrs) {
@@ -199,7 +198,7 @@ export default function ModelWithMessages(BaseModel) {
          * represent a XEP-0308 correction and, if so, handles it appropriately.
          * @param {MessageAttributes|MUCMessageAttributes} attrs - Attributes representing a received
          *  message, as returned by {@link parseMessage}
-         * @returns {Promise<Message|void>} Returns the corrected
+         * @returns {Promise<BaseMessage|void>} Returns the corrected
          *  message or `undefined` if not applicable.
          */
         async handleCorrection(attrs) {
@@ -268,7 +267,7 @@ export default function ModelWithMessages(BaseModel) {
         /**
          * Responsible for sending off a text message inside an ongoing chat conversation.
          * @param {Object} [attrs] - A map of attributes to be saved on the message
-         * @returns {Promise<Message>}
+         * @returns {Promise<BaseMessage>}
          * @example
          *  const chat = api.chats.get('buddy1@example.org');
          *  chat.sendMessage({'body': 'hello world'});
@@ -324,7 +323,7 @@ export default function ModelWithMessages(BaseModel) {
              * @type {Object}
              * @param {Object} data
              * @property {(ChatBox|MUC)} data.chatbox
-             * @property {(Message|MUCMessage)} data.message
+             * @property {(BaseMessage)} data.message
              */
             api.trigger('sendMessage', { 'chatbox': this, message });
             return message;
@@ -332,21 +331,22 @@ export default function ModelWithMessages(BaseModel) {
 
         /**
          * Retract one of your messages in this chat
-         * @param {Message} message - The message which we're retracting.
+         * @param {BaseMessage} message - The message which we're retracting.
          */
         retractOwnMessage(message) {
-            sendRetractionMessage(this.get('jid'), message);
+            const retraction_id = u.getUniqueId();
+            sendRetractionMessage(this.get('jid'), message, retraction_id);
             message.save({
                 'retracted': new Date().toISOString(),
                 'retracted_id': message.get('origin_id'),
-                'retraction_id': message.get('id'),
+                'retraction_id': retraction_id,
                 'is_ephemeral': true,
                 'editable': false,
             });
         }
 
         /**
-         * @param {File[]} files
+         * @param {File[]} files'
          */
         async sendFiles(files) {
             const { __, session } = _converse;
@@ -468,7 +468,7 @@ export default function ModelWithMessages(BaseModel) {
         }
 
         /**
-         * @param {Message} message
+         * @param {BaseMessage} message
          */
         onMessageAdded(message) {
             if (
@@ -481,7 +481,7 @@ export default function ModelWithMessages(BaseModel) {
         }
 
         /**
-         * @param {Message} message
+         * @param {BaseMessage} message
          */
         async onMessageUploadChanged(message) {
             if (message.get('upload') === constants.SUCCESS) {
@@ -621,7 +621,7 @@ export default function ModelWithMessages(BaseModel) {
          * relevant message is only coming in now.
          * @param {object} attrs - Attributes representing a received
          *  message, as returned by {@link parseMessage}
-         * @returns {Message|null}
+         * @returns {BaseMessage|null}
          */
         findDanglingRetraction(attrs) {
             if (!attrs.origin_id || !this.messages.length) {
@@ -648,7 +648,7 @@ export default function ModelWithMessages(BaseModel) {
          * passed in attributes map.
          * @param {object} attrs - Attributes representing a received
          *  message, as returned by {@link parseMessage}
-         * @returns {Message}
+         * @returns {BaseMessage}
          */
         getDuplicateMessage(attrs) {
             const queries = [
@@ -701,7 +701,7 @@ export default function ModelWithMessages(BaseModel) {
 
         /**
          * Given the passed in message object, send a XEP-0333 chat marker.
-         * @param {Message} msg
+         * @param {BaseMessage} msg
          * @param {('received'|'displayed'|'acknowledged')} [type='displayed']
          * @param {boolean} [force=false] - Whether a marker should be sent for the
          *  message, even if it didn't include a `markable` element.
@@ -726,9 +726,9 @@ export default function ModelWithMessages(BaseModel) {
         }
 
         /**
-         * Given a newly received {@link Message} instance,
+         * Given a newly received {@link BaseMessage} instance,
          * update the unread counter if necessary.
-         * @param {Message} message
+         * @param {BaseMessage} message
          */
         handleUnreadMessage(message) {
             if (!message?.get('body')) {
@@ -751,7 +751,7 @@ export default function ModelWithMessages(BaseModel) {
         }
 
         /**
-         * @param {Message} message
+         * @param {BaseMessage} message
          * @param {MessageAttributes} attrs
          */
         async getErrorAttributesForMessage(message, attrs) {
@@ -814,7 +814,7 @@ export default function ModelWithMessages(BaseModel) {
         }
 
         /**
-         * @param {Message} message
+         * @param {BaseMessage} message
          */
         incrementUnreadMsgsCounter(message) {
             const settings = {
@@ -830,7 +830,7 @@ export default function ModelWithMessages(BaseModel) {
             if (this.get('num_unread') > 0) {
                 this.sendMarkerForMessage(this.messages.last());
             }
-            u.safeSave(this, { 'num_unread': 0 });
+            u.safeSave(this, { num_unread: 0 });
         }
 
         /**
@@ -843,23 +843,26 @@ export default function ModelWithMessages(BaseModel) {
         async handleRetraction(attrs) {
             const RETRACTION_ATTRIBUTES = ['retracted', 'retracted_id', 'editable'];
             if (attrs.retracted) {
-                if (attrs.is_tombstone) {
-                    return false;
+                if (attrs.is_tombstone) return false;
+
+                for (const m of this.messages.models) {
+                    if (m.get('from') !== attrs.from) continue;
+                    if (m.get('origin_id') === attrs.retracted_id ||
+                            m.get('msgid') === attrs.retracted_id) {
+                        m.save(pick(attrs, RETRACTION_ATTRIBUTES));
+                        return true;
+                    }
                 }
-                const message = this.messages.findWhere({ 'origin_id': attrs.retracted_id, 'from': attrs.from });
-                if (!message) {
-                    attrs['dangling_retraction'] = true;
-                    await this.createMessage(attrs);
-                    return true;
-                }
-                message.save(pick(attrs, RETRACTION_ATTRIBUTES));
+
+                attrs['dangling_retraction'] = true;
+                await this.createMessage(attrs);
                 return true;
             } else {
                 // Check if we have dangling retraction
                 const message = this.findDanglingRetraction(attrs);
                 if (message) {
                     const retraction_attrs = pick(message.attributes, RETRACTION_ATTRIBUTES);
-                    const new_attrs = Object.assign({ 'dangling_retraction': false }, attrs, retraction_attrs);
+                    const new_attrs = Object.assign({ dangling_retraction: false }, attrs, retraction_attrs);
                     delete new_attrs['id']; // Delete id, otherwise a new cache entry gets created
                     message.save(new_attrs);
                     return true;
@@ -887,9 +890,9 @@ export default function ModelWithMessages(BaseModel) {
         }
 
         /**
-         * Given a {@link Message} return the XML stanza that represents it.
+         * Given a {@link BaseMessage} return the XML stanza that represents it.
          * @method ChatBox#createMessageStanza
-         * @param {Message} message - The message object
+         * @param {BaseMessage} message - The message object
          */
         async createMessageStanza(message) {
             const {
@@ -907,7 +910,7 @@ export default function ModelWithMessages(BaseModel) {
 
             const stanza = stx`
                 <message xmlns="jabber:client"
-                        from="${message.get('from') || api.connection.get().jid}"
+                        from="${message.get('type') === 'groupchat' ? api.connection.get().jid : message.get('from')}"
                         to="${message.get('to') || this.get('jid')}"
                         type="${this.get('message_type')}"
                         id="${(edited && u.getUniqueId()) || msgid}">
@@ -936,8 +939,8 @@ export default function ModelWithMessages(BaseModel) {
              * @event _converse#createMessageStanza
              * @param {ChatBox|MUC} chat - The chat from
              *      which this message stanza is being sent.
-             * @param {Object} data - Message data
-             * @param {Message|MUCMessage} data.message
+             * @param {Object} data - BaseMessage data
+             * @param {BaseMessage} data.message
              *      The message object from which the stanza is created and which gets persisted to storage.
              * @param {Builder} data.stanza
              *      The stanza that will be sent out, as a Strophe.Builder object.
@@ -965,11 +968,8 @@ export default function ModelWithMessages(BaseModel) {
                          * Triggered once the message history has been pruned, i.e.
                          * once older messages have been removed to keep the
                          * number of messages below the value set in `prune_messages_above`.
-                         * @event _converse#historyPruned
-                         * @type { ChatBox | MUC }
-                         * @example _converse.api.listen.on('historyPruned', this => { ... });
                          */
-                        api.trigger('historyPruned', this);
+                        this.trigger('historyPruned');
                     }
                 }
             }

@@ -24,8 +24,12 @@
         margin: 0;
         padding: 0;
 
-        svg {
-            fill: var(--chat-color) !important;
+        converse-dropdown {
+            converse-icon {
+                svg {
+                    fill: var(--chat-color) !important;
+                }
+            }
         }
 
         .roster-contacts {
@@ -54,6 +58,10 @@
                 display: flex;
                 justify-content: space-between;
 
+                .open-chat {
+                    width: 100%;
+                }
+
                 .contact-actions {
                     .list-item-action {
                         line-height: 2em;
@@ -65,9 +73,11 @@
                     }
                     converse-icon {
                         padding-top: 0.5em;
+                        svg {
+                            fill: var(--chat-color) !important;
+                        }
                     }
                 }
-
             }
 
             .group-toggle {

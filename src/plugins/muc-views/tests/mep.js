@@ -1,15 +1,15 @@
 /*global mock, converse */
-
 const { u, Strophe, stx } = converse.env;
 
 describe("A XEP-0316 MEP notification", function () {
+    beforeAll(() => jasmine.addMatchers({ toEqualStanza: jasmine.toEqualStanza }));
 
     it("is rendered as an info message",
             mock.initConverse(['chatBoxesFetched'], {}, async function (_converse) {
 
         const muc_jid = 'lounge@montague.lit';
         const nick = 'romeo';
-        await mock.openAndEnterChatRoom(_converse, muc_jid, nick);
+        await mock.openAndEnterMUC(_converse, muc_jid, nick);
         const view = _converse.chatboxviews.get(muc_jid);
         let msg = 'An anonymous user has saluted romeo';
         let reason = 'Thank you for helping me yesterday';
@@ -97,7 +97,7 @@ describe("A XEP-0316 MEP notification", function () {
 
         const muc_jid = 'lounge@montague.lit';
         const nick = 'romeo';
-        const model = await mock.openAndEnterChatRoom(_converse, muc_jid, nick, [], [], true, {'hidden': true});
+        const model = await mock.openAndEnterMUC(_converse, muc_jid, nick, [], [], true, {'hidden': true});
         const msg = 'An anonymous user has saluted romeo';
         const reason = 'Thank you for helping me yesterday';
         const message = stx`
@@ -136,7 +136,7 @@ describe("A XEP-0316 MEP notification", function () {
     it("renders URLs as links", mock.initConverse(['chatBoxesFetched'], {}, async function (_converse) {
         const muc_jid = 'lounge@montague.lit';
         const nick = 'romeo';
-        const model = await mock.openAndEnterChatRoom(_converse, muc_jid, nick, [], [], true);
+        const model = await mock.openAndEnterMUC(_converse, muc_jid, nick, [], [], true);
         const msg = 'An anonymous user has waved at romeo';
         const reason = 'Check out https://conversejs.org';
         const message = stx`
@@ -176,7 +176,7 @@ describe("A XEP-0316 MEP notification", function () {
         const muc_jid = 'lounge@montague.lit';
         const nick = 'romeo';
         const features = [...mock.default_muc_features, Strophe.NS.MODERATE];
-        await mock.openAndEnterChatRoom(_converse, muc_jid, nick, features);
+        await mock.openAndEnterMUC(_converse, muc_jid, nick, features);
         const view = _converse.chatboxviews.get(muc_jid);
         const msg = 'An anonymous user has saluted romeo';
         const reason = 'Thank you for helping me yesterday';
@@ -216,19 +216,16 @@ describe("A XEP-0316 MEP notification", function () {
         submit_button.click();
 
         const sent_IQs = _converse.api.connection.get().IQ_stanzas;
-        const stanza = await u.waitUntil(() => sent_IQs.filter(iq => iq.querySelector('iq apply-to[xmlns="urn:xmpp:fasten:0"]')).pop());
+        const stanza = await u.waitUntil(() => sent_IQs.filter(iq => iq.querySelector('iq moderate')).pop());
         const message = view.model.messages.at(0);
         const stanza_id = message.get(`stanza_id ${view.model.get('jid')}`);
 
-        expect(Strophe.serialize(stanza)).toBe(
-            `<iq id="${stanza.getAttribute('id')}" to="${muc_jid}" type="set" xmlns="jabber:client">`+
-                `<apply-to id="${stanza_id}" xmlns="urn:xmpp:fasten:0">`+
-                    `<moderate xmlns="urn:xmpp:message-moderate:0">`+
-                        `<retract xmlns="urn:xmpp:message-retract:0"/>`+
-                        `<reason></reason>`+
-                    `</moderate>`+
-                `</apply-to>`+
-            `</iq>`);
+        expect(stanza).toEqualStanza(stx`
+            <iq id="${stanza.getAttribute('id')}" to="${muc_jid}" type="set" xmlns="jabber:client">
+                <moderate id="${stanza_id}" xmlns="urn:xmpp:message-moderate:1">
+                    <retract xmlns="urn:xmpp:message-retract:1"/>
+                </moderate>
+            </iq>`);
 
         // The server responds with a retraction message
         const retraction = stx`
@@ -237,20 +234,17 @@ describe("A XEP-0316 MEP notification", function () {
                     from="${muc_jid}"
                     to="${muc_jid}/${nick}"
                     xmlns="jabber:client">
-                <apply-to id="${stanza_id}" xmlns="urn:xmpp:fasten:0">
-                    <moderated by="${_converse.bare_jid}" xmlns="urn:xmpp:message-moderate:0">
-                        <retract xmlns="urn:xmpp:message-retract:0" />
-                        <reason></reason>
-                    </moderated>
-                </apply-to>
+                <retract id="${stanza_id}" xmlns="urn:xmpp:message-retract:1">
+                    <moderated by="${_converse.bare_jid}" xmlns="urn:xmpp:message-moderate:1" />
+                </retract>
             </message>`;
         await view.model.handleMessageStanza(retraction);
         expect(view.model.messages.length).toBe(1);
         expect(view.model.messages.at(0).get('moderated')).toBe('retracted');
-        expect(view.model.messages.at(0).get('moderation_reason')).toBe('');
+        expect(view.model.messages.at(0).get('moderation_reason')).toBeUndefined;
         expect(view.model.messages.at(0).get('is_ephemeral')).toBe(false);
         expect(view.model.messages.at(0).get('editable')).toBe(false);
-        const msg_el = view.querySelector('.chat-msg--retracted .chat-info__message div');
-        expect(msg_el.textContent).toBe(`${nick} has removed this message`);
+        const msg_el = view.querySelector('.chat-msg--retracted .chat-info__message .retraction');
+        expect(msg_el.firstElementChild.textContent).toBe(`${nick} has removed a message`);
     }));
 });

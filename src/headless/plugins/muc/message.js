@@ -1,26 +1,20 @@
 import { Strophe } from 'strophe.js';
-import Message from '../chat/message.js';
 import _converse from '../../shared/_converse.js';
 import api from '../../shared/api/index.js';
+import BaseMessage from '../../shared/message.js';
 
 
-class MUCMessage extends Message {
+class MUCMessage extends BaseMessage {
     /**
      * @typedef {import('./occupant').default} MUCOccupant
      */
-    async initialize () { // eslint-disable-line require-await
-        if (!this.checkValidity()) return;
-        this.chatbox = this.collection?.chatbox;
+    initialize () {
+        super.initialize();
 
-        if (this.get('file')) {
-            this.on('change:put', () => this.uploadFile());
-        }
         // If `type` changes from `error` to `groupchat`, we want to set the occupant. See #2733
         this.on('change:type', () => this.setOccupant());
-        this.on('change:is_ephemeral', () => this.setTimerForEphemeralMessage());
-
-        this.setTimerForEphemeralMessage();
         this.setOccupant();
+
         /**
          * Triggered once a { @link MUCMessage} has been created and initialized.
          * @event _converse#chatRoomMessageInitialized
@@ -41,11 +35,10 @@ class MUCMessage extends Message {
     /**
      * Determines whether this messsage may be moderated,
      * based on configuration settings and server support.
-     * @async
      * @method _converse.ChatRoomMessages#mayBeModerated
-     * @returns {boolean}
+     * @returns {Promise<boolean>}
      */
-    mayBeModerated () {
+    async mayBeModerated () {
         if (typeof this.get('from_muc')  === 'undefined') {
             // If from_muc is not defined, then this message hasn't been
             // reflected yet, which means we won't have a XEP-0359 stanza id.
@@ -53,13 +46,12 @@ class MUCMessage extends Message {
         }
         return (
             ['all', 'moderator'].includes(api.settings.get('allow_message_retraction')) &&
-            this.get(`stanza_id ${this.get('from_muc')}`) &&
-            this.chatbox.canModerateMessages()
+            this.get(`stanza_id ${this.get('from_muc')}`) && await this.chatbox.canModerateMessages()
         );
     }
 
     checkValidity () {
-        const result = _converse.exports.Message.prototype.checkValidity.call(this);
+        const result = super.checkValidity();
         !result && this.chatbox.debouncedRejoin();
         return result;
     }
@@ -132,6 +124,8 @@ class MUCMessage extends Message {
 
         this.trigger('occupant:add');
         this.listenTo(this.occupant, 'change', (changed) => this.trigger('occupant:change', changed));
+        this.listenTo(this.occupant, 'vcard:add', (changed) => this.trigger('occupant:change', changed));
+        this.listenTo(this.occupant, 'vcard:change', (changed) => this.trigger('occupant:change', changed));
         this.listenTo(this.occupant, 'destroy', this.onOccupantRemoved);
         this.stopListening(this.occupants, 'add', this.onOccupantAdded);
 

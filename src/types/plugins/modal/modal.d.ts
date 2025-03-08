@@ -1,15 +1,21 @@
 export default BaseModal;
-declare class BaseModal extends ElementView {
+declare class BaseModal extends CustomElement {
     /**
      * @typedef {import('lit').TemplateResult} TemplateResult
      */
+    static get properties(): {
+        model: {
+            type: typeof Model;
+        };
+    };
     /**
      * @param {Object} options
      */
     constructor(options: any);
     model: any;
     initialized: any;
-    modal: Modal;
+    get modal(): Modal;
+    initialize(): void;
     /**
      * @returns {TemplateResult|string}
      */
@@ -18,7 +24,7 @@ declare class BaseModal extends ElementView {
      * @returns {TemplateResult|string}
      */
     renderModalFooter(): import("lit").TemplateResult<1 | 2> | string;
-    toHTML(): import("lit").TemplateResult<1>;
+    render(): import("lit").TemplateResult<1>;
     /**
      * @returns {string|TemplateResult}
      */
@@ -36,7 +42,9 @@ declare class BaseModal extends ElementView {
      */
     alert(message: string, type?: "primary" | "secondary" | "danger"): void;
     show(): Promise<void>;
+    #private;
 }
-import { ElementView } from '@converse/skeletor';
+import { CustomElement } from 'shared/components/element.js';
 import { Modal } from "bootstrap";
+import { Model } from '@converse/skeletor';
 //# sourceMappingURL=modal.d.ts.map

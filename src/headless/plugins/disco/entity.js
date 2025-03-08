@@ -1,13 +1,14 @@
+import { Collection, Model } from '@converse/skeletor';
+import { getOpenPromise } from '@converse/openpromise';
 import _converse from '../../shared/_converse.js';
 import api from '../../shared/api/index.js';
 import converse from '../../shared/api/public.js';
+import { parseErrorStanza } from '../../shared/parsers.js';
 import log from '../../log.js';
 import sizzle from 'sizzle';
-import { Collection, Model } from '@converse/skeletor';
-import { getOpenPromise } from '@converse/openpromise';
 import { createStore } from '../../utils/storage.js';
 
-const { Strophe } = converse.env;
+const { Strophe, u } = converse.env;
 
 /**
  * @class
@@ -26,6 +27,7 @@ class DiscoEntity extends Model {
     initialize (_, options) {
         super.initialize();
         this.waitUntilFeaturesDiscovered = getOpenPromise();
+        this.waitUntilItemsFetched = getOpenPromise();
 
         this.dataforms = new Collection();
         let id = `converse.dataforms-${this.get('jid')}`;
@@ -51,8 +53,8 @@ class DiscoEntity extends Model {
      * Returns a Promise which resolves with a map indicating
      * whether a given identity is provided by this entity.
      * @method _converse.DiscoEntity#getIdentity
-     * @param { String } category - The identity category
-     * @param { String } type - The identity type
+     * @param {String} category - The identity category
+     * @param {String} type - The identity type
      */
     async getIdentity (category, type) {
         await this.waitUntilFeaturesDiscovered;
@@ -66,7 +68,7 @@ class DiscoEntity extends Model {
      * Returns a Promise which resolves with a map indicating
      * whether a given feature is supported.
      * @method _converse.DiscoEntity#getFeature
-     * @param { String } feature - The feature that might be supported.
+     * @param {String} feature - The feature that might be supported.
      */
     async getFeature (feature) {
         await this.waitUntilFeaturesDiscovered;
@@ -125,7 +127,7 @@ class DiscoEntity extends Model {
             stanza = await api.disco.info(this.get('jid'), null);
         } catch (iq) {
             iq === null ? log.error(`Timeout for disco#info query for ${this.get('jid')}`) : log.error(iq);
-            this.waitUntilFeaturesDiscovered.resolve(this);
+            this.waitUntilFeaturesDiscovered.resolve(u.isElement(iq) ? await parseErrorStanza(iq) : iq);
             return;
         }
         this.onInfo(stanza);
@@ -144,7 +146,8 @@ class DiscoEntity extends Model {
             const jid = item.getAttribute('jid');
             const entity = _converse.state.disco_entities.get(jid);
             if (entity) {
-                entity.set({ parent_jids: [this.get('jid')] });
+                const parent_jids = entity.get('parent_jids');
+                entity.set({ parent_jids: [...parent_jids, this.get('jid')] });
             } else {
                 api.disco.entities.create({
                     jid,
@@ -191,6 +194,8 @@ class DiscoEntity extends Model {
         if (stanza.querySelector(`feature[var="${Strophe.NS.DISCO_ITEMS}"]`)) {
             await this.queryForItems();
         }
+        this.waitUntilItemsFetched.resolve();
+
         Array.from(stanza.querySelectorAll('feature')).forEach(feature => {
             this.features.create({
                 'var': feature.getAttribute('var'),

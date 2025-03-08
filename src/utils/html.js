@@ -61,8 +61,6 @@ function getAutoCompleteProperty (name, options) {
     }[name];
 }
 
-const serializer = new XMLSerializer();
-
 /**
  * Given two XML or HTML elements, determine if they're equal
  * @param {Element} actual
@@ -96,12 +94,11 @@ function isEqualNode (actual, expected) {
         // This is not efficient, but currently this is only being used in tests.
         //
         const { xmlHtmlNode } = Strophe;
-        const actual_string = serializer.serializeToString(actual);
-        const expected_string = serializer.serializeToString(expected);
+        const actual_string = Strophe.serialize(actual);
+        const expected_string = Strophe.serialize(expected);
         isEqual =
             actual_string === expected_string || xmlHtmlNode(actual_string).isEqualNode(xmlHtmlNode(expected_string));
     }
-
     return isEqual;
 }
 
@@ -546,6 +543,16 @@ export function getOuterWidth (el, include_margin=false) {
     return width;
 }
 
+
+let root;
+
+export function getRootElement() {
+    if (!root) {
+        root = document.createElement("converse-root");
+    }
+    return root;
+}
+
 Object.assign(u, {
     addClass,
     ancestor,
@@ -555,6 +562,7 @@ Object.assign(u, {
     getNextElement,
     getOOBURLMarkup,
     getOuterWidth,
+    getRootElement,
     hasClass,
     hideElement,
     isEqualNode,
@@ -571,3 +579,4 @@ Object.assign(u, {
 });
 
 export default u;
+

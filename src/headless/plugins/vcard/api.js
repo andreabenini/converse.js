@@ -5,7 +5,7 @@ import log from "../../log.js";
 import _converse from '../../shared/_converse.js';
 import api from '../../shared/api/index.js';
 import converse from "../../shared/api/public.js";
-import { createStanza, getVCard } from './utils.js';
+import { createStanza, fetchVCard } from './utils.js';
 
 const { dayjs, u } = converse.env;
 
@@ -53,6 +53,8 @@ export default {
          * }).
          */
         async set (jid, data) {
+            api.waitUntil('VCardsInitialized');
+
             if (!jid) {
                 throw Error("No jid provided for the VCard data");
             }
@@ -86,9 +88,9 @@ export default {
          *     attribute or a `muc_jid` attribute.
          * @param {boolean} [force] A boolean indicating whether the vcard should be
          *     fetched from the server even if it's been fetched before.
-         * @returns {promise} A Promise which resolves with the VCard data for a particular JID or for
-         *     a `Model` instance which represents an entity with a JID (such as a roster contact,
-         *     chat or chatroom occupant).
+         * @returns {Promise<import("./types").VCardResult|null>} A Promise which resolves
+         *     with the VCard data for a particular JID or for a `Model` instance which
+         *     represents an entity with a JID (such as a roster contact, chat or chatroom occupant).
          *
          * @example
          * const { api } = _converse;
@@ -100,21 +102,48 @@ export default {
          *     );
          * });
          */
-         get (model, force) {
-            if (typeof model === 'string') {
-                return getVCard(model);
+        async get(model, force) {
+            api.waitUntil("VCardsInitialized");
+
+            if (typeof model === "string") return fetchVCard(model);
+
+            const error_date = model.get("vcard_error");
+            if (error_date) {
+                // For a VCard fetch that returned an error, we check how long ago
+                // it was fetched. If it was longer ago than the last 21 days plus
+                // some jitter (to prevent an IQ fetch flood), we try again.
+                const { random, round } = Math;
+                const subtract_flag = round(random());
+                const recent_date = dayjs()
+                    .subtract(21, "days")
+                    .subtract(round(random() * 24) * subtract_flag, "hours")
+                    .add(round(random() * 24) * (!subtract_flag ? 1 : 0), "hours");
+
+                const tried_recently = dayjs(error_date).isAfter(recent_date);
+                if (!force && tried_recently) return null;
             }
-            const error_date = model.get('vcard_error');
-            const already_tried_today = error_date && dayjs(error_date).isSame(new Date(), "day");
-            if (force || !model.get('vcard_updated') && !already_tried_today) {
-                const jid = model.get('jid');
-                if (!jid) {
-                    log.error("No JID to get vcard for");
-                }
-                return getVCard(jid);
-            } else {
-                return Promise.resolve({});
+
+            const vcard_updated = model.get("vcard_updated");
+            if (vcard_updated) {
+                // For a successful VCard fetch, we check how long ago it was fetched.
+                // If it was longer ago than the last 7 days plus some jitter
+                // (to prevent an IQ fetch flood), we try again.
+                const { random, round } = Math;
+                const subtract_flag = round(random());
+                const recent_date = dayjs()
+                    .subtract(7, "days")
+                    .subtract(round(random() * 24) * subtract_flag, "hours")
+                    .add(round(random() * 24) * (!subtract_flag ? 1 : 0), "hours");
+                const updated_recently = dayjs(vcard_updated).isAfter(recent_date);
+                if (!force && updated_recently) return null;
             }
+
+            const jid = model.get("jid");
+            if (!jid) {
+                log.error("No JID to get vcard for");
+                return null;
+            }
+            return fetchVCard(jid);
         },
 
         /**
@@ -135,7 +164,12 @@ export default {
          * });
          */
         async update (model, force) {
+            api.waitUntil('VCardsInitialized');
             const data = await this.get(model, force);
+            if (data === null) {
+                log.debug('api.vcard.update: null data returned, not updating the vcard');
+                return;
+            }
             model = typeof model === 'string' ? _converse.state.vcards.get(model) : model;
             if (!model) {
                 log.error(`Could not find a VCard model for ${model}`);
@@ -143,7 +177,7 @@ export default {
             }
             if (Object.keys(data).length) {
                 delete data['stanza']
-                model.save(data);
+                u.safeSave(model, data);
             }
         }
     }

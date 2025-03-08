@@ -10,6 +10,25 @@ import { getUnloadEvent } from '../../utils/session.js';
 const { Strophe, sizzle, u } = converse.env;
 
 /**
+ * @returns {Promise<string|undefined>}
+ */
+export async function getDefaultMUCService () {
+    let muc_service = api.settings.get('muc_domain') || _converse.session.get('default_muc_service');
+    if (!muc_service) {
+        const domain = _converse.session.get('domain');
+        const items = await api.disco.entities.items(domain);
+        for (const item of items) {
+            if (await api.disco.features.has(Strophe.NS.MUC, item.get('jid'))) {
+                muc_service = item.get('jid');
+                _converse.session.save({ default_muc_service: muc_service });
+                break;
+            }
+        }
+    }
+    return muc_service;
+}
+
+/**
  * @param {import('@converse/skeletor').Model} model
  */
 export function isChatRoom (model) {
@@ -83,7 +102,8 @@ export async function routeToRoom (event) {
     api.rooms.open(jid, {}, true);
 }
 
-/* Opens a groupchat, making sure that certain attributes
+/**
+ * Opens a groupchat, making sure that certain attributes
  * are correct, for example that the "type" is set to
  * "chatroom".
  * @param {string} jid
@@ -131,7 +151,7 @@ export async function onDirectMUCInvitation (message) {
     }
 
     if (result) {
-        const chatroom = await openChatRoom(room_jid, { 'password': x_el.getAttribute('password') });
+        const chatroom = await openChatRoom(room_jid, { password: x_el.getAttribute('password') });
         if (chatroom.session.get('connection_status') === converse.ROOMSTATUS.DISCONNECTED) {
             _converse.state.chatboxes.get(room_jid).rejoin();
         }

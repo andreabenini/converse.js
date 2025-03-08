@@ -13,20 +13,27 @@ describe("A list of open groupchats", function () {
                                         // have to mock stanza traffic.
             }, async function (_converse) {
 
+        const { api } = _converse;
         await mock.waitForRoster(_converse, 'current', 0);
         await mock.openControlBox(_converse);
         const controlbox = _converse.chatboxviews.get('controlbox');
         let list = controlbox.querySelector('.list-container--openrooms');
         expect(u.hasClass('hidden', list)).toBeTruthy();
-        await mock.openChatRoom(_converse, 'room', 'conference.shakespeare.lit', 'JC');
+
+        let muc_jid = 'room@conference.shakespeare.lit';
+        api.rooms.open(muc_jid, { nick: 'romeo' });
+        await mock.waitForMUCDiscoInfo(_converse, muc_jid);
 
         const lview = controlbox.querySelector('converse-rooms-list');
         await u.waitUntil(() => lview.querySelectorAll(".open-room").length);
         let room_els = lview.querySelectorAll(".open-room");
         expect(room_els.length).toBe(1);
-        expect(room_els[0].querySelector('span').innerText).toBe('room@conference.shakespeare.lit');
+        expect(room_els[0].querySelector('span').innerText).toBe('Room');
 
-        await mock.openChatRoom(_converse, 'lounge', 'montague.lit', 'romeo');
+        muc_jid = 'lounge@montague.lit';
+        api.rooms.open(muc_jid, { nick: 'romeo' });
+        await mock.waitForMUCDiscoInfo(_converse, muc_jid);
+
         await u.waitUntil(() => lview.querySelectorAll(".open-room").length > 1);
         room_els = lview.querySelectorAll(".open-room");
         expect(room_els.length).toBe(2);
@@ -35,7 +42,7 @@ describe("A list of open groupchats", function () {
         await view.close();
         room_els = lview.querySelectorAll(".open-room");
         expect(room_els.length).toBe(1);
-        expect(room_els[0].querySelector('span').innerText).toBe('lounge@montague.lit');
+        expect(room_els[0].querySelector('span').innerText).toBe('Lounge');
         list = controlbox.querySelector('.list-container--openrooms');
         u.waitUntil(() => Array.from(list.classList).includes('hidden'));
 
@@ -59,7 +66,7 @@ describe("A list of open groupchats", function () {
 
         const muc_jid = 'kitchen@conference.shakespeare.lit';
         const message = 'fires: Your attention is required';
-        await mock.openAndEnterChatRoom(_converse, muc_jid, 'fires');
+        await mock.openAndEnterMUC(_converse, muc_jid, 'fires');
         const view = _converse.chatboxviews.get(muc_jid);
         await u.waitUntil(() => roomspanel.querySelectorAll('.available-room').length);
         expect(roomspanel.querySelectorAll('.available-room').length).toBe(1);
@@ -94,65 +101,6 @@ describe("A list of open groupchats", function () {
         expect(roomspanel.querySelectorAll('.available-room').length).toBe(1);
         await u.waitUntil(() => roomspanel.querySelectorAll('.msgs-indicator').length === 0);
     }));
-
-    it("uses bookmarks to determine groupchat names",
-        mock.initConverse(
-            ['chatBoxesFetched'],
-            {'view_mode': 'fullscreen'},
-            async function (_converse) {
-
-        const { Strophe, sizzle } = converse.env;
-        const u = converse.env.utils;
-
-        await mock.waitForRoster(_converse, 'current', 0);
-        await mock.openAndEnterChatRoom(_converse, 'lounge@montague.lit', 'romeo');
-        let stanza = stx`<presence to="romeo@montague.lit/orchard" from="lounge@montague.lit/newguy" xmlns="jabber:client">
-                <x xmlns="${Strophe.NS.MUC_USER}">
-                    <item affiliation="none" jid="newguy@montague.lit/_converse.js-290929789" role="participant"/>
-                </x>
-            </presence>`;
-        _converse.api.connection.get()._dataRecv(mock.createRequest(stanza));
-
-        spyOn(_converse.exports.Bookmarks.prototype, 'fetchBookmarks').and.callThrough();
-
-        await mock.waitUntilDiscoConfirmed(
-            _converse, _converse.bare_jid,
-            [{'category': 'pubsub', 'type':'pep'}],
-            [`${Strophe.NS.PUBSUB}#publish-options`]
-        );
-
-        const IQ_stanzas = _converse.api.connection.get().IQ_stanzas;
-        const sent_stanza = await u.waitUntil(() => IQ_stanzas.filter(s => sizzle('items[node="storage:bookmarks"]', s).length).pop());
-        expect(sent_stanza).toEqualStanza(
-            stx`<iq from="romeo@montague.lit/orchard" id="${sent_stanza.getAttribute('id')}" type="get" xmlns="jabber:client">
-                <pubsub xmlns="http://jabber.org/protocol/pubsub">
-                    <items node="storage:bookmarks"/>
-                </pubsub>
-            </iq>`);
-
-        stanza = stx`<iq to="${_converse.api.connection.get().jid}" type="result" id="${sent_stanza.getAttribute('id')}" xmlns="jabber:client">
-            <pubsub xmlns="${Strophe.NS.PUBSUB}">
-                <items node="storage:bookmarks">
-                    <item id="current">
-                        <storage xmlns="storage:bookmarks">
-                            <conference name="Bookmarked Lounge" jid="lounge@montague.lit"/>
-                        </storage>
-                    </item>
-                </items>
-            </pubsub>
-        </iq>`;
-        _converse.api.connection.get()._dataRecv(mock.createRequest(stanza));
-
-        await _converse.api.waitUntil('roomsListInitialized');
-        const controlbox = _converse.chatboxviews.get('controlbox');
-        const list = controlbox.querySelector('.list-container--openrooms');
-        expect(Array.from(list.classList).includes('hidden')).toBeFalsy();
-        const items = list.querySelectorAll('.list-item');
-        expect(items.length).toBe(1);
-
-        await u.waitUntil(() => list.querySelector('.list-item .open-room span').textContent.trim() === 'Bookmarked Lounge');
-        expect(_converse.state.bookmarks.fetchBookmarks).toHaveBeenCalled();
-    }));
 });
 
 describe("A groupchat shown in the groupchats list", function () {
@@ -167,7 +115,10 @@ describe("A groupchat shown in the groupchats list", function () {
         const controlbox = _converse.chatboxviews.get('controlbox');
         const u = converse.env.utils;
         const muc_jid = 'coven@chat.shakespeare.lit';
-        await _converse.api.rooms.open(muc_jid, {'nick': 'some1'}, true);
+
+        _converse.api.rooms.open(muc_jid, {'nick': 'some1'}, true);
+        await mock.waitForMUCDiscoInfo(_converse, muc_jid);
+
         const lview = controlbox.querySelector('converse-rooms-list');
         await u.waitUntil(() => lview.querySelectorAll(".open-room").length);
         let room_els = lview.querySelectorAll(".available-chatroom");
@@ -176,8 +127,11 @@ describe("A groupchat shown in the groupchats list", function () {
         let item = room_els[0];
         await u.waitUntil(() => _converse.chatboxes.get(muc_jid).get('hidden') === false);
         await u.waitUntil(() => u.hasClass('open', item), 1000);
-        expect(item.querySelector('.open-room span').textContent.trim()).toBe('coven@chat.shakespeare.lit');
-        await _converse.api.rooms.open('balcony@chat.shakespeare.lit', {'nick': 'some1'}, true);
+        expect(item.querySelector('.open-room span').textContent.trim()).toBe('Coven');
+
+        _converse.api.rooms.open('balcony@chat.shakespeare.lit', {'nick': 'some1'}, true);
+        await mock.waitForMUCDiscoInfo(_converse, 'balcony@chat.shakespeare.lit');
+
         await u.waitUntil(() => lview.querySelectorAll(".open-room").length > 1);
         room_els = lview.querySelectorAll(".open-room");
         expect(room_els.length).toBe(2);
@@ -185,7 +139,7 @@ describe("A groupchat shown in the groupchats list", function () {
         room_els = lview.querySelectorAll(".available-chatroom.open");
         expect(room_els.length).toBe(1);
         item = room_els[0];
-        expect(item.querySelector('.open-room span').textContent.trim()).toBe('balcony@chat.shakespeare.lit');
+        expect(item.querySelector('.open-room span').textContent.trim()).toBe('Balcony');
     }));
 
     it("shows the MUC avatar", mock.initConverse(
@@ -199,7 +153,7 @@ describe("A groupchat shown in the groupchats list", function () {
         const muc_jid = 'coven@chat.shakespeare.lit';
         await mock.waitForRoster(_converse, 'current', 0);
         await mock.openControlBox(_converse);
-        await mock.openAndEnterChatRoom(_converse, muc_jid, 'romeo');
+        await mock.openAndEnterMUC(_converse, muc_jid, 'romeo');
 
         const rooms_list = document.querySelector('converse-rooms-list');
         await u.waitUntil(() => rooms_list.querySelectorAll(".open-room").length, 500);
@@ -327,8 +281,11 @@ describe("A groupchat shown in the groupchats list", function () {
         spyOn(_converse.api, 'confirm').and.callFake(() => Promise.resolve(true));
         expect(_converse.chatboxes.length).toBe(1);
         await mock.waitForRoster(_converse, 'current', 0);
-        await mock.openChatRoom(_converse, 'lounge', 'conference.shakespeare.lit', 'JC');
-        expect(_converse.chatboxes.length).toBe(2);
+        const muc_jid = 'lounge@conference.shakespeare.lit';
+        _converse.api.rooms.open(muc_jid, { nick: 'romeo' });
+        await mock.waitForMUCDiscoInfo(_converse, muc_jid);
+
+        await u.waitUntil(() => _converse.chatboxes.length === 2);
 
         await mock.openControlBox(_converse);
         const controlbox = _converse.chatboxviews.get('controlbox');
@@ -340,7 +297,7 @@ describe("A groupchat shown in the groupchats list", function () {
         const close_el = rooms_list.querySelector(".close-room");
         close_el.click();
         expect(_converse.api.confirm).toHaveBeenCalledWith(
-            'Are you sure you want to leave the groupchat lounge@conference.shakespeare.lit?');
+            'Are you sure you want to leave the groupchat Lounge?');
 
         await u.waitUntil(() => rooms_list.querySelectorAll(".open-room").length === 0);
         expect(_converse.chatboxes.length).toBe(1);
@@ -357,7 +314,7 @@ describe("A groupchat shown in the groupchats list", function () {
         const room_jid = 'kitchen@conference.shakespeare.lit';
         const rooms_list = document.querySelector('converse-rooms-list');
         await u.waitUntil(() => rooms_list !== undefined, 500);
-        await mock.openAndEnterChatRoom(_converse, room_jid, 'romeo');
+        await mock.openAndEnterMUC(_converse, room_jid, 'romeo');
         const view = _converse.chatboxviews.get(room_jid);
         u.minimize(view.model);
         const nick = mock.chatroom_names[0];

@@ -13,7 +13,7 @@ describe("A bookmark", function () {
         const nick = 'JC';
         const muc_jid = 'theplay@conference.shakespeare.lit';
         const settings = { name: "Play's the thing", password: 'secret' };
-        const muc = await mock.openAndEnterChatRoom(_converse, muc_jid, nick, [], [], true, settings);
+        const muc = await mock.openAndEnterMUC(_converse, muc_jid, nick, [], [], true, settings);
 
         const IQ_stanzas = _converse.api.connection.get().IQ_stanzas;
         const sent_stanza = await u.waitUntil(
@@ -76,7 +76,7 @@ describe("A bookmark", function () {
         const nick = 'JC';
         const muc_jid = 'theplay@conference.shakespeare.lit';
         const settings = { name: "Play's the thing", password: 'secret' };
-        const muc = await mock.openAndEnterChatRoom(_converse, muc_jid, nick, [], [], true, settings);
+        const muc = await mock.openAndEnterMUC(_converse, muc_jid, nick, [], [], true, settings);
 
         const IQ_stanzas = _converse.api.connection.get().IQ_stanzas;
         let sent_stanza = await u.waitUntil(
@@ -213,6 +213,9 @@ describe("A bookmark", function () {
                 nick: ''
             });
             expect(_converse.api.rooms.create).toHaveBeenCalled();
+
+            await mock.waitForMUCDiscoInfo(_converse, jid);
+            await mock.waitForReservedNick(_converse, jid, '');
             await u.waitUntil(() => state.chatboxes.length === 2);
 
             bookmarks.remove(model);
@@ -227,7 +230,7 @@ describe("A bookmark", function () {
             const nick = 'romeo';
             const muc_jid = 'theplay@conference.shakespeare.lit';
             const settings = { name:  'The Play' };
-            const muc = await mock.openAndEnterChatRoom(_converse, muc_jid, nick, [], [], true, settings);
+            const muc = await mock.openAndEnterMUC(_converse, muc_jid, nick, [], [], true, settings);
 
             const { bookmarks } = _converse.state;
             await u.waitUntil(() => bookmarks.length);
@@ -291,7 +294,6 @@ describe("A bookmark", function () {
 
         const bare_jid = _converse.session.get('bare_jid');
         const muc1_jid = 'theplay@conference.shakespeare.lit';
-        const { bookmarks } = _converse.state;
         const { api } = _converse;
 
         await api.bookmarks.set({
@@ -443,4 +445,39 @@ describe("A bookmark", function () {
                 </pubsub>
             </iq>`);
     }));
+
+    it("handles missing bookmarks gracefully when server responds with item-not-found", mock.initConverse(
+        ['chatBoxesFetched'], {}, async (_converse) => {
+
+            await mock.waitForRoster(_converse, 'current', 0);
+            await mock.waitUntilDiscoConfirmed(
+                _converse, _converse.bare_jid,
+                [{'category': 'pubsub', 'type': 'pep'}],
+                ['http://jabber.org/protocol/pubsub#publish-options', 'urn:xmpp:bookmarks:1#compat']
+            );
+
+            const IQ_stanzas = _converse.api.connection.get().IQ_stanzas;
+            const sent_stanza = await u.waitUntil(
+                () => IQ_stanzas.filter(s => sizzle(`items[node="urn:xmpp:bookmarks:1"]`, s).length).pop());
+
+            // Simulate server response with item-not-found error
+            const error_stanza = stx`
+                <iq xmlns="jabber:client" type="error"
+                        id="${sent_stanza.getAttribute('id')}"
+                        from="${sent_stanza.getAttribute('to')}"
+                        to="${sent_stanza.getAttribute('from')}">
+                    <pubsub xmlns="http://jabber.org/protocol/pubsub">
+                        <items node="urn:xmpp:bookmarks:1"/>
+                    </pubsub>
+                    <error code="404" type="cancel">
+                        <item-not-found xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"/>
+                    </error>
+                </iq>`;
+            _converse.api.connection.get()._dataRecv(mock.createRequest(error_stanza));
+
+            const cache_key = `converse.room-bookmarksromeo@montague.litfetched`;
+            const result = await u.waitUntil(() => window.sessionStorage.getItem(cache_key));
+            expect(result).toBe('true');
+        })
+    );
 });

@@ -9,8 +9,8 @@ import { getNamesAutoCompleteList } from '../utils.js';
 export default class AddContactModal extends BaseModal {
     initialize () {
         super.initialize();
-        this.listenTo(this.model, 'change', () => this.render());
-        this.render();
+        this.listenTo(this.model, 'change', () => this.requestUpdate());
+        this.requestUpdate();
         this.addEventListener(
             'shown.bs.modal',
             () => /** @type {HTMLInputElement} */ (this.querySelector('input[name="jid"]'))?.focus(),
@@ -45,11 +45,11 @@ export default class AddContactModal extends BaseModal {
      * @param {HTMLFormElement} _form
      * @param {string} jid
      * @param {string} name
-     * @param {FormDataEntryValue} group
+     * @param {string[]} groups
      */
-    async afterSubmission (_form, jid, name, group) {
+    async afterSubmission (_form, jid, name, groups) {
         try {
-            await api.contacts.add({ jid, name, groups: Array.isArray(group) ? group : [group] });
+            await api.contacts.add({ jid, name, groups });
         } catch (e) {
             log.error(e);
             this.model.set('error', __('Sorry, something went wrong'));
@@ -73,7 +73,7 @@ export default class AddContactModal extends BaseModal {
             const list = await getNamesAutoCompleteList(name);
             if (list.length !== 1) {
                 this.model.set('error', __('Sorry, could not find a contact with that name'));
-                this.render();
+                this.requestUpdate();
                 return;
             }
             jid = list[0].value;
@@ -81,7 +81,8 @@ export default class AddContactModal extends BaseModal {
         }
 
         if (this.validateSubmission(jid)) {
-            this.afterSubmission(form, jid, name, data.get('group'));
+            const groups = /** @type {string} */(data.get('groups'))?.split(',').map((g) => g.trim()) || [];
+            this.afterSubmission(form, jid, name, groups);
         }
     }
 }

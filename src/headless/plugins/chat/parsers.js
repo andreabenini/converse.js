@@ -34,7 +34,7 @@ const { Strophe, sizzle } = converse.env;
 /**
  * Parses a passed in message stanza and returns an object of attributes.
  * @param {Element} stanza - The message stanza
- * @returns {Promise<import('./types.ts').MessageAttributes|StanzaParseError>}
+ * @returns {Promise<import('../../shared/types.ts').MessageAttributes|StanzaParseError>}
  */
 export async function parseMessage (stanza) {
     throwErrorIfInvalidForward(stanza);
@@ -121,7 +121,6 @@ export async function parseMessage (stanza) {
             'is_marker': !!marker,
             'is_unstyled': !!sizzle(`unstyled[xmlns="${Strophe.NS.STYLING}"]`, stanza).length,
             'marker_id': marker && marker.getAttribute('id'),
-            'msgid': stanza.getAttribute('id') || original_stanza.getAttribute('id'),
             'nick': contact?.attributes?.nickname,
             'receipt_id': getReceiptId(stanza),
             'received': new Date().toISOString(),

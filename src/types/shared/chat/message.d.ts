@@ -1,4 +1,4 @@
-export default class Message extends CustomElement {
+export default class Message extends ObservableElement {
     static get properties(): {
         model_with_messages: {
             type: ObjectConstructor;
@@ -6,9 +6,14 @@ export default class Message extends CustomElement {
         model: {
             type: ObjectConstructor;
         };
+        observable: {
+            type: StringConstructor;
+        };
+        intersectionRatio: {
+            type: NumberConstructor;
+        };
     };
     model_with_messages: any;
-    model: any;
     initialize(): Promise<void>;
     render(): import("lit").TemplateResult<1> | "";
     renderRetraction(): import("lit").TemplateResult<1>;
@@ -21,7 +26,6 @@ export default class Message extends CustomElement {
     onUnfurlAnimationEnd(): void;
     onRetryClicked(): Promise<void>;
     show_spinner: boolean;
-    isRetracted(): any;
     hasMentions(): any;
     getOccupantAffiliation(): any;
     getOccupantRole(): any;
@@ -31,5 +35,5 @@ export default class Message extends CustomElement {
     showMessageVersionsModal(ev: any): void;
     toggleSpoilerMessage(ev: any): void;
 }
-import { CustomElement } from 'shared/components/element.js';
+import { ObservableElement } from 'shared/components/observable.js';
 //# sourceMappingURL=message.d.ts.map

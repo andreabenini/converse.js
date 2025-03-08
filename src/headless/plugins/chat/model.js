@@ -7,6 +7,7 @@ import log from '../../log.js';
 import { isUniView } from '../../utils/session.js';
 import { sendChatState, sendMarker } from '../../shared/actions.js';
 import ModelWithMessages from "../../shared/model-with-messages.js";
+import ModelWithVCard from '../../shared/model-with-vcard';
 import ModelWithContact from '../../shared/model-with-contact.js';
 import ColorAwareModel from '../../shared/color.js';
 import ChatBoxBase from '../../shared/chatbox.js';
@@ -17,23 +18,23 @@ const { Strophe, u } = converse.env;
 /**
  * Represents a one-on-one chat conversation.
  */
-class ChatBox extends ModelWithMessages(ModelWithContact(ColorAwareModel(ChatBoxBase))) {
+class ChatBox extends ModelWithVCard(ModelWithMessages(ModelWithContact(ColorAwareModel(ChatBoxBase)))) {
     /**
      * @typedef {import('./message.js').default} Message
      * @typedef {import('../muc/muc.js').default} MUC
-     * @typedef {import('./types').MessageAttributes} MessageAttributes
+     * @typedef {import('../../shared/types').MessageAttributes} MessageAttributes
      * @typedef {import('../../shared/errors').StanzaParseError} StanzaParseError
      */
 
     defaults () {
         return {
-            'bookmarked': false,
-            'hidden': isUniView() && !api.settings.get('singleton'),
-            'message_type': 'chat',
-            'num_unread': 0,
-            'time_opened': this.get('time_opened') || (new Date()).getTime(),
-            'time_sent': (new Date(0)).toISOString(),
-            'type': PRIVATE_CHAT_TYPE,
+            bookmarked: false,
+            hidden: isUniView() && !api.settings.get('singleton'),
+            message_type: 'chat',
+            num_unread: 0,
+            time_opened: this.get('time_opened') || (new Date()).getTime(),
+            time_sent: (new Date(0)).toISOString(),
+            type: PRIVATE_CHAT_TYPE,
         }
     }
 
@@ -62,7 +63,7 @@ class ChatBox extends ModelWithMessages(ModelWithContact(ColorAwareModel(ChatBox
          * @type { ChatBox}
          * @example _converse.api.listen.on('chatBoxInitialized', model => { ... });
          */
-        await api.trigger('chatBoxInitialized', this, {'Synchronous': true});
+        await api.trigger('chatBoxInitialized', this, {synchronous: true});
         this.initialized.resolve();
     }
 
@@ -129,12 +130,15 @@ class ChatBox extends ModelWithMessages(ModelWithContact(ColorAwareModel(ChatBox
     }
 
     /**
-     * @returns {string}
+     * @returns {string|null}
      */
     getDisplayName () {
         if (this.contact) {
-            return this.contact.getDisplayName();
-        } else if (this.vcard) {
+            const display_name = this.contact.getDisplayName(false);
+            if (display_name) return display_name;
+        }
+
+        if (this.vcard) {
             return this.vcard.getDisplayName();
         } else {
             return this.get('jid');

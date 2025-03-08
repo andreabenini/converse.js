@@ -17,21 +17,22 @@ import * as errors from './errors.js';
 const { NS } = Strophe;
 
 /**
- * @param {Element|Error} stanza - The stanza to be parsed. As a convenience,
+ * @param {Element|Error|null} stanza - The stanza to be parsed. As a convenience,
  * an Error element can be passed in as well, so that this function can be
  * called in a catch block without first checking if a stanza or Error
  * element was received.
  * @returns {Promise<Error|errors.StanzaError|null>}
  */
 export async function parseErrorStanza(stanza) {
+    if (stanza === null) return null;
     if (stanza instanceof Error) return stanza;
     if (stanza.getAttribute('type') !== 'error') return null;
 
     const error = stanza.querySelector('error');
     if (!error) return null;
 
-    const e = sizzle(`[xmlns="${Strophe.NS.STANZAS}"]`, error).pop();
-    const name = e?.nodeName;
+    const els = sizzle(`[xmlns="${Strophe.NS.STANZAS}"]`, error);
+    const name = els.filter((el) => el.nodeName && el.nodeName !== 'text').pop()?.nodeName;
 
     /**
      * *Hook* which allows plugins to add application-specific error parsing
@@ -96,14 +97,21 @@ export async function parseErrorStanza(stanza) {
  * @returns {Object}
  */
 export function getStanzaIDs (stanza, original_stanza) {
-    const attrs = {};
-    // Store generic stanza ids
+    // Generic stanza ids
     const sids = sizzle(`stanza-id[xmlns="${Strophe.NS.SID}"]`, stanza);
     const sid_attrs = sids.reduce((acc, s) => {
         acc[`stanza_id ${s.getAttribute('by')}`] = s.getAttribute('id');
         return acc;
     }, {});
-    Object.assign(attrs, sid_attrs);
+
+    // Origin id
+    const origin_id = sizzle(`origin-id[xmlns="${Strophe.NS.SID}"]`, stanza).pop()?.getAttribute('id');
+
+    const attrs = {
+        origin_id,
+        msgid: stanza.getAttribute('id') || original_stanza.getAttribute('id'),
+        ...sid_attrs,
+    };
 
     // Store the archive id
     const result = sizzle(`message > result[xmlns="${Strophe.NS.MAM}"]`, original_stanza).pop();
@@ -113,11 +121,6 @@ export function getStanzaIDs (stanza, original_stanza) {
         attrs[`stanza_id ${by_jid}`] = result.getAttribute('id');
     }
 
-    // Store the origin id
-    const origin_id = sizzle(`origin-id[xmlns="${Strophe.NS.SID}"]`, stanza).pop();
-    if (origin_id) {
-        attrs['origin_id'] = origin_id.getAttribute('id');
-    }
     return attrs;
 }
 
@@ -143,33 +146,56 @@ export function getEncryptionAttributes (stanza) {
  * @param {Element} stanza - The message stanza
  * @param {Element} original_stanza - The original stanza, that contains the
  *  message stanza, if it was contained, otherwise it's the message stanza itself.
- * @returns {Object}
+ * @returns {import('./types').RetractionAttrs | {}}
  */
-export function getRetractionAttributes (stanza, original_stanza) {
+export function getDeprecatedRetractionAttributes (stanza, original_stanza) {
     const fastening = sizzle(`> apply-to[xmlns="${Strophe.NS.FASTEN}"]`, stanza).pop();
     if (fastening) {
         const applies_to_id = fastening.getAttribute('id');
-        const retracted = sizzle(`> retract[xmlns="${Strophe.NS.RETRACT}"]`, fastening).pop();
+        const retracted = sizzle(`> retract[xmlns="${Strophe.NS.RETRACT0}"]`, fastening).pop();
         if (retracted) {
             const delay = sizzle(`delay[xmlns="${Strophe.NS.DELAY}"]`, original_stanza).pop();
             const time = delay ? dayjs(delay.getAttribute('stamp')).toISOString() : new Date().toISOString();
             return {
-                'editable': false,
-                'retracted': time,
-                'retracted_id': applies_to_id
-            };
-        }
-    } else {
-        const tombstone = sizzle(`> retracted[xmlns="${Strophe.NS.RETRACT}"]`, stanza).pop();
-        if (tombstone) {
-            return {
-                'editable': false,
-                'is_tombstone': true,
-                'retracted': tombstone.getAttribute('stamp')
+                editable: false,
+                retracted: time,
+                retracted_id: applies_to_id
             };
         }
     }
     return {};
+}
+
+/**
+ * @param {Element} stanza - The message stanza
+ * @param {Element} original_stanza - The original stanza, that contains the
+ *  message stanza, if it was contained, otherwise it's the message stanza itself.
+ * @returns {import('./types').RetractionAttrs | {}}
+ */
+export function getRetractionAttributes (stanza, original_stanza) {
+    const retraction = sizzle(`> retract[xmlns="${Strophe.NS.RETRACT}"]`, stanza).pop();
+    if (retraction) {
+        const delay = sizzle(`> delay[xmlns="${Strophe.NS.DELAY}"]`, original_stanza).pop();
+        const time = delay ? dayjs(delay.getAttribute('stamp')).toISOString() : new Date().toISOString();
+        return {
+            editable: false,
+            retracted: time,
+            retracted_id: retraction.getAttribute('id')
+        };
+    } else {
+        const tombstone =
+            sizzle(`> retracted[xmlns="${Strophe.NS.RETRACT}"]`, stanza).pop() ||
+            sizzle(`> retracted[xmlns="${Strophe.NS.RETRACT0}"]`, stanza).pop();
+        if (tombstone) {
+            return {
+                editable: false,
+                is_tombstone: true,
+                retracted: tombstone.getAttribute('stamp'),
+                retraction_id: tombstone.getAttribute('id')
+            };
+        }
+    }
+    return getDeprecatedRetractionAttributes(stanza, original_stanza);
 }
 
 /**

@@ -1,6 +1,5 @@
 /*global mock, converse */
-
-const { Strophe, u, stx } = converse.env;
+const { Strophe, u, stx, sizzle } = converse.env;
 
 // See: https://xmpp.org/rfcs/rfc3921.html
 
@@ -17,12 +16,12 @@ describe("XEP-0437 Room Activity Indicators", function () {
         expect(_converse.session.get('rai_enabled_domains')).toBe(undefined);
 
         const muc_jid = 'lounge@montague.lit';
-        await mock.openAndEnterChatRoom(_converse, muc_jid, 'romeo');
+        await mock.openAndEnterMUC(_converse, muc_jid, 'romeo');
         const view = _converse.chatboxviews.get(muc_jid);
         expect(view.model.get('hidden')).toBe(false);
 
         const sent_IQs = _converse.api.connection.get().IQ_stanzas;
-        const iq_get = await u.waitUntil(() => sent_IQs.filter(iq => iq.querySelector(`iq query[xmlns="${Strophe.NS.MAM}"]`)).pop());
+        const iq_get = await u.waitUntil(() => sent_IQs.filter(iq => sizzle(`query[xmlns="${Strophe.NS.MAM}"]`, iq).length).pop());
         const first_msg_id = _converse.api.connection.get().getUniqueId();
         const last_msg_id = _converse.api.connection.get().getUniqueId();
         let message =
@@ -58,7 +57,7 @@ describe("XEP-0437 Room Activity Indicators", function () {
             stx`<iq type="result"
                     id="${iq_get.getAttribute("id")}"
                     xmlns="jabber:client">
-                <fin xmlns="urn:xmpp:mam:2">
+                <fin xmlns="urn:xmpp:mam:2" complete="true">
                     <set xmlns="http://jabber.org/protocol/rsm">
                         <first index="0">${first_msg_id}</first>
                         <last>${last_msg_id}</last>
@@ -136,8 +135,8 @@ describe("XEP-0437 Room Activity Indicators", function () {
         const nick = 'romeo';
         const sent_stanzas = _converse.api.connection.get().sent_stanzas;
 
-        const muc_creation_promise = await api.rooms.open(muc_jid, { nick }, false);
-        await mock.getRoomFeatures(_converse, muc_jid, []);
+        const muc_creation_promise = api.rooms.open(muc_jid, { nick }, false);
+        await mock.waitForMUCDiscoInfo(_converse, muc_jid, []);
         await mock.receiveOwnMUCPresence(_converse, muc_jid, nick);
         await muc_creation_promise;
 
@@ -196,7 +195,7 @@ describe("XEP-0437 Room Activity Indicators", function () {
         expect(_converse.session.get('rai_enabled_domains')).toBe(undefined);
 
         const muc_jid = 'lounge@montague.lit';
-        const model = await mock.openAndEnterChatRoom(_converse, muc_jid, 'romeo');
+        const model = await mock.openAndEnterMUC(_converse, muc_jid, 'romeo');
         expect(model.get('hidden')).toBe(false);
         const sent_stanzas = [];
         spyOn(_converse.api.connection.get(), 'send').and.callFake(s => sent_stanzas.push(s?.nodeTree ?? s));

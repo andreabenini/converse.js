@@ -215,29 +215,30 @@ async function openChatBoxFor (_converse, jid) {
     return u.waitUntil(() => _converse.chatboxviews.get(jid), 1000);
 }
 
-async function openChatRoomViaModal (_converse, jid, nick='') {
-    // Opens a new chatroom
-    const model = await _converse.api.controlbox.open('controlbox');
-    await u.waitUntil(() => model.get('connected'));
-    await openControlBox(_converse);
-    document.querySelector('converse-rooms-list .show-add-muc-modal').click();
-    closeControlBox(_converse);
-    const modal = _converse.api.modal.get('converse-add-muc-modal');
-    await u.waitUntil(() => u.isVisible(modal), 1500)
-    modal.querySelector('input[name="chatroom"]').value = jid;
-    if (nick) {
-        modal.querySelector('input[name="nickname"]').value = nick;
-    }
-    modal.querySelector('form input[type="submit"]').click();
-    await u.waitUntil(() => _converse.chatboxviews.get(jid), 1000);
-    return _converse.chatboxviews.get(jid);
+async function waitForNewMUCDiscoInfo(_converse, muc_jid) {
+    const { api } = _converse;
+    const connection = api.connection.get();
+    const own_jid = connection.jid;
+    const stanzas = connection.IQ_stanzas;
+    const stanza = await u.waitUntil(() => stanzas.filter(
+        iq => iq.querySelector(
+            `iq[to="${muc_jid}"] query[xmlns="http://jabber.org/protocol/disco#info"]`
+        )).pop()
+    );
+    const features_stanza =
+        stx`<iq from="${muc_jid}"
+                id="${stanza.getAttribute('id')}"
+                to="${own_jid}"
+                type="error"
+                xmlns="jabber:client">
+            <error type="cancel">
+                <item-not-found xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"/>
+            </error>
+        </iq>`;
+    _converse.api.connection.get()._dataRecv(mock.createRequest(features_stanza));
 }
 
-function openChatRoom (_converse, room, server) {
-    return _converse.api.rooms.open(`${room}@${server}`);
-}
-
-async function getRoomFeatures (_converse, muc_jid, features=[], settings={}) {
+async function waitForMUCDiscoInfo (_converse, muc_jid, features=[], settings={}) {
     const room = Strophe.getNodeFromJid(muc_jid);
     muc_jid = muc_jid.toLowerCase();
     const stanzas = _converse.api.connection.get().IQ_stanzas;
@@ -387,7 +388,16 @@ async function receiveOwnMUCPresence (_converse, muc_jid, nick, affiliation='own
     _converse.api.connection.get()._dataRecv(createRequest(presence));
 }
 
-async function openAndEnterChatRoom (
+async function openAddMUCModal (_converse) {
+    await mock.openControlBox(_converse);
+    const controlbox = _converse.chatboxviews.get('controlbox');
+    controlbox.querySelector('converse-rooms-list .show-add-muc-modal').click();
+    const modal = _converse.api.modal.get('converse-add-muc-modal');
+    await u.waitUntil(() => u.isVisible(modal), 1000);
+    return modal;
+}
+
+async function openAndEnterMUC (
         _converse,
         muc_jid,
         nick,
@@ -400,8 +410,9 @@ async function openAndEnterChatRoom (
     ) {
     const { api } = _converse;
     muc_jid = muc_jid.toLowerCase();
+
     const room_creation_promise = api.rooms.open(muc_jid, settings, force_open);
-    await getRoomFeatures(_converse, muc_jid, features, settings);
+    await waitForMUCDiscoInfo(_converse, muc_jid, features, settings);
     await waitForReservedNick(_converse, muc_jid, nick);
     // The user has just entered the room (because join was called)
     // and receives their own presence from the server.
@@ -429,11 +440,11 @@ async function createContact (_converse, name, ask, requesting, subscription) {
     }
     const contact = await new Promise((success, error) => {
         _converse.roster.create({
-            'ask': ask,
             'fullname': name,
-            'jid': jid,
-            'requesting': requesting,
-            'subscription': subscription
+            ask,
+            jid,
+            requesting,
+            subscription,
         }, {success, error});
     });
     return contact;
@@ -454,7 +465,7 @@ async function createContacts (_converse, type, length) {
         ask = null;
     } else if (type === 'pending') {
         names = pend_names;
-        subscription = 'none';
+        subscription = 'from';
         requesting = false;
         ask = 'subscribe';
     } else if (type === 'current') {
@@ -490,7 +501,7 @@ async function waitForRoster (_converse, type='current', length=-1, include_nick
             result.c('item', {
                 jid: name.replace(/ /g,'.').toLowerCase() + '@montague.lit',
                 name: include_nick ? name : undefined,
-                subscription: 'none',
+                subscription: 'from',
                 ask: 'subscribe'
             }).up()
         );
@@ -737,19 +748,19 @@ function getMockVcardFetcher (settings) {
         const vcard_el = vcard.tree();
 
         return {
-            'stanza': vcard_el,
-            'fullname': vcard_el.querySelector('FN')?.textContent,
-            'nickname': vcard_el.querySelector('NICKNAME')?.textContent,
-            'image': vcard_el.querySelector('PHOTO BINVAL')?.textContent,
-            'image_type': vcard_el.querySelector('PHOTO TYPE')?.textContent,
-            'url': vcard_el.querySelector('URL')?.textContent,
-            'vcard_updated': dayjs().format(),
-            'vcard_error': undefined
+            stanza: vcard_el,
+            fullname: vcard_el.querySelector('FN')?.textContent,
+            nickname: vcard_el.querySelector('NICKNAME')?.textContent,
+            image: vcard_el.querySelector('PHOTO BINVAL')?.textContent,
+            image_type: vcard_el.querySelector('PHOTO TYPE')?.textContent,
+            url: vcard_el.querySelector('URL')?.textContent,
+            vcard_updated: dayjs().format(),
+            vcard_error: undefined
         };
     }
 }
 
-const theme = ['dracula', 'classic', 'cyberpunk'][Math.floor(Math.random()*3)];
+const theme = ['dracula', 'classic', 'cyberpunk', 'nordic'][Math.floor(Math.random()*4)];
 
 async function _initConverse (settings) {
     clearStores();
@@ -871,17 +882,15 @@ Object.assign(mock, {
     default_muc_features,
     deviceListFetched,
     event,
-    getRoomFeatures,
     groups,
     groups_map,
     initConverse,
     initializedOMEMO,
     num_contacts,
-    openAndEnterChatRoom,
+    openAddMUCModal,
+    openAndEnterMUC,
     openChatBoxFor,
     openChatBoxes,
-    openChatRoom,
-    openChatRoomViaModal,
     openControlBox,
     ownDeviceHasBeenPublished,
     pend_names,
@@ -891,6 +900,8 @@ Object.assign(mock, {
     sendMessage,
     toggleControlBox,
     view_mode,
+    waitForMUCDiscoInfo,
+    waitForNewMUCDiscoInfo,
     waitForReservedNick,
     waitForRoster,
     waitUntilBlocklistInitialized,

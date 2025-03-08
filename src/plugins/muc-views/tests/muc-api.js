@@ -10,15 +10,15 @@ describe("Groupchats", function () {
         it("has a method 'close' which closes rooms by JID or all rooms when called with no arguments",
                 mock.initConverse([], {}, async function (_converse) {
 
-            await mock.openAndEnterChatRoom(_converse, 'lounge@montague.lit', 'romeo');
+            await mock.openAndEnterMUC(_converse, 'lounge@montague.lit', 'romeo');
 
             const { api } = _converse;
             const connection = api.connection.get();
             connection.IQ_stanzas = [];
-            await mock.openAndEnterChatRoom(_converse, 'leisure@montague.lit', 'romeo');
+            await mock.openAndEnterMUC(_converse, 'leisure@montague.lit', 'romeo');
 
             connection.IQ_stanzas = [];
-            await mock.openAndEnterChatRoom(_converse, 'news@montague.lit', 'romeo');
+            await mock.openAndEnterMUC(_converse, 'news@montague.lit', 'romeo');
 
             expect(u.isVisible(_converse.chatboxviews.get('lounge@montague.lit'))).toBeTruthy();
             expect(u.isVisible(_converse.chatboxviews.get('leisure@montague.lit'))).toBeTruthy();
@@ -39,8 +39,8 @@ describe("Groupchats", function () {
             expect(_converse.chatboxviews.get('leisure@montague.lit')).toBeUndefined();
             expect(_converse.chatboxviews.get('news@montague.lit')).toBeUndefined();
 
-            await mock.openAndEnterChatRoom(_converse, 'lounge@montague.lit', 'romeo');
-            await mock.openAndEnterChatRoom(_converse, 'leisure@montague.lit', 'romeo');
+            await mock.openAndEnterMUC(_converse, 'lounge@montague.lit', 'romeo');
+            await mock.openAndEnterMUC(_converse, 'leisure@montague.lit', 'romeo');
             expect(u.isVisible(_converse.chatboxviews.get('lounge@montague.lit'))).toBeTruthy();
             expect(u.isVisible(_converse.chatboxviews.get('leisure@montague.lit'))).toBeTruthy();
 
@@ -63,7 +63,7 @@ describe("Groupchats", function () {
             const rosterview = document.querySelector('converse-roster');
             await u.waitUntil(() => rosterview.querySelectorAll('.roster-group .group-toggle').length, 300);
             let muc_jid = 'chillout@montague.lit';
-            await mock.openAndEnterChatRoom(_converse, muc_jid, 'romeo');
+            await mock.openAndEnterMUC(_converse, muc_jid, 'romeo');
             let room = await _converse.api.rooms.get(muc_jid);
             expect(room instanceof Object).toBeTruthy();
 
@@ -75,7 +75,7 @@ describe("Groupchats", function () {
 
             // Test with mixed case
             muc_jid = 'Leisure@montague.lit';
-            await mock.openAndEnterChatRoom(_converse, muc_jid, 'romeo');
+            await mock.openAndEnterMUC(_converse, muc_jid, 'romeo');
             room = await _converse.api.rooms.get(muc_jid);
             expect(room instanceof Object).toBeTruthy();
             chatroomview = _converse.chatboxviews.get(muc_jid.toLowerCase());
@@ -110,13 +110,18 @@ describe("Groupchats", function () {
             spyOn(_converse.ChatRoom.prototype, 'getDiscoInfo').and.callFake(() => Promise.resolve());
 
             let jid = 'lounge@montague.lit';
+            const nick = 'romeo';
             await mock.openControlBox(_converse);
             await mock.waitForRoster(_converse, 'current');
             const rosterview = document.querySelector('converse-roster');
             await u.waitUntil(() => rosterview.querySelectorAll('.roster-group .group-toggle').length);
 
-            let room = await _converse.api.rooms.open(jid);
             // Test on groupchat that's not yet open
+            let promise = _converse.api.rooms.open(jid);
+            await mock.waitForMUCDiscoInfo(_converse, jid);
+            await mock.waitForReservedNick(_converse, jid, nick);
+
+            let room = await promise;
             expect(room instanceof Model).toBeTruthy();
             let mucview = await u.waitUntil(() => _converse.chatboxviews.get(jid));
             expect(mucview.is_chatroom).toBeTruthy();
@@ -132,7 +137,10 @@ describe("Groupchats", function () {
 
             // Test with mixed case in JID
             jid = 'Leisure@montague.lit';
-            room = await _converse.api.rooms.open(jid);
+            promise  = _converse.api.rooms.open(jid);
+            await mock.waitForMUCDiscoInfo(_converse, jid);
+            await mock.waitForReservedNick(_converse, jid, nick);
+            room = await promise;
             expect(room instanceof Model).toBeTruthy();
             mucview = await u.waitUntil(() => _converse.chatboxviews.get(jid.toLowerCase()));
             await u.waitUntil(() => u.isVisible(mucview));
@@ -151,8 +159,10 @@ describe("Groupchats", function () {
             mucview.close();
 
             api.settings.set('muc_instant_rooms', false);
+
             // Test with configuration
-            room = await _converse.api.rooms.open('room@conference.example.org', {
+            jid = 'room@conference.example.org';
+            promise = _converse.api.rooms.open(jid, {
                 'nick': 'some1',
                 'auto_configure': true,
                 'roomconfig': {
@@ -165,22 +175,9 @@ describe("Groupchats", function () {
                     'whois': 'anyone'
                 }
             });
+            await mock.waitForMUCDiscoInfo(_converse, jid);
+            room = await promise;
             expect(room instanceof Model).toBeTruthy();
-
-            const IQ_stanzas = _converse.api.connection.get().IQ_stanzas;
-            const selector = `iq[to="room@conference.example.org"] query[xmlns="http://jabber.org/protocol/disco#info"]`;
-            const features_query = await u.waitUntil(() => IQ_stanzas.filter(iq => iq.querySelector(selector)).pop());
-
-            // We pretend this is a new room, so no disco info is returned.
-            const features_stanza = $iq({
-                    from: "room@conference.example.org",
-                    id: features_query.getAttribute("id"),
-                    to: "romeo@montague.lit/desktop",
-                    type: "error",
-                    xmlns: "jabber:client"
-                }).c("error", {"type": "cancel"})
-                    .c("item-not-found", {"xmlns": "urn:ietf:params:xml:ns:xmpp-stanzas"});
-            _converse.api.connection.get()._dataRecv(mock.createRequest(features_stanza));
 
             _converse.api.connection.get()._dataRecv(mock.createRequest(stx`
                 <presence xmlns="jabber:client" to="romeo@montague.lit/pda" from="room@conference.example.org/some1">
@@ -191,6 +188,7 @@ describe("Groupchats", function () {
                     </x>
                 </presence>`));
 
+            const IQ_stanzas = _converse.api.connection.get().IQ_stanzas;
             const iq = await u.waitUntil(() => IQ_stanzas.filter(s => s.querySelector(`query[xmlns="${Strophe.NS.MUC_OWNER}"]`)).pop());
             expect(Strophe.serialize(iq)).toBe(
                 `<iq id="${iq.getAttribute('id')}" to="room@conference.example.org" type="get" xmlns="jabber:client">`+

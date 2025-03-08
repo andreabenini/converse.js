@@ -1,6 +1,6 @@
 import { Model } from '@converse/skeletor';
 import { _converse, converse, api } from '@converse/headless';
-import { CustomElement } from 'shared/components/element.js';
+import { ObservableElement } from 'shared/components/observable.js';
 import tplRequestingContact from './templates/requesting_contact.js';
 import tplRosterItem from './templates/roster_item.js';
 import tplUnsavedContact from './templates/unsaved_contact.js';
@@ -9,16 +9,22 @@ import { blockContact, removeContact } from './utils.js';
 
 const { Strophe } = converse.env;
 
-export default class RosterContact extends CustomElement {
-    static get properties() {
-        return {
-            model: { type: Object },
-        };
-    }
+export default class RosterContact extends ObservableElement {
+    /**
+     * @typedef {import('shared/components/types').ObservableProperty} ObservableProperty
+     */
 
     constructor() {
         super();
         this.model = null;
+        this.observable = /** @type {ObservableProperty} */ ("once");
+    }
+
+    static get properties() {
+        return {
+            ...super.properties,
+            model: { type: Object },
+        };
     }
 
     initialize() {
@@ -44,7 +50,7 @@ export default class RosterContact extends CustomElement {
      */
     openChat(ev) {
         ev?.preventDefault?.();
-        api.chats.open(this.model.get('jid'), this.model.attributes, true);
+        api.chats.open(this.model.get('jid'), {}, true);
     }
 
     /**
@@ -52,7 +58,7 @@ export default class RosterContact extends CustomElement {
      */
     addContact(ev) {
         ev?.preventDefault?.();
-        api.modal.show('converse-add-contact-modal', { 'model': new Model() }, ev);
+        api.modal.show('converse-add-contact-modal', { model: new Model() }, ev);
     }
 
     /**
@@ -60,9 +66,7 @@ export default class RosterContact extends CustomElement {
      */
     async removeContact(ev) {
         ev?.preventDefault?.();
-        // TODO: ask user whether they want to unauthorize the contact's
-        // presence request as well.
-        await removeContact(this.model);
+        await removeContact(this.model, true);
     }
 
     /**
@@ -78,13 +82,11 @@ export default class RosterContact extends CustomElement {
      */
     async acceptRequest(ev) {
         ev?.preventDefault?.();
-
-        await _converse.state.roster.sendContactAddIQ({
-            jid: this.model.get('jid'),
-            name: this.model.getFullname(),
-            groups: [],
-        });
-        this.model.authorize().subscribe();
+        api.modal.show(
+            'converse-accept-contact-request-modal',
+            { model: new Model(), contact: this.model },
+            ev
+        );
     }
 
     /**

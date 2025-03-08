@@ -121,16 +121,13 @@ class RosterContacts extends Collection {
      * @param {Element} msg
      */
     subscribeToSuggestedItems (msg) {
-        const { xmppstatus } = _converse.state;
         Array.from(msg.querySelectorAll('item')).forEach((item) => {
             if (item.getAttribute('action') === 'add') {
-                this.addContact(
-                    {
-                        jid: item.getAttribute('jid'),
-                        name: xmppstatus.getNickname() || xmppstatus.getFullname(),
-                        subscription: 'to',
-                    },
-                );
+                this.addContact({
+                    jid: item.getAttribute('jid'),
+                    name: item.getAttribute('name'),
+                    subscription: 'to',
+                });
             }
         });
         return true;
@@ -331,7 +328,7 @@ class RosterContacts extends Collection {
     /**
      * Update or create RosterContact models based on the given `item` XML
      * node received in the resulting IQ stanza from the server.
-     * @param { Element } item
+     * @param {Element} item
      */
     updateContact (item) {
         const jid = item.getAttribute('jid');
