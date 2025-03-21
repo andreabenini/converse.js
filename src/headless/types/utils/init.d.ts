@@ -14,6 +14,13 @@ export function initClientConfig(_converse: ConversePrivateGlobal): Promise<void
  */
 export function initSessionStorage(_converse: ConversePrivateGlobal): Promise<void>;
 /**
+ * Initializes persistent storage
+ * @param {ConversePrivateGlobal} _converse
+ * @param {string} store_name - The name of the store.
+ * @param {string} [key="persistent"] - The key for `_converse.storage`.
+ */
+export function initPersistentStorage(_converse: ConversePrivateGlobal, store_name: string, key?: string): void;
+/**
  * Stores the passed in JID for the current user, potentially creating a
  * resource if the JID is bare.
  *
@@ -41,17 +48,28 @@ export function registerGlobalEventHandlers(_converse: ConversePrivateGlobal): v
  * @param {ConversePrivateGlobal} _converse
  */
 export function cleanup(_converse: ConversePrivateGlobal): Promise<void>;
-export function attemptNonPreboundSession(credentials: any, automatic: any): Promise<void>;
+/**
+ * @param {import('./types').Credentials} [credentials]
+ * @param {boolean} [automatic]
+ */
+export function attemptNonPreboundSession(credentials?: import("./types").Credentials, automatic?: boolean): Promise<void>;
 /**
  * Fetch the stored SCRAM keys for the given JID, if available.
  *
  * The user's plaintext password is not stored, nor any material from which
  * the user's plaintext password could be recovered.
  *
- * @param { String } jid - The XMPP address for which to fetch the SCRAM keys
- * @returns { Promise } A promise which resolves once we've fetched the previously
+ * @param {String} jid - The XMPP address for which to fetch the SCRAM keys
+ * @returns {Promise<Model>} A promise which resolves once we've fetched the previously
  *  used login keys.
  */
-export function savedLoginInfo(jid: string): Promise<any>;
+export function savedLoginInfo(jid: string): Promise<Model>;
+/**
+ * @param {Model} model
+ * @param {Object} attributes
+ * @param {Object} options
+ */
+export function safeSave(model: Model, attributes: any, options: any): void;
 export type ConversePrivateGlobal = any;
+import { Model } from "@converse/skeletor";
 //# sourceMappingURL=init.d.ts.map

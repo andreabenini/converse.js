@@ -10,6 +10,7 @@ import * as arraybuffer from './arraybuffer.js';
 import * as color from './color.js';
 import * as form from './form.js';
 import * as html from './html.js';
+import * as init from './init.js';
 import * as jid from './jid';
 import * as object from './object.js';
 import * as promise from './promise.js';
@@ -18,6 +19,7 @@ import * as stanza from './stanza.js';
 import * as storage from './storage.js';
 import * as text from './text.js';
 import * as url from './url.js';
+
 
 /**
  * @typedef {Record<string, Function>} CommonUtils
@@ -77,10 +79,6 @@ function shouldCreateMessage (attrs) {
         !isEmptyMessage(attrs);
 }
 
-export function isErrorObject (o) {
-    return o instanceof Error;
-}
-
 /**
  * Call the callback once all the events have been triggered
  * @param { Array } events: An array of objects, with keys `object` and
@@ -99,18 +97,6 @@ function onMultipleEvents (events=[], callback) {
         }
     }
     events.forEach(e => e.object.on(e.event, handler));
-}
-
-function isPersistableModel (model) {
-    return model.collection && model.collection.browserStorage;
-}
-
-export function safeSave (model, attributes, options) {
-    if (isPersistableModel(model)) {
-        model.save(attributes, options);
-    } else {
-        model.set(attributes, options);
-    }
 }
 
 /**
@@ -154,6 +140,7 @@ export default Object.assign({
     ...color,
     ...form,
     ...html,
+    ...init,
     ...jid,
     ...object,
     ...promise,
@@ -165,10 +152,8 @@ export default Object.assign({
     getRandomInt,
     getUniqueId,
     isEmptyMessage,
-    isErrorObject,
     onMultipleEvents,
     prefixMentions,
-    safeSave,
     shouldCreateMessage,
     triggerEvent,
 }, u);

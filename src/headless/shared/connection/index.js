@@ -255,7 +255,6 @@ export class Connection extends Strophe.Connection {
     /**
      * Used to keep track of why we got disconnected, so that we can
      * decide on what the next appropriate action is (in onDisconnected)
-     * @method Connection.setDisconnectionCause
      * @param {Number|'logout'} [cause] - The status number as received from Strophe.
      * @param {String} [reason] - An optional user-facing message as to why
      *  there was a disconnection.
@@ -278,7 +277,7 @@ export class Connection extends Strophe.Connection {
      */
     setConnectionStatus (status, message) {
         this.status = status;
-        _converse.state.connfeedback.set({'connection_status': status, message });
+        _converse.state.connfeedback.set({ connection_status: status, message });
     }
 
     async finishDisconnection () {
@@ -351,9 +350,9 @@ export class Connection extends Strophe.Connection {
      * through various states while establishing or tearing down a
      * connection.
      * @param {Number} status
-     * @param {String} [message]
+     * @param {String} [condition]
      */
-    onConnectStatusChanged (status, message) {
+    onConnectStatusChanged (status, condition) {
         const { __ } = _converse;
         log.debug(`Status changed to: ${CONNECTION_STATUS[status]}`);
         if (status === Strophe.Status.ATTACHFAIL) {
@@ -382,7 +381,7 @@ export class Connection extends Strophe.Connection {
                 this.onConnected();
             }
         } else if (status === Strophe.Status.DISCONNECTED) {
-            this.setDisconnectionCause(status, message);
+            this.setDisconnectionCause(status, condition);
             this.onDisconnected();
         } else if (status === Strophe.Status.BINDREQUIRED) {
             this.bind();
@@ -391,29 +390,35 @@ export class Connection extends Strophe.Connection {
                 status,
                 __('An error occurred while connecting to the chat server.')
             );
+
         } else if (status === Strophe.Status.CONNECTING) {
             this.setConnectionStatus(status);
         } else if (status === Strophe.Status.AUTHENTICATING) {
             this.setConnectionStatus(status);
         } else if (status === Strophe.Status.AUTHFAIL) {
-            if (!message) {
-                message = __('Your XMPP address and/or password is incorrect. Please try again.');
+            if (!condition) {
+                condition = __('Your XMPP address and/or password is incorrect. Please try again.');
             }
-            this.setConnectionStatus(status, message);
-            this.setDisconnectionCause(status, message, true);
+            this.setConnectionStatus(status, condition);
+            this.setDisconnectionCause(status, condition, true);
             this.onDisconnected();
+
         } else if (status === Strophe.Status.CONNFAIL) {
-            let feedback = message;
-            if (message === "host-unknown" || message == "remote-connection-failed") {
-                feedback = __("Sorry, we could not connect to the XMPP host with domain: %1$s",
-                    `\"${Strophe.getDomainFromJid(this.jid)}\"`);
-            } else if (message !== undefined && message === Strophe?.ErrorCondition?.NO_AUTH_MECH) {
+            let feedback = condition;
+            if (condition === "host-unknown" || condition == "remote-connection-failed") {
+                feedback = __("We could not connect to %1$s, is your XMPP address correct?",
+                    Strophe.getDomainFromJid(this.jid));
+            } else if (condition === 'policy-violation') {
+                feedback = __("The XMPP server rejected the connection because of a policy violation");
+            } else if (condition !== undefined && condition === Strophe?.ErrorCondition?.NO_AUTH_MECH) {
                 feedback = __("The XMPP server did not offer a supported authentication mechanism");
             }
+
             this.setConnectionStatus(status, feedback);
-            this.setDisconnectionCause(status, message);
+            this.setDisconnectionCause(status, condition);
+
         } else if (status === Strophe.Status.DISCONNECTING) {
-            this.setDisconnectionCause(status, message);
+            this.setDisconnectionCause(status, condition);
         }
     }
 
@@ -448,7 +453,6 @@ export class Connection extends Strophe.Connection {
 
 /**
  * The MockConnection class is used during testing, to mock an XMPP connection.
- * @class
  */
 export class MockConnection extends Connection {
 
@@ -488,6 +492,11 @@ export class MockConnection extends Connection {
             this.jid = 'romeo@montague.lit/orchard';
             this._changeConnectStatus(Strophe.Status.BINDREQUIRED);
         }
+    }
+
+    // @ts-ignore
+    get _sasl_mechanism () {
+        return new Strophe.SASLSHA256();
     }
 
     _processRequest () { // eslint-disable-line class-methods-use-this
