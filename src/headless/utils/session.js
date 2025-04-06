@@ -1,7 +1,7 @@
 /**
  * @typedef {module:shared-api-public.ConversePrivateGlobal} ConversePrivateGlobal
  */
-import log from '../log.js';
+import log from "@converse/log";
 import { getOpenPromise } from '@converse/openpromise';
 import { settings_api } from '../shared/settings/api.js';
 import { getInitSettings } from '../shared/settings/utils.js';
@@ -45,6 +45,7 @@ export function replacePromise (_converse, name) {
         throw new Error(`Tried to replace non-existing promise: ${name}`);
     }
     if (existing_promise.replace) {
+        /** @type {import('../shared/types').ReplaceableOpenPromise} */
         const promise = getOpenPromise();
         promise.replace = existing_promise.replace;
         _converse.promises[name] = promise;

@@ -7,8 +7,6 @@
 import { render } from 'lit';
 import { Builder, Stanza } from 'strophe.js';
 import { api, converse, log, u } from '@converse/headless';
-import tplAudio from 'templates/audio.js';
-import tplFile from 'templates/file.js';
 import tplDateInput from 'templates/form_date.js';
 import tplFormCaptcha from '../templates/form_captcha.js';
 import tplFormCheckbox from '../templates/form_checkbox.js';
@@ -19,12 +17,11 @@ import tplFormTextarea from '../templates/form_textarea.js';
 import tplFormUrl from '../templates/form_url.js';
 import tplFormUsername from '../templates/form_username.js';
 import tplHyperlink from 'templates/hyperlink.js';
-import tplVideo from 'templates/video.js';
 
 const { sizzle, Strophe, dayjs } = converse.env;
-const { getURI, isAudioURL, isImageURL, isVideoURL, isValidURL } = u;
+const { isValidURL } = u;
 
-const APPROVED_URL_PROTOCOLS = ['http', 'https', 'xmpp', 'mailto'];
+const APPROVED_URL_PROTOCOLS = ['http:', 'https:', 'xmpp:', 'mailto:'];
 
 const EMPTY_TEXT_REGEX = /\s*\n\s*/;
 
@@ -136,36 +133,16 @@ function slideOutWrapup (el) {
     el.style.height = '';
 }
 
+/**
+ * @param {string} url
+ */
 export function getFileName (url) {
-    const uri = getURI(url);
     try {
-        return decodeURI(uri.filename());
+        const uri = u.getURL(url);
+        return decodeURI(uri.pathname.split('/').pop());
     } catch (error) {
         log.debug(error);
-        return uri.filename();
-    }
-}
-
-/**
- * Returns the markup for a URL that points to a downloadable asset
- * (such as a video, image or audio file).
- * @method u#getOOBURLMarkup
- * @param {string} url
- * @returns {TemplateResult|string}
- */
-export function getOOBURLMarkup (url) {
-    const uri = getURI(url);
-    if (uri === null) {
         return url;
-    }
-    if (isVideoURL(uri)) {
-        return tplVideo(url);
-    } else if (isAudioURL(uri)) {
-        return tplAudio(url);
-    } else if (isImageURL(uri)) {
-        return tplFile(uri.toString(), getFileName(uri));
-    } else {
-        return tplFile(uri.toString(), getFileName(uri));
     }
 }
 
@@ -185,6 +162,10 @@ function calculateElementHeight (el) {
     }, 0);
 }
 
+/**
+ * @param {HTMLElement} el
+ * @param {string} selector
+ */
 function getNextElement (el, selector = '*') {
     let next_el = el.nextElementSibling;
     while (next_el !== null && !sizzle.matchesSelector(next_el, selector)) {
@@ -195,9 +176,8 @@ function getNextElement (el, selector = '*') {
 
 /**
  * Has an element a class?
- * @method u#hasClass
- * @param { string } className
- * @param { Element } el
+ * @param {string} className
+ * @param {Element} el
  */
 export function hasClass (className, el) {
     return el instanceof Element && el.classList.contains(className);
@@ -205,33 +185,30 @@ export function hasClass (className, el) {
 
 /**
  * Add a class to an element.
- * @method u#addClass
- * @param { string } className
- * @param { Element } el
+ * @param {string} className
+ * @param {Element} el
  */
 export function addClass (className, el) {
-    el instanceof Element && el.classList.add(className);
+    if (el instanceof Element) el.classList.add(className);
     return el;
 }
 
 /**
  * Remove a class from an element.
- * @method u#removeClass
- * @param { string } className
- * @param { Element } el
+ * @param {string} className
+ * @param {Element} el
  */
 export function removeClass (className, el) {
-    el instanceof Element && el.classList.remove(className);
+    if (el instanceof Element) el.classList.remove(className);
     return el;
 }
 
 /**
  * Remove an element from its parent
- * @method u#removeElement
- * @param { Element } el
+ * @param {Element} el
  */
 export function removeElement (el) {
-    el instanceof Element && el.parentNode && el.parentNode.removeChild(el);
+    if (el instanceof Element && el.parentNode) el.parentNode.removeChild(el);
     return el;
 }
 
@@ -256,7 +233,7 @@ function showElement (el) {
  * @param {Element} el
  */
 function hideElement (el) {
-    el instanceof Element && el.classList.add('hidden');
+    if (el instanceof Element) el.classList.add('hidden');
     return el;
 }
 
@@ -274,7 +251,6 @@ export function ancestor (el, selector) {
 
 /**
  * Return the element's siblings until one matches the selector.
- * @method u#nextUntil
  * @param {HTMLElement} el
  * @param {String} selector
  */
@@ -291,7 +267,6 @@ function nextUntil (el, selector) {
 /**
  * Helper method that replace HTML-escaped symbols with equivalent characters
  * (e.g. transform occurrences of '&amp;' to '&')
- * @method u#unescapeHTML
  * @param {String} string - a String containing the HTML-escaped symbols.
  */
 function unescapeHTML (string) {
@@ -301,7 +276,6 @@ function unescapeHTML (string) {
 }
 
 /**
- * @method u#escapeHTML
  * @param {string} string
  */
 function escapeHTML (string) {
@@ -312,6 +286,9 @@ function escapeHTML (string) {
         .replace(/"/g, '&quot;');
 }
 
+/**
+ * @param {string} protocol
+ */
 function isProtocolApproved (protocol, safeProtocolsList = APPROVED_URL_PROTOCOLS) {
     return !!safeProtocolsList.includes(protocol);
 }
@@ -322,16 +299,19 @@ function isProtocolApproved (protocol, safeProtocolsList = APPROVED_URL_PROTOCOL
  */
 export function getHyperlinkTemplate (url) {
     const http_url = RegExp('^w{3}.', 'ig').test(url) ? `http://${url}` : url;
-    const uri = getURI(url);
-    if (uri !== null && isValidURL(http_url) && (isProtocolApproved(uri._parts.protocol) || !uri._parts.protocol)) {
-        return tplHyperlink(uri, url);
-    }
+    try {
+        const uri = u.getURL(http_url);
+        if (isProtocolApproved(uri.protocol)) {
+            return tplHyperlink(uri, url);
+        }
     return url;
+    } catch (error) {
+        log.debug(error);
+    }
 }
 
 /**
  * Shows/expands an element by sliding it out of itself
- * @method slideOut
  * @param {HTMLElement} el - The HTML string
  * @param {Number} duration - The duration amount in milliseconds
  */
@@ -548,7 +528,7 @@ let root;
 
 export function getRootElement() {
     if (!root) {
-        root = document.createElement("converse-root");
+        root = document.querySelector('converse-root') || document.createElement("converse-root");
     }
     return root;
 }
@@ -560,7 +540,6 @@ Object.assign(u, {
     escapeHTML,
     getElementFromTemplateResult,
     getNextElement,
-    getOOBURLMarkup,
     getOuterWidth,
     getRootElement,
     hasClass,

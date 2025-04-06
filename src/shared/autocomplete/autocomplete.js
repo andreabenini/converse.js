@@ -23,7 +23,6 @@ export class AutoComplete extends EventEmitter(Object) {
 
         this.suggestions = [];
         this.is_opened = false;
-        this.auto_evaluate = true; // evaluate automatically without any particular key as trigger
         this.match_current_word = false; // Match only the current word, otherwise all input is matched
         this.sort = config.sort === false ? null : SORT_BY_QUERY_POSITION;
         this.filter = FILTER_CONTAINS;
@@ -61,19 +60,14 @@ export class AutoComplete extends EventEmitter(Object) {
     }
 
     bindEvents () {
-        const input = {
-            "blur": () => this.close({'reason': 'blur'})
-        }
-        if (this.auto_evaluate) {
-            input["input"] = (e) => this.evaluate(e);
-        }
-
         this._events = {
-            'input': input,
-            'form': {
+            input: {
+                "blur": () => this.close({'reason': 'blur'})
+            },
+            form: {
                 "submit": () => this.close({'reason': 'submit'})
             },
-            'ul': {
+            ul: {
                 "mousedown": (ev) => this.onMouseDown(ev),
                 "mouseover": (ev) => this.onMouseOver(ev)
             }
@@ -200,7 +194,7 @@ export class AutoComplete extends EventEmitter(Object) {
             this.insertValue(suggestion);
             this.close({'reason': 'select'});
             this.auto_completing = false;
-            this.trigger("suggestion-box-selectcomplete", {'text': suggestion});
+            this.trigger("suggestion-box-selectcomplete", { text: suggestion });
         }
     }
 
@@ -223,30 +217,32 @@ export class AutoComplete extends EventEmitter(Object) {
         }
     }
 
+    /**
+     * @param {KeyboardEvent} [ev]
+     */
     onKeyDown (ev) {
         if (this.opened) {
-            if ([converse.keycodes.ENTER, converse.keycodes.TAB].includes(ev.keyCode) && this.selected) {
+            if ([converse.keycodes.ENTER, converse.keycodes.TAB].includes(ev.key) && this.selected) {
                 ev.preventDefault();
                 ev.stopPropagation();
                 this.select();
                 return true;
-            } else if (ev.keyCode === converse.keycodes.ESCAPE) {
-                this.close({'reason': 'esc'});
+            } else if (ev.key === converse.keycodes.ESCAPE) {
+                this.close({ reason: 'esc' });
                 return true;
-            } else if ([converse.keycodes.UP_ARROW, converse.keycodes.DOWN_ARROW].includes(ev.keyCode)) {
+            } else if ([converse.keycodes.UP_ARROW, converse.keycodes.DOWN_ARROW].includes(ev.key)) {
                 ev.preventDefault();
                 ev.stopPropagation();
-                this[ev.keyCode === converse.keycodes.UP_ARROW ? "previous" : "next"]();
+                this[ev.key === converse.keycodes.UP_ARROW ? "previous" : "next"]();
                 return true;
             }
         }
 
         if ([converse.keycodes.SHIFT,
                 converse.keycodes.META,
-                converse.keycodes.META_RIGHT,
                 converse.keycodes.ESCAPE,
                 converse.keycodes.ALT
-            ].includes(ev.keyCode)) {
+            ].includes(ev.key)) {
 
             return;
         }
@@ -265,7 +261,8 @@ export class AutoComplete extends EventEmitter(Object) {
             }
             this.auto_completing = true;
         } else if (ev.key === "Backspace") {
-            const word = u.getCurrentWord(ev.target, ev.target.selectionEnd-1);
+            const target = /** @type {HTMLInputElement} */(ev.target);
+            const word = u.getCurrentWord(target, target.selectionEnd-1);
             if (helpers.isMention(word, this.ac_triggers)) {
                 this.auto_completing = true;
             }
@@ -277,13 +274,10 @@ export class AutoComplete extends EventEmitter(Object) {
      */
     async evaluate (ev) {
         const selecting = this.selected && ev && (
-            ev.keyCode === converse.keycodes.UP_ARROW ||
-            ev.keyCode === converse.keycodes.DOWN_ARROW
+            ev.key === converse.keycodes.UP_ARROW ||
+            ev.key === converse.keycodes.DOWN_ARROW
         );
-
-        if (!this.auto_evaluate && !this.auto_completing || selecting) {
-            return;
-        }
+        if (selecting) return;
 
         let value = this.match_current_word ? u.getCurrentWord(this.input) : this.input.value;
 

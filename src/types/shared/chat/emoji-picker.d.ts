@@ -33,7 +33,7 @@ export default class EmojiPicker extends CustomElement {
     firstUpdated(changed: any): void;
     set search_results(value: any[]);
     get search_results(): any[];
-    render(): import("lit").TemplateResult<1>;
+    render(): import("lit-html").TemplateResult<1>;
     updated(changed: any): void;
     onModelChanged(changed: any): void;
     current_category: any;
@@ -42,7 +42,7 @@ export default class EmojiPicker extends CustomElement {
     preserve_scroll: boolean;
     updateSearchResults(changed: any): any[];
     registerEvents(): void;
-    onGlobalKeyDown: (ev: any) => void;
+    onKeyDown: (ev: any) => void;
     connectedCallback(): void;
     onDropdownHide(): void;
     /**
@@ -84,6 +84,6 @@ export default class EmojiPicker extends CustomElement {
 }
 export type DOMNavigatorOptions = any;
 export type DOMNavigatorDirection = any;
-import { CustomElement } from 'shared/components/element.js';
-import DOMNavigator from "shared/dom-navigator";
+import { CustomElement } from "shared/components/element.js";
+import { DOMNavigator } from "shared/dom-navigator";
 //# sourceMappingURL=emoji-picker.d.ts.map

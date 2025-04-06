@@ -4,7 +4,7 @@
 import _converse from '../../shared/_converse.js';
 import api from '../../shared/api/index.js';
 import converse from '../../shared/api/public.js';
-import log from "../../log.js";
+import log from "@converse/log";
 import { Model } from '@converse/skeletor';
 import { RosterFilter } from '../../plugins/roster/filter.js';
 import { PRIVATE_CHAT_TYPE } from "../../shared/constants";
@@ -213,7 +213,7 @@ export function onRosterContactsFetched () {
  * Reject or cancel another user's subscription to our presence updates.
  * @function rejectPresenceSubscription
  * @param {String} jid - The Jabber ID of the user whose subscription is being canceled
- * @param {String} message - An optional message to the user
+ * @param {String} [message] - An optional message to the user
  */
 export function rejectPresenceSubscription (jid, message) {
     const pres = $pres({to: jid, type: "unsubscribed"});

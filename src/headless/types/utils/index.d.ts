@@ -6,8 +6,9 @@ export function isEmptyMessage(attrs: any): boolean;
 /**
  * Given a message object, return its text with @ chars
  * inserted before the mentioned nicknames.
+ * @param {import('../shared/message').default} message
  */
-export function prefixMentions(message: any): any;
+export function prefixMentions(message: import("../shared/message").default<any>): any;
 export function getRandomInt(max: any): number;
 /**
  * @param {string} [suffix]
@@ -23,19 +24,22 @@ declare const _default: {
     shouldCreateMessage: typeof shouldCreateMessage;
     triggerEvent: typeof triggerEvent;
     isValidURL(text: string): boolean;
-    getURI(url: string | promise.getOpenPromise): any;
-    checkFileTypes(types: string[], url: string): boolean;
-    filterQueryParamsFromURL(url: any): any;
-    isURLWithImageExtension(url: any): boolean;
-    isGIFURL(url: any): boolean;
-    isAudioURL(url: any): boolean;
-    isVideoURL(url: any): boolean;
-    isImageURL(url: any): any;
-    isEncryptedFileURL(url: any): any;
-    getMediaURLsMetadata(text: string, offset?: number): {
-        media_urls?: MediaURLMetadata[];
-    };
-    getMediaURLs(arr: Array<MediaURLMetadata>, text: string, offset?: number): MediaURLData[];
+    getURL(url: string | URL): URL;
+    checkFileTypes(types: string[], url: string | URL): boolean;
+    isURLWithImageExtension(url: string | URL): boolean;
+    isGIFURL(url: string | URL): boolean;
+    isAudioURL(url: string | URL, headers?: Headers): boolean;
+    isVideoURL(url: string | URL, headers?: Headers): boolean;
+    isImageURL(url: string | URL, headers?: Headers): boolean;
+    isEncryptedFileURL(url: string | URL): boolean;
+    withinString(string: string, callback: Function, options?: import("./types.js").ProcessStringOptions): string;
+    getHeaders(url: string): Promise<Headers>;
+    getMetadataForURL(o: import("./types.js").MediaURLIndexes): Promise<import("./types.js").MediaURLMetadata>;
+    getMediaURLsMetadata(text: string, offset?: number): Promise<{
+        media_urls?: import("./types.js").MediaURLMetadata[];
+    }>;
+    getMediaURLs(arr: Array<import("./types.js").MediaURLMetadata>, text: string): import("./types.js").MediaURLMetadata[];
+    addMediaURLsOffset(arr: Array<import("./types.js").MediaURLMetadata>, text: string, offset?: number): import("./types.js").MediaURLMetadata[];
     firstCharToUpperCase(text: string): string;
     getLongestSubstring(string: string, candidates: string[]): string;
     isString(s: any): boolean;
@@ -54,8 +58,9 @@ declare const _default: {
     shouldClearCache(_converse: ConversePrivateGlobal): boolean;
     tearDown(_converse: ConversePrivateGlobal): Promise<any>;
     clearSession(_converse: ConversePrivateGlobal): any;
+    debounce(func: Function, timeout: number): (...args: any[]) => void;
     waitUntil(func: Function, max_wait?: number, check_delay?: number): Promise<any>;
-    getOpenPromise: any;
+    getOpenPromise: typeof promise.getOpenPromise;
     merge(dst: any, src: any): void;
     isError(obj: unknown): boolean;
     isFunction(val: unknown): boolean;
@@ -123,8 +128,8 @@ declare function shouldCreateMessage(attrs: any): any;
  * @param {boolean} [cancelable]
  */
 declare function triggerEvent(el: Element, name: string, type?: string, bubbles?: boolean, cancelable?: boolean): void;
-import * as url from './url.js';
 import * as session from './session.js';
+import * as promise from './promise.js';
 import { Model } from '@converse/skeletor';
 import * as init from './init.js';
 //# sourceMappingURL=index.d.ts.map

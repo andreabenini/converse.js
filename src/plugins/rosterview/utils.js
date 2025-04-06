@@ -302,9 +302,9 @@ export function getJIDsAutoCompleteList() {
  */
 export async function getNamesAutoCompleteList(query) {
     const options = {
-        'mode': /** @type {RequestMode} */ ('cors'),
-        'headers': {
-            'Accept': 'text/json',
+        mode: /** @type {RequestMode} */ ('cors'),
+        headers: {
+            Accept: 'text/json',
         },
     };
     const url = `${api.settings.get('xhr_user_search_url')}q=${encodeURIComponent(query)}`;
@@ -322,5 +322,8 @@ export async function getNamesAutoCompleteList(query) {
         log.error(`Invalid JSON returned"`);
         return [];
     }
-    return json.map((i) => ({ 'label': i.fullname || i.jid, 'value': i.jid }));
+    return json.map((i) => ({
+        label: `${i.fullname} <${i.jid}>`,
+        value: `${i.fullname} <${i.jid}>`
+    }));
 }

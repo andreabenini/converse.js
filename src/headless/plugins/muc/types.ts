@@ -70,8 +70,7 @@ export type MUCMessageAttributes = MessageAttributes & ExtraMUCAttributes;
 export type MUCAffiliation = 'owner'|'admin'|'member'|'outcast'|'none';
 export type MUCRole = 'moderator'|'participant'|'visitor'|'none';
 
-
- export type NonOutcastAffiliation = 'admin' | 'owner' | 'member';
+export type NonOutcastAffiliation = 'admin' | 'owner' | 'member';
 
 /**
  * Either the JID or the nickname (or both) will be available.
@@ -116,4 +115,11 @@ export type MUCPresenceAttributes = MUCPresenceItemAttributes & {
     states: Array<string>;
     status?: string;
     type: string; // The type of presence
+};
+
+
+export type OccupantData = {
+    jid?: string;
+    nick?: string;
+    occupant_id?: string; // The XEP-0421 unique occupant id
 };

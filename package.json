@@ -7,7 +7,8 @@
   "browser": "dist/converse.js",
   "module": "src/index.js",
   "workspaces": [
-    "src/headless"
+    "src/headless",
+    "src/log"
   ],
   "files": [
     "CHANGES.md",
@@ -45,7 +46,7 @@
     "serve-tls": "http-server -S -C certs/chat.example.org.crt -K certs/chat.example.org.key",
     "devserver": "webpack serve --config webpack/webpack.serve.js",
     "watch": "webpack --watch --config webpack/webpack.build.js --mode=development",
-    "types": "tsc -p ./src/headless/tsconfig.json && tsc",
+    "types": "tsc -p ./src/log/tsconfig.json && tsc -p ./src/headless/tsconfig.json && tsc",
     "check:types": "tsc --noEmit"
   },
   "repository": {
@@ -77,20 +78,23 @@
     "@babel/core": "^7.18.5",
     "@babel/preset-env": "^7.18.2",
     "@converse/headless": "file:src/headless",
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.24.0",
     "@types/bootstrap": "^5.2.10",
     "@types/lodash-es": "^4.17.12",
     "@types/sizzle": "^2.3.8",
     "@types/webappsec-credential-management": "^0.6.8",
-    "@typescript-eslint/eslint-plugin": "^7.12.0",
-    "@typescript-eslint/parser": "^7.12.0",
+    "@typescript-eslint/eslint-plugin": "^8.29.0",
+    "@typescript-eslint/parser": "^8.29.0",
     "autoprefixer": "^10.4.5",
     "babel-loader": "^9.1.0",
     "circular-dependency-plugin": "^5.2.2",
     "clean-css-cli": "^5.6.2",
     "copy-webpack-plugin": "^12.0.2",
     "css-loader": "^7.1.2",
-    "eslint": "^8.57.0",
+    "eslint": "^9.24.0",
     "fast-text-encoding": "^1.0.3",
+    "globals": "^16.0.0",
     "http-server": "^14.1.0",
     "imports-loader": "^5.0.0",
     "install": "^0.13.0",
@@ -108,10 +112,10 @@
     "po2json": "^1.0.0-beta-3",
     "postcss": "^8.4.16",
     "postcss-loader": "^8.1.1",
-    "sass": "^1.51.0",
-    "sass-loader": "^14.2.1",
-    "style-loader": "^3.1.0",
-    "typescript": "^5.5.4",
+    "sass": "^1.86.2",
+    "sass-loader": "^16.0.5",
+    "style-loader": "^4.0.0",
+    "typescript": "5.6.2",
     "uglify-js": "^3.17.4",
     "webpack": "^5.90.3",
     "webpack-cli": "^5.1.4",
@@ -119,6 +123,7 @@
     "webpack-merge": "^5.10.0"
   },
   "dependencies": {
+    "@converse/log": "file:src/log",
     "bootstrap": "^5.3.3",
     "client-compress": "^2.2.2",
     "dayjs": "^1.11.8",
@@ -133,8 +138,7 @@
     "pluggable.js": "^3.0.1",
     "prettier": "^3.2.5",
     "sizzle": "^2.3.5",
-    "sprintf-js": "^1.1.2",
-    "urijs": "^1.19.10"
+    "sprintf-js": "^1.1.2"
   },
   "resolutions": {
     "autoprefixer": "10.4.5"

@@ -85,6 +85,7 @@ module.exports = function(config) {
       { pattern: "src/plugins/muc-views/tests/csn.js", type: 'module' },
       { pattern: "src/plugins/muc-views/tests/deprecated-retractions.js", type: 'module' },
       { pattern: "src/plugins/muc-views/tests/disco.js", type: 'module' },
+      { pattern: "src/plugins/muc-views/tests/drafts.js", type: 'module' },
       { pattern: "src/plugins/muc-views/tests/emojis.js", type: 'module' },
       { pattern: "src/plugins/muc-views/tests/hats.js", type: 'module' },
       { pattern: "src/plugins/muc-views/tests/http-file-upload.js", type: 'module' },
@@ -133,6 +134,7 @@ module.exports = function(config) {
       { pattern: "src/plugins/rosterview/tests/presence.js", type: 'module' },
       { pattern: "src/plugins/rosterview/tests/protocol.js", type: 'module' },
       { pattern: "src/plugins/rosterview/tests/roster.js", type: 'module' },
+      { pattern: "src/utils/tests/url.js", type: 'module' },
 
       // For some reason this test causes issues when its run earlier
       { pattern: "src/headless/tests/persistence.js", type: 'module' },

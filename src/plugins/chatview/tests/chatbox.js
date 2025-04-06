@@ -13,7 +13,8 @@ describe("Chatboxes", function () {
 
     describe("A Chatbox", function () {
 
-        it("has a /help command to show the available commands", mock.initConverse(['chatBoxesFetched'], {}, async function (_converse) {
+        it("has a /help command to show the available commands", mock.initConverse(['chatBoxesFetched'],
+                {view_mode: 'fullscreen'}, async function (_converse) {
 
             const { api } = _converse;
             await mock.waitForRoster(_converse, 'current', 1);
@@ -63,7 +64,7 @@ describe("Chatboxes", function () {
             message_form.onKeyDown({
                 target: textarea,
                 preventDefault: function preventDefault () {},
-                keyCode: 13 // Enter
+                key: "Enter",
             });
             await u.waitUntil(() => _converse.api.confirm.calls.count() === 1);
             await u.waitUntil(() => sizzle('converse-chat-message', view).length === 0);
@@ -254,8 +255,8 @@ describe("Chatboxes", function () {
                 const toolbar = view.querySelector('.chat-toolbar');
                 const counter = toolbar.querySelector('.message-limit');
                 expect(counter.textContent).toBe('200');
-                view.getMessageForm().insertIntoTextArea('hello world');
-                await u.waitUntil(() => counter.textContent === '188');
+                view.model.set({ draft: 'hello world' });
+                await u.waitUntil(() => counter.textContent === '189');
 
                 toolbar.querySelector('.toggle-emojis').click();
                 const picker = await u.waitUntil(() => view.querySelector('.emoji-picker__lists'));
@@ -267,7 +268,7 @@ describe("Chatboxes", function () {
                 const ev = {
                     target: textarea,
                     preventDefault: function preventDefault () {},
-                    keyCode: 13 // Enter
+                    key: "Enter",
                 };
                 const message_form = view.querySelector('converse-message-form');
                 message_form.onKeyDown(ev);
@@ -427,7 +428,7 @@ describe("Chatboxes", function () {
                     const message_form = view.querySelector('converse-message-form');
                     message_form.onKeyDown({
                         target: view.querySelector('textarea.chat-textarea'),
-                        keyCode: 1
+                        key: "C",
                     });
                     expect(view.model.get('chat_state')).toBe('composing');
                     expect(api.connection.get().send).toHaveBeenCalled();
@@ -442,7 +443,7 @@ describe("Chatboxes", function () {
                     // The notification is not sent again
                     message_form.onKeyDown({
                         target: view.querySelector('textarea.chat-textarea'),
-                        keyCode: 1
+                        key: "C",
                     });
                     expect(view.model.get('chat_state')).toBe('composing');
                     expect(_converse.api.trigger.calls.count(), 1);
@@ -467,7 +468,7 @@ describe("Chatboxes", function () {
                     const message_form = view.querySelector('converse-message-form');
                     message_form.onKeyDown({
                         target: view.querySelector('textarea.chat-textarea'),
-                        keyCode: 1
+                        key: "C",
                     });
                     expect(view.model.get('chat_state')).toBe('composing');
                     expect(api.connection.get().send).not.toHaveBeenCalled();
@@ -576,7 +577,7 @@ describe("Chatboxes", function () {
                     const message_form = view.querySelector('converse-message-form');
                     message_form.onKeyDown({
                         target: view.querySelector('textarea.chat-textarea'),
-                        keyCode: 1
+                        key: "C",
                     });
                     expect(view.model.get('chat_state')).toBe('composing');
 
@@ -608,14 +609,14 @@ describe("Chatboxes", function () {
                     // timeout.
                     message_form.onKeyDown({
                         target: view.querySelector('textarea.chat-textarea'),
-                        keyCode: 1
+                        key: "C",
                     });
                     expect(view.model.setChatState).toHaveBeenCalled();
                     expect(view.model.get('chat_state')).toBe('composing');
 
                     message_form.onKeyDown({
                         target: view.querySelector('textarea.chat-textarea'),
-                        keyCode: 1
+                        key: "C",
                     });
                     expect(view.model.get('chat_state')).toBe('composing');
                 }));
@@ -714,7 +715,7 @@ describe("Chatboxes", function () {
                     const message_form = view.querySelector('converse-message-form');
                     message_form.onKeyDown({
                         target: view.querySelector('textarea.chat-textarea'),
-                        keyCode: 1
+                        key: "C",
                     });
                     await u.waitUntil(() => view.model.get('chat_state') === 'composing', 600);
                     let stanza = await u.waitUntil(() => sent_stanzas.filter(s => s.querySelector('message composing')).pop());
@@ -935,7 +936,7 @@ describe("Chatboxes", function () {
             message_form.onKeyDown({
                 target: view.querySelector('textarea.chat-textarea'),
                 preventDefault: function preventDefault () {},
-                keyCode: 13
+                key: "Enter",
             });
             await u.waitUntil(() => _converse.api.confirm.calls.count() === 1);
             expect(_converse.api.confirm).toHaveBeenCalledWith('Are you sure you want to clear the messages from this conversation?');

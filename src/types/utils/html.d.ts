@@ -6,40 +6,31 @@
 export function getNameAndValue(field: HTMLInputElement | HTMLSelectElement): {
     [key: string]: string | number | string[];
 } | null;
-export function getFileName(url: any): any;
 /**
- * Returns the markup for a URL that points to a downloadable asset
- * (such as a video, image or audio file).
- * @method u#getOOBURLMarkup
  * @param {string} url
- * @returns {TemplateResult|string}
  */
-export function getOOBURLMarkup(url: string): TemplateResult | string;
+export function getFileName(url: string): string;
 /**
  * Has an element a class?
- * @method u#hasClass
- * @param { string } className
- * @param { Element } el
+ * @param {string} className
+ * @param {Element} el
  */
 export function hasClass(className: string, el: Element): boolean;
 /**
  * Add a class to an element.
- * @method u#addClass
- * @param { string } className
- * @param { Element } el
+ * @param {string} className
+ * @param {Element} el
  */
 export function addClass(className: string, el: Element): Element;
 /**
  * Remove a class from an element.
- * @method u#removeClass
- * @param { string } className
- * @param { Element } el
+ * @param {string} className
+ * @param {Element} el
  */
 export function removeClass(className: string, el: Element): Element;
 /**
  * Remove an element from its parent
- * @method u#removeElement
- * @param { Element } el
+ * @param {Element} el
  */
 export function removeElement(el: Element): Element;
 /**
@@ -54,7 +45,6 @@ export function ancestor(el: HTMLElement, selector: string): HTMLElement;
 export function getHyperlinkTemplate(url: string): TemplateResult | string;
 /**
  * Shows/expands an element by sliding it out of itself
- * @method slideOut
  * @param {HTMLElement} el - The HTML string
  * @param {Number} duration - The duration amount in milliseconds
  */

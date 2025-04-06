@@ -9,15 +9,26 @@ export default class Dropdown extends DropdownBase {
     };
     icon_classes: string;
     items: any[];
-    render(): import("lit").TemplateResult<1>;
+    render(): import("lit-html").TemplateResult<1>;
     firstUpdated(): void;
-    onHidden(): void;
+    connectedCallback(): void;
+    registerEvents(): void;
+    onKeyDown: (ev: any) => void;
+    onDropdownHide(): void;
     initArrowNavigation(): void;
     navigator: DOMNavigator;
-    enableArrowNavigation(ev: any): void;
-    handleKeyUp(ev: any): void;
+    disableArrowNavigation(): void;
+    /**
+     * @param {KeyboardEvent} [ev]
+     */
+    enableArrowNavigation(ev?: KeyboardEvent): void;
+    /**
+     * @param {KeyboardEvent} ev
+     */
+    onEnterPressed(ev: KeyboardEvent): void;
+    #private;
 }
 export type DOMNavigatorOptions = any;
-import DropdownBase from 'shared/components/dropdownbase.js';
-import DOMNavigator from "shared/dom-navigator.js";
+import DropdownBase from "shared/components/dropdownbase.js";
+import { DOMNavigator } from "shared/dom-navigator";
 //# sourceMappingURL=dropdown.d.ts.map

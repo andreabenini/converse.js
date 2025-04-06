@@ -1,5 +1,5 @@
 export default class AddContactModal extends BaseModal {
-    renderModal(): import("lit").TemplateResult<1>;
+    renderModal(): import("lit-html").TemplateResult<1>;
     getModalTitle(): any;
     /**
      * @param {string} jid
@@ -17,5 +17,5 @@ export default class AddContactModal extends BaseModal {
      */
     addContactFromForm(ev: Event): Promise<void>;
 }
-import BaseModal from 'plugins/modal/modal.js';
+import BaseModal from "plugins/modal/modal.js";
 //# sourceMappingURL=add-contact.d.ts.map

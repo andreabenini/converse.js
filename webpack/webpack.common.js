@@ -30,7 +30,15 @@ module.exports = {
         "window": "window"
     }],
     watchOptions: {
-        ignored: /dist/,
+        ignored: [
+            path.posix.resolve(__dirname, '../develop-eggs'),
+            path.posix.resolve(__dirname, '../dist'),
+            path.posix.resolve(__dirname, '../docs'),
+            path.posix.resolve(__dirname, '../node_modules'),
+            path.posix.resolve(__dirname, '../src/headless/dist'),
+            path.posix.resolve(__dirname, '../src/headless/node_modules'),
+            path.posix.resolve(__dirname, '../webpack'),
+        ],
     },
     module: {
         rules: [{
@@ -73,6 +81,7 @@ module.exports = {
                     loader: 'sass-loader',
                     options: {
                         sassOptions: {
+                            silenceDeprecations: ['color-functions', 'global-builtin', 'import', 'mixed-decls'],
                             includePaths: [
                                 path.resolve(__dirname, '../node_modules/'),
                                 path.resolve(__dirname, '../src/')

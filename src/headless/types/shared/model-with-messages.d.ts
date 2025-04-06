@@ -119,6 +119,10 @@ export default function ModelWithMessages<T extends import("./types").ModelExten
          * @param {BaseMessage} message
          */
         onMessageUploadChanged(message: import("./message").default<any>): Promise<void>;
+        /**
+         * @param {BaseMessage} message
+         */
+        onMessageCorrecting(message: import("./message").default<any>): void;
         onScrolledChanged(): void;
         pruneHistoryWhenScrolledDown(): void;
         /**
@@ -282,7 +286,7 @@ export default function ModelWithMessages<T extends import("./types").ModelExten
         _listeningTo: {};
         _listenId: any;
         off(name: string, callback: (event: any, model: Model, collection: import("@converse/skeletor").Collection, options: Record<string, any>) => any, context?: any): any;
-        stopListening(obj?: any, name?: string, callback?: (event: any, model: Model, collection: import("@converse/skeletor" /** @param {...any} args */).Collection, options: Record<string, any>) => any): any;
+        stopListening(obj?: any, name?: string, callback?: (event: any, model: Model, collection: import("@converse/skeletor").Collection, options: Record<string, any>) => any): any;
         once(name: string, callback: (event: any, model: Model, collection: import("@converse/skeletor").Collection, options: Record<string, any>) => any, context: any): any;
         listenToOnce(obj: any, name: string, callback?: (event: any, model: Model, collection: import("@converse/skeletor").Collection, options: Record<string, any>) => any): any;
         trigger(name: string, ...args: any[]): any;
@@ -295,5 +299,5 @@ export default function ModelWithMessages<T extends import("./types").ModelExten
         propertyIsEnumerable(v: PropertyKey): boolean;
     };
 } & T;
-import { Model } from '@converse/skeletor';
+import { Model } from "@converse/skeletor";
 //# sourceMappingURL=model-with-messages.d.ts.map

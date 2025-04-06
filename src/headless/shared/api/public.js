@@ -4,8 +4,7 @@
 import { sprintf } from 'sprintf-js';
 import dayjs from 'dayjs';
 import sizzle from 'sizzle';
-import URI from 'urijs';
-import { Strophe, $build, $iq, $msg, $pres, stx } from 'strophe.js';
+import { Stanza, Strophe, $build, $iq, $msg, $pres, stx } from 'strophe.js';
 import { Collection, Model } from "@converse/skeletor";
 import { filesize } from 'filesize';
 import { html } from 'lit';
@@ -13,7 +12,7 @@ import { html } from 'lit';
 import api from './index.js';
 import _converse from '../_converse.js';
 import i18n from '../i18n';
-import log from '../../log.js';
+import log from "@converse/log";
 import ConnectionFeedback from './../connection/feedback.js';
 import u, { setLogLevelFromRoute } from '../../utils/index.js';
 import { ANONYMOUS, CHAT_STATES, KEYCODES, VERSION_NAME } from '../constants.js';
@@ -191,9 +190,9 @@ const converse = Object.assign(/** @type {ConversePrivateGlobal} */(window).conv
         Collection,
         Model,
         Promise,
+        Stanza,
         Strophe,
         TimeoutError,
-        URI,
         VERSION_NAME,
         dayjs,
         errors,

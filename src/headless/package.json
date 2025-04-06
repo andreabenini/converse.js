@@ -32,8 +32,9 @@
     "url": "https://github.com/conversejs/converse.js/issues"
   },
   "dependencies": {
-    "@converse/openpromise": "^0.0.1",
-    "@converse/skeletor": "conversejs/skeletor#7e1cbeba0161bfe91d709a22deaa70e4daa0cd39",
+    "@converse/log": "file:../log",
+    "@converse/openpromise": "^0.0.4",
+    "@converse/skeletor": "^0.0.9",
     "dayjs": "^1.11.8",
     "dompurify": "^3.0.8",
     "filesize": "^10.0.7",
@@ -42,8 +43,7 @@
     "pluggable.js": "3.0.1",
     "sizzle": "^2.3.5",
     "sprintf-js": "^1.1.2",
-    "strophe.js": "strophe/strophejs#fb70dcb4e202f632bc9932915b4522f70ad4d47c",
-    "urijs": "^1.19.10"
+    "strophe.js": "strophe/strophejs#fb70dcb4e202f632bc9932915b4522f70ad4d47c"
   },
   "devDependencies": {}
 }

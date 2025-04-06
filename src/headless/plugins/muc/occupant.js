@@ -1,5 +1,5 @@
 import { Model } from "@converse/skeletor";
-import log from "../../log";
+import log from "@converse/log";
 import api from "../../shared/api/index.js";
 import _converse from "../../shared/_converse.js";
 import converse from "../../shared/api/public.js";
@@ -63,8 +63,8 @@ class MUCOccupant extends ModelWithVCard(ModelWithMessages(ColorAwareModel(Model
     }
 
     getMessagesCacheKey() {
-        const id = this.get('occupant_id') ? this.get('occupant_id') : `${this.get('from')}`;
-        return `converse.messages-${id}-${_converse.session.get('bare_jid')}`;
+        const id = this.get('occupant_id') || this.get('jid') || this.get('nick');
+        return `converse.muc-private-msgs-${id}-${_converse.session.get('bare_jid')}`;
     }
 
     getMessagesCollection() {
@@ -185,7 +185,7 @@ class MUCOccupant extends ModelWithVCard(ModelWithMessages(ColorAwareModel(Model
                 to: this.get("from") ?? `${muc.get("jid")}/${this.get("nick")}`,
                 type: "chat",
             },
-            u.getMediaURLsMetadata(text)
+            await u.getMediaURLsMetadata(text)
         );
 
         /**

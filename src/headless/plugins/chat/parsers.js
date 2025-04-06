@@ -5,7 +5,7 @@ import _converse from '../../shared/_converse.js';
 import api from '../../shared/api/index.js';
 import converse from '../../shared/api/public.js';
 import dayjs from 'dayjs';
-import log from '../../log.js';
+import log from "@converse/log";
 import u from '../../utils/index.js';
 import { rejectMessage } from '../../shared/actions.js';
 import { StanzaParseError } from '../../shared/errors.js';
@@ -114,7 +114,7 @@ export async function parseMessage (stanza) {
             is_server_message,
             'body': stanza.querySelector('body')?.textContent?.trim(),
             'chat_state': getChatState(stanza),
-            'from': Strophe.getBareJidFromJid(stanza.getAttribute('from')),
+            'from': stanza.getAttribute('from'),
             'is_carbon': isCarbon(original_stanza),
             'is_delayed': !!delay,
             'is_markable': !!sizzle(`markable[xmlns="${Strophe.NS.MARKERS}"]`, stanza).length,
@@ -168,5 +168,6 @@ export async function parseMessage (stanza) {
     // We call this after the hook, to allow plugins (like omemo) to decrypt encrypted
     // messages, since we need to parse the message text to determine whether
     // there are media urls.
-    return Object.assign(attrs, u.getMediaURLsMetadata(attrs.is_encrypted ? attrs.plaintext : attrs.body));
+    const metadata = await u.getMediaURLsMetadata(attrs.is_encrypted ? attrs.plaintext : attrs.body);
+    return Object.assign(attrs, metadata);
 }

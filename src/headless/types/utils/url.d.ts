@@ -5,72 +5,90 @@
  */
 export function isValidURL(text: string): boolean;
 /**
- * @param {string|URI} url
+ * @param {string|URL} url
+ * @returns {URL}
  */
-export function getURI(url: string | URI): any;
+export function getURL(url: string | URL): URL;
 /**
  * Given the an array of file extensions, check whether a URL points to a file
  * ending in one of them.
  * @param {string[]} types - An array of file extensions
- * @param {string} url
+ * @param {string|URL} url
  * @returns {boolean}
  * @example
  *  checkFileTypes(['.gif'], 'https://conversejs.org/cat.gif?foo=bar');
  */
-export function checkFileTypes(types: string[], url: string): boolean;
-export function filterQueryParamsFromURL(url: any): any;
-export function isURLWithImageExtension(url: any): boolean;
-export function isGIFURL(url: any): boolean;
-export function isAudioURL(url: any): boolean;
-export function isVideoURL(url: any): boolean;
-export function isImageURL(url: any): any;
-export function isEncryptedFileURL(url: any): any;
+export function checkFileTypes(types: string[], url: string | URL): boolean;
 /**
- * @typedef {Object} MediaURLMetadata
- * An object representing the metadata of a URL found in a chat message
- * The actual URL is not saved, it can be extracted via the `start` and `end` indexes.
- * @property {boolean} [is_audio]
- * @property {boolean} [is_image]
- * @property {boolean} [is_video]
- * @property {boolean} [is_encrypted]
- * @property {number} [end]
- * @property {number} [start]
+ * @param {string|URL} url
+ * @returns {boolean}
  */
+export function isURLWithImageExtension(url: string | URL): boolean;
 /**
- * An object representing a URL found in a chat message
- * @typedef {MediaURLMetadata} MediaURLData
- * @property {string} url
+ * @param {string|URL} url
  */
+export function isGIFURL(url: string | URL): boolean;
+/**
+ * @param {string|URL} url
+ * @param {Headers} [headers]
+ */
+export function isAudioURL(url: string | URL, headers?: Headers): boolean;
+/**
+ * @param {string|URL} url
+ * @param {Headers} [headers]
+ */
+export function isVideoURL(url: string | URL, headers?: Headers): boolean;
+/**
+ * @param {string|URL} url
+ * @param {Headers} [headers]
+ * @returns {boolean}
+ */
+export function isImageURL(url: string | URL, headers?: Headers): boolean;
+/**
+ * @param {string|URL} url
+ */
+export function isEncryptedFileURL(url: string | URL): boolean;
+/**
+ * Processes a string to find and manipulate substrings based on a callback function.
+ * This function searches for patterns defined by the provided start and end regular expressions,
+ * and applies the callback to each matched substring, allowing for modifications
+ * @copyright Copyright (c) 2011 Rodney Rehm
+ *
+ * @param {string} string - The input string to be processed.
+ * @param {function} callback - A function that takes the matched substring and its start and end indices,
+ *                              and returns a modified substring or undefined to skip modification.
+ * @param {import("./types").ProcessStringOptions} [options]
+ * @returns {string} The modified string after processing all matches.
+ */
+export function withinString(string: string, callback: Function, options?: import("./types").ProcessStringOptions): string;
+/**
+ * @param {string} url
+ * @returns {Promise<Headers>}
+ */
+export function getHeaders(url: string): Promise<Headers>;
+/**
+ * @param {import("./types").MediaURLIndexes} o
+ * @returns {Promise<import("./types").MediaURLMetadata>}
+ */
+export function getMetadataForURL(o: import("./types").MediaURLIndexes): Promise<import("./types").MediaURLMetadata>;
 /**
  * @param {string} text
  * @param {number} offset
- * @returns {{media_urls?: MediaURLMetadata[]}}
+ * @returns {Promise<{media_urls?: import("./types").MediaURLMetadata[]}>}
  */
-export function getMediaURLsMetadata(text: string, offset?: number): {
-    media_urls?: MediaURLMetadata[];
-};
+export function getMediaURLsMetadata(text: string, offset?: number): Promise<{
+    media_urls?: import("./types").MediaURLMetadata[];
+}>;
 /**
- * Given an array of {@link MediaURLMetadata} objects and text, return an
- * array of {@link MediaURL} objects.
- * @param {Array<MediaURLMetadata>} arr
+ * @param {Array<import("./types").MediaURLMetadata>} arr
  * @param {string} text
- * @returns {MediaURLData[]}
+ * @returns {import("./types").MediaURLMetadata[]}
  */
-export function getMediaURLs(arr: Array<MediaURLMetadata>, text: string, offset?: number): MediaURLData[];
+export function getMediaURLs(arr: Array<import("./types").MediaURLMetadata>, text: string): import("./types").MediaURLMetadata[];
 /**
- * An object representing the metadata of a URL found in a chat message
- * The actual URL is not saved, it can be extracted via the `start` and `end` indexes.
+ * @param {Array<import("./types").MediaURLMetadata>} arr
+ * @param {string} text
+ * @returns {import("./types").MediaURLMetadata[]}
  */
-export type MediaURLMetadata = {
-    is_audio?: boolean;
-    is_image?: boolean;
-    is_video?: boolean;
-    is_encrypted?: boolean;
-    end?: number;
-    start?: number;
-};
-/**
- * An object representing a URL found in a chat message
- */
-export type MediaURLData = MediaURLMetadata;
+export function addMediaURLsOffset(arr: Array<import("./types").MediaURLMetadata>, text: string, offset?: number): import("./types").MediaURLMetadata[];
 //# sourceMappingURL=url.d.ts.map

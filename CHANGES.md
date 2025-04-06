@@ -38,6 +38,7 @@
 - #3305: New config option [muc_search_service](https://conversejs.org/docs/html/configuration.html#muc-search-service)
 - #3307: Fix inconsistency between browsers on textarea outlines
 - #3337: Correctly display multiline nested quotes
+- #3340: Save draft messages when switching channels 
 - #3362: Don't create empty nick element in bookmarks
 - #3386: Registration form is not fetched
 - #3464: Missing localization: the online status is not localized
@@ -89,6 +90,7 @@
 - The `allow_non_roster_messaging` setting now defaults to `true`.
 
 ### Breaking changes:
+- Removed the `autocomplete_add_contact` config setting. Auto-complete is now always enabled.
 - Remove the old `_converse.BootstrapModal` in favor of `_converse.BaseModal` which is a web component.
 - The connection is no longer available on the `_converse` object. Instead, use `api.connection.get()`.
 - Add a new `exports` attribute on the `_converse` object which is meant for

@@ -108,7 +108,7 @@ describe("An incoming groupchat message", function () {
             'target': textarea,
             'preventDefault': function preventDefault () {},
             'stopPropagation': function stopPropagation () {},
-            'keyCode': 13 // Enter
+            key: "Enter",
         }
         const message_form = view.querySelector('converse-muc-message-form');
         message_form.onKeyDown(enter_event);
@@ -361,7 +361,7 @@ describe("A sent groupchat message", function () {
                 'target': textarea,
                 'preventDefault': function preventDefault () {},
                 'stopPropagation': function stopPropagation () {},
-                'keyCode': 13 // Enter
+                key: "Enter",
             }
             const message_form = view.querySelector('converse-muc-message-form');
             message_form.onKeyDown(enter_event);
@@ -382,7 +382,6 @@ describe("A sent groupchat message", function () {
         it("can get corrected and given new references",
                 mock.initConverse([], {}, async function (_converse) {
 
-            const nick = 'tom';
             const muc_jid = 'lounge@montague.lit';
             const { api } = _converse;
             const { jid: own_jid } = api.connection.get();
@@ -422,7 +421,7 @@ describe("A sent groupchat message", function () {
                 'target': textarea,
                 'preventDefault': function preventDefault () {},
                 'stopPropagation': function stopPropagation () {},
-                'keyCode': 13 // Enter
+                key: "Enter",
             }
             const message_form = view.querySelector('converse-muc-message-form');
             message_form.onKeyDown(enter_event);
@@ -454,7 +453,9 @@ describe("A sent groupchat message", function () {
             action.style.opacity = 1;
             action.click();
 
-            expect(textarea.value).toBe('hello @z3r0 @gibson @mr.robot, how are you?');
+                    debugger;
+            await u.waitUntil(() => textarea.value === 'hello @z3r0 @gibson @mr.robot, how are you?');
+                    return
             expect(view.model.messages.at(0).get('correcting')).toBe(true);
             expect(view.querySelectorAll('.chat-msg').length).toBe(1);
             await u.waitUntil(() => u.hasClass('correcting', view.querySelector('.chat-msg')), 500);
@@ -509,7 +510,7 @@ describe("A sent groupchat message", function () {
                 'target': textarea,
                 'preventDefault': function preventDefault () {},
                 'stopPropagation': function stopPropagation () {},
-                'keyCode': 13 // Enter
+                key: "Enter",
             }
             const message_form = view.querySelector('converse-muc-message-form');
             message_form.onKeyDown(enter_event);
@@ -545,7 +546,7 @@ describe("A sent groupchat message", function () {
             'target': textarea,
             'preventDefault': function preventDefault () {},
             'stopPropagation': function stopPropagation () {},
-            'keyCode': 13 // Enter
+            key: "Enter",
         }
         const message_form = view.querySelector('converse-muc-message-form');
         message_form.onKeyDown(enter_event);

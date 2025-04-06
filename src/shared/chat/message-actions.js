@@ -1,6 +1,3 @@
-/**
- * @typedef {module:headless-shared-parsers.MediaURLMetadata} MediaURLData
- */
 import { html } from 'lit';
 import { until } from 'lit/directives/until.js';
 import { api, log, _converse, u, constants } from '@converse/headless';
@@ -24,6 +21,10 @@ const { CHATROOMS_TYPE } = constants;
  */
 
 class MessageActions extends CustomElement {
+    /**
+     * @typedef {import('@converse/headless/types/utils/types').MediaURLMetadata} MediaURLMetadata
+     */
+
     static get properties () {
         return {
             is_retracted: { type: Boolean },
@@ -255,7 +256,7 @@ class MessageActions extends CustomElement {
             .filter(o => isMediaURLDomainAllowed(o));
 
         const url_strings = getMediaURLs(this.model.get('media_urls') || [], this.model.get('body'));
-        const media_urls = /** @type {MediaURLData[]} */(url_strings.filter(o => isMediaURLDomainAllowed(o)));
+        const media_urls = /** @type {MediaURLMetadata[]} */(url_strings.filter(o => isMediaURLDomainAllowed(o)));
         return [...new Set([...media_urls.map(o => o.url), ...unfurls_to_show.map(o => o.url)])];
     }
 
@@ -297,12 +298,16 @@ class MessageActions extends CustomElement {
     /** @param {MouseEvent} [ev] */
     onMessageQuoteButtonClicked (ev) {
         ev?.preventDefault?.();
-        const { chatboxviews } = _converse.state;
-        const view = chatboxviews.get(this.model.collection.chatbox.get('jid'));
-        view?.getMessageForm().insertIntoTextArea(
-            this.model.getMessageText().replaceAll(/^/gm, '> '),
-            false, false, null, '\n'
-        );
+        const chatbox = this.model.collection.chatbox;
+        const idx = u.ancestor(this, '.chatbox')?.querySelector('.chat-textarea')?.selectionEnd;
+        const new_text = this.model.getMessageText().replaceAll(/^/gm, '> ');
+        let draft = chatbox.get('draft') ?? '';
+        if (idx) {
+            draft = `${draft.slice(0, idx)}\n${new_text}\n${draft.slice(idx)}`;
+        } else {
+            draft += new_text;
+        }
+        chatbox.save({ draft });
     }
 
     async getActionButtons () {
@@ -310,7 +315,7 @@ class MessageActions extends CustomElement {
         if (this.model.get('editable')) {
             buttons.push(/** @type {MessageActionAttributes} */({
                 'i18n_text': this.model.get('correcting') ? __('Cancel Editing') : __('Edit'),
-                'handler': ev => this.onMessageEditButtonClicked(ev),
+                'handler': (ev) => this.onMessageEditButtonClicked(ev),
                 'button_class': 'chat-msg__action-edit',
                 'icon_class': 'fa fa-pencil-alt',
                 'name': 'edit',
@@ -323,7 +328,7 @@ class MessageActions extends CustomElement {
         if (retractable) {
             buttons.push({
                 'i18n_text': __('Retract'),
-                'handler': ev => this.onMessageRetractButtonClicked(ev),
+                'handler': (ev) => this.onMessageRetractButtonClicked(ev),
                 'button_class': 'chat-msg__action-retract',
                 'icon_class': 'fas fa-trash-alt',
                 'name': 'retract',
@@ -340,7 +345,7 @@ class MessageActions extends CustomElement {
 
         buttons.push({
             'i18n_text': __('Copy'),
-            'handler': ev => this.onMessageCopyButtonClicked(ev),
+            'handler': (ev) => this.onMessageCopyButtonClicked(ev),
             'button_class': 'chat-msg__action-copy',
             'icon_class': 'fas fa-copy',
             'name': 'copy',
@@ -349,7 +354,7 @@ class MessageActions extends CustomElement {
         if (this.model.collection.chatbox.canPostMessages()) {
             buttons.push({
                 'i18n_text': __('Quote'),
-                'handler': ev => this.onMessageQuoteButtonClicked(ev),
+                'handler': (ev) => this.onMessageQuoteButtonClicked(ev),
                 'button_class': 'chat-msg__action-quote',
                 'icon_class': 'fas fa-quote-right',
                 'name': 'quote',

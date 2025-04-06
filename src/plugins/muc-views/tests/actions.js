@@ -47,7 +47,7 @@ describe("A Groupchat Message", function () {
         message_form.onKeyDown({
             target: textarea,
             preventDefault: function preventDefault () {},
-            keyCode: 13 // Enter
+            key: "Enter",
         });
         await u.waitUntil(() => view.querySelectorAll('.chat-msg').length === 2);
         const copyActions = view.querySelectorAll('.chat-msg__action-copy');
@@ -94,17 +94,14 @@ describe("A Groupchat Message", function () {
         let firstAction = await u.waitUntil(() => view.querySelector('.chat-msg__action-quote'));
         expect(firstAction).not.toBeNull();
         firstAction.click();
-        expect(textarea.value).toBe('> ' + firstMessageText + '\n');
-        // Quote with already-present text
-        textarea.value = 'Hi!';
-        firstAction.click();
-        expect(textarea.value).toBe('Hi!\n> ' + firstMessageText + '\n');
+        await u.waitUntil(() => textarea.value === '> ' + firstMessageText);
 
         // Quote with already-present text
         textarea.value = 'Hi!';
-        firstAction.click();
-        expect(textarea.value).toBe('Hi!\n> ' + firstMessageText + '\n');
+        textarea.dispatchEvent(new Event('change'));
 
+        firstAction.click();
+        await u.waitUntil(() => textarea.value === `Hi!\n> ${firstMessageText}\n`);
     }));
 
     it("Cannot be quoted without permission to speak",

@@ -4,7 +4,7 @@
  * @description This is the core utilities module.
  */
 import { Model } from '@converse/skeletor';
-import log, { LEVELS } from '../log.js';
+import log, { LEVELS } from '@converse/log';
 import * as array from './array.js';
 import * as arraybuffer from './arraybuffer.js';
 import * as color from './color.js';
@@ -63,6 +63,7 @@ export function isEmptyMessage (attrs) {
 /**
  * Given a message object, return its text with @ chars
  * inserted before the mentioned nicknames.
+ * @param {import('../shared/message').default} message
  */
 export function prefixMentions (message) {
     let text = message.getMessageText();

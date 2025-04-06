@@ -425,7 +425,7 @@ describe("A Groupchat Message", function () {
             target: textarea,
             preventDefault: function preventDefault () {},
             stopPropagation: function stopPropagation () {},
-            keyCode: 13 // Enter
+            key: "Enter",
         }
         message_form.onKeyDown(enter_event);
 
@@ -472,9 +472,9 @@ describe("A Groupchat Message", function () {
         expect(textarea.value).toBe('');
         message_form.onKeyDown({
             target: textarea,
-            keyCode: 38 // Up arrow
+            key: "ArrowUp",
         });
-        expect(textarea.value).toBe(unfurl_url);
+        await u.waitUntil(() => textarea.value === unfurl_url);
         textarea.value = "never mind";
         message_form.onKeyDown(enter_event);
 

@@ -321,13 +321,6 @@ You will be able to query for even older messages by scrolling upwards in the ch
 (the so-called infinite scrolling pattern).
 
 
-autocomplete_add_contact
-------------------------
-
-* Default: ``true``
-
-Determines whether search suggestions are shown in the "Add Contact" modal.
-
 auto_fill_history_gaps
 ----------------------
 
@@ -951,9 +944,9 @@ Please see the :ref:`websocket-url` configuration setting.
 fetch_url_headers
 -----------------
 
-* Default: ``true``
+* Default: ``false``
 
-If set to ``false``, then Converse won't fetch the headers of URLs to determine
+If set to ``true``, Converse will fetch the headers of URLs to determine
 whether they link to media that can be embedded (e.g. streaming audio).
 
 filter_by_resource

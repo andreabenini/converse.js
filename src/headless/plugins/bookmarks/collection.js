@@ -9,7 +9,7 @@ import _converse from '../../shared/_converse.js';
 import api from '../../shared/api/index.js';
 import converse from '../../shared/api/public.js';
 import { parseErrorStanza } from '../../shared/parsers.js';
-import log from '../../log.js';
+import log from "@converse/log";
 import { initStorage } from '../../utils/storage.js';
 import { parseStanzaForBookmarks } from './parsers.js';
 import '../../plugins/muc/index.js';
@@ -129,7 +129,7 @@ class Bookmarks extends Collection {
                 /** @param {MUC} model */ (model) => {
                     const extensions = model.get('extensions') ?? [];
                     return stx`<item id="${model.get('jid')}">
-                    <conference xmlns="${Strophe.NS.BOOKMARKS2}"
+                        <conference xmlns="${Strophe.NS.BOOKMARKS2}"
                                 name="${model.get('name')}"
                                 autojoin="${model.get('autojoin')}">
                             ${model.get('nick') ? stx`<nick>${model.get('nick')}</nick>` : ''}
