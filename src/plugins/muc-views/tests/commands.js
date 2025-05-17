@@ -1,6 +1,5 @@
 /*global mock, converse */
-
-const { Strophe, Promise, sizzle, stx, u }  = converse.env;
+const { Strophe, sizzle, stx, u }  = converse.env;
 
 describe("Groupchats", function () {
     beforeAll(() => jasmine.addMatchers({ toEqualStanza: jasmine.toEqualStanza }));
@@ -357,7 +356,10 @@ describe("Groupchats", function () {
                 key: "Enter",
             });
             await u.waitUntil(() => _converse.api.confirm.calls.count() === 1);
-            expect(_converse.api.confirm).toHaveBeenCalledWith('Are you sure you want to clear the messages from this conversation?');
+            expect(_converse.api.confirm).toHaveBeenCalledWith(
+                'Confirm',
+                'Are you sure you want to clear the messages from this conversation?'
+            );
         }));
 
         it("takes /owner to make a user an owner", mock.initConverse([], {}, async function (_converse) {
@@ -846,7 +848,7 @@ describe("Groupchats", function () {
             textarea.value = '/destroy';
             let message_form = view.querySelector('converse-muc-message-form');
             message_form.onFormSubmitted(new Event('submit'));
-            let modal = await u.waitUntil(() => document.querySelector('.modal-dialog'));
+            let modal = await u.waitUntil(() => document.querySelector('converse-confirm-modal .modal-dialog'));
             await u.waitUntil(() => u.isVisible(modal));
 
             let challenge_el = modal.querySelector('[name="challenge"]');
@@ -859,7 +861,7 @@ describe("Groupchats", function () {
             submit.click();
 
             expect(u.isVisible(modal)).toBeTruthy();
-            await u.waitUntil(() => u.hasClass('error', challenge_el));
+            await u.waitUntil(() => u.hasClass('is-invalid', challenge_el));
             challenge_el.value = muc_jid;
             submit.click();
 
@@ -895,7 +897,7 @@ describe("Groupchats", function () {
             textarea.value = '/destroy';
             message_form = view.querySelector('converse-muc-message-form');
             message_form.onFormSubmitted(new Event('submit'));
-            modal = await u.waitUntil(() => document.querySelector('.modal-dialog'));
+            modal = await u.waitUntil(() => document.querySelector('converse-confirm-modal .modal-dialog'));
             await u.waitUntil(() => u.isVisible(modal));
 
             challenge_el = modal.querySelector('[name="challenge"]');

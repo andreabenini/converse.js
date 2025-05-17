@@ -1,4 +1,4 @@
-export default class RosterContact extends ObservableElement {
+export default class RosterContactView extends ObservableElement {
     static get properties(): {
         model: {
             type: ObjectConstructor;
@@ -24,6 +24,10 @@ export default class RosterContact extends ObservableElement {
      * @param {MouseEvent} ev
      */
     removeContact(ev: MouseEvent): Promise<void>;
+    /**
+     * @param {MouseEvent} ev
+     */
+    showUserDetailsModal(ev: MouseEvent): Promise<void>;
     /**
      * @param {MouseEvent} ev
      */

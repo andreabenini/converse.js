@@ -1,4 +1,3 @@
-import Popover from 'bootstrap/js/src/popover.js';
 import { _converse, api, converse, constants } from '@converse/headless';
 import { CustomElement } from 'shared/components/element.js';
 import { updateSettingsWithFormData, validateJID } from './utils.js';
@@ -31,10 +30,6 @@ class LoginForm extends CustomElement {
 
     render () {
         return tplLoginPanel(this);
-    }
-
-    firstUpdated () {
-        this.initPopovers();
     }
 
     /**
@@ -83,10 +78,6 @@ class LoginForm extends CustomElement {
         const domain = Strophe.getDomainFromJid(jid);
         api.connection.init(jid);
         return api.connection.get().discoverConnectionMethods(domain);
-    }
-
-    initPopovers () {
-        Array.from(this.querySelectorAll('[data-toggle="popover"]')).forEach(el => new Popover(el));
     }
 
     /**

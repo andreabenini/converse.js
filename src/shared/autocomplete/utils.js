@@ -43,15 +43,30 @@ export const helpers = {
     }
 };
 
-export const FILTER_CONTAINS = function (text, input) {
+/**
+ * @param {string} text
+ * @param {string} input
+ * @returns {boolean}
+ */
+export function FILTER_CONTAINS (text, input) {
     return RegExp(helpers.regExpEscape(input.trim()), 'i').test(text);
 };
 
-export const FILTER_STARTSWITH = function (text, input) {
+/**
+ * @param {string} text
+ * @param {string} input
+ * @returns {boolean}
+ */
+export function FILTER_STARTSWITH (text, input) {
     return RegExp('^' + helpers.regExpEscape(input.trim()), 'i').test(text);
 };
 
-const SORT_BY_LENGTH = function (a, b) {
+/**
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
+export function SORT_BY_LENGTH (a, b) {
     if (a.length !== b.length) {
         return a.length - b.length;
     }

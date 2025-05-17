@@ -4,7 +4,7 @@ import _converse from '../../shared/_converse.js';
 import api from '../../shared/api/index.js';
 import converse from '../../shared/api/public.js';
 import { parseErrorStanza } from '../../shared/parsers.js';
-import log from "@converse/log";
+import log from '@converse/log';
 import sizzle from 'sizzle';
 import { createStore } from '../../utils/storage.js';
 
@@ -20,11 +20,11 @@ const { Strophe, u } = converse.env;
  * See XEP-0030: https://xmpp.org/extensions/xep-0030.html
  */
 class DiscoEntity extends Model {
-    get idAttribute () {
+    get idAttribute() {
         return 'jid';
     }
 
-    initialize (_, options) {
+    initialize(_, options) {
         super.initialize();
         this.waitUntilFeaturesDiscovered = getOpenPromise();
         this.waitUntilItemsFetched = getOpenPromise();
@@ -43,9 +43,14 @@ class DiscoEntity extends Model {
         this.fields.browserStorage = createStore(id, 'session');
         this.listenTo(this.fields, 'add', this.onFieldAdded);
 
+        this.items = new Collection();
+        id = `converse.items-${this.get('jid')}`;
+        this.items.browserStorage = createStore(id, 'session');
+
         this.identities = new Collection();
         id = `converse.identities-${this.get('jid')}`;
         this.identities.browserStorage = createStore(id, 'session');
+
         this.fetchFeatures(options);
     }
 
@@ -56,12 +61,9 @@ class DiscoEntity extends Model {
      * @param {String} category - The identity category
      * @param {String} type - The identity type
      */
-    async getIdentity (category, type) {
-        await this.waitUntilFeaturesDiscovered;
-        return this.identities.findWhere({
-            'category': category,
-            'type': type,
-        });
+    async getIdentity(category, type) {
+        await this.waitUntilItemsFetched;
+        return this.identities.findWhere({ category, type });
     }
 
     /**
@@ -70,14 +72,14 @@ class DiscoEntity extends Model {
      * @method _converse.DiscoEntity#getFeature
      * @param {String} feature - The feature that might be supported.
      */
-    async getFeature (feature) {
+    async getFeature(feature) {
         await this.waitUntilFeaturesDiscovered;
         if (this.features.findWhere({ var: feature })) {
             return this;
         }
     }
 
-    onFeatureAdded (feature) {
+    onFeatureAdded(feature) {
         feature.entity = this;
         /**
          * Triggered when Converse has learned of a service provided by the XMPP server.
@@ -89,7 +91,7 @@ class DiscoEntity extends Model {
         api.trigger('serviceDiscovered', feature);
     }
 
-    onFieldAdded (field) {
+    onFieldAdded(field) {
         field.entity = this;
         /**
          * Triggered when Converse has learned of a disco extension field.
@@ -100,34 +102,69 @@ class DiscoEntity extends Model {
         api.trigger('discoExtensionFieldDiscovered', field);
     }
 
-    async fetchFeatures (options) {
+    async fetchFeatures(options) {
         if (options.ignore_cache) {
-            this.queryInfo();
+            await this.queryInfo();
         } else {
             const store_id = this.features.browserStorage.name;
+
+            // Checking only whether features have been cached, even though
+            // there are other things that should be cached as well. We assume
+            // that if features have been cached, everything else has been also.
             const result = await this.features.browserStorage.store.getItem(store_id);
             if ((result && result.length === 0) || result === null) {
-                this.queryInfo();
+                await this.queryInfo();
             } else {
-                this.features.fetch({
-                    add: true,
-                    success: () => {
-                        this.waitUntilFeaturesDiscovered.resolve(this);
-                        this.trigger('featuresDiscovered');
-                    },
-                });
-                this.identities.fetch({ add: true });
+                await new Promise((resolve) => this.fetch({ success: resolve, error: resolve }));
+
+                await new Promise((resolve) =>
+                    this.features.fetch({
+                        add: true,
+                        success: () => {
+                            this.waitUntilFeaturesDiscovered.resolve(this);
+                            this.trigger('featuresDiscovered');
+                            resolve();
+                        },
+                        error: resolve,
+                    })
+                );
+
+                await new Promise((resolve) => this.identities.fetch({ add: true, success: resolve, error: resolve }));
+
+                const items = this.get('items');
+                if (Array.isArray(items)) {
+                    await Promise.all(
+                        items.map(/** @param {string} jid */ async (jid) => await api.disco.entities.get(jid, true))
+                    );
+                } else {
+                    await this.queryForItems();
+                }
+                this.waitUntilItemsFetched.resolve();
             }
         }
     }
 
-    async queryInfo () {
+    async queryInfo() {
         let stanza;
         try {
             stanza = await api.disco.info(this.get('jid'), null);
         } catch (iq) {
-            iq === null ? log.error(`Timeout for disco#info query for ${this.get('jid')}`) : log.error(iq);
-            this.waitUntilFeaturesDiscovered.resolve(u.isElement(iq) ? await parseErrorStanza(iq) : iq);
+            if (u.isElement(iq)) {
+                const e = await parseErrorStanza(iq);
+                if (e.message !== 'item-not-found') {
+                    log.error(`Error querying disco#info for ${this.get('jid')}: ${e.message}`);
+                }
+                this.waitUntilFeaturesDiscovered.resolve(e);
+                this.waitUntilItemsFetched.resolve(e);
+            } else {
+                if (iq === null) {
+                    log.error(`Timeout for disco#info query for ${this.get('jid')}`);
+                } else {
+                    log.error(`Error querying disco#info for ${this.get('jid')}: ${iq}`);
+                }
+                this.waitUntilFeaturesDiscovered.resolve(iq);
+                this.waitUntilItemsFetched.resolve(iq);
+            }
             return;
         }
         this.onInfo(stanza);
@@ -136,29 +173,33 @@ class DiscoEntity extends Model {
     /**
      * @param {Element} stanza
      */
-    onDiscoItems (stanza) {
-        sizzle(`query[xmlns="${Strophe.NS.DISCO_ITEMS}"] item`, stanza).forEach(item => {
+    onDiscoItems(stanza) {
+        const item_els = sizzle(`query[xmlns="${Strophe.NS.DISCO_ITEMS}"] item`, stanza);
+        const item_jids = [];
+        item_els.forEach((item) => {
             if (item.getAttribute('node')) {
                 // XXX: Ignore nodes for now.
                 // See: https://xmpp.org/extensions/xep-0030.html#items-nodes
                 return;
             }
             const jid = item.getAttribute('jid');
-            const entity = _converse.state.disco_entities.get(jid);
+            let entity = _converse.state.disco_entities.get(jid);
             if (entity) {
                 const parent_jids = entity.get('parent_jids');
                 entity.set({ parent_jids: [...parent_jids, this.get('jid')] });
             } else {
-                api.disco.entities.create({
+                entity = api.disco.entities.create({
                     jid,
-                    'parent_jids': [this.get('jid')],
-                    'name': item.getAttribute('name'),
+                    parent_jids: [this.get('jid')],
+                    name: item.getAttribute('name'),
                 });
             }
+            item_jids.push(entity.get('jid'));
         });
+        this.save({ items: item_jids });
     }
 
-    async queryForItems () {
+    async queryForItems() {
         if (this.identities.where({ category: 'server' }).length === 0) {
             // Don't fetch features and items if this is not a
             // server or a conference component.
@@ -171,18 +212,18 @@ class DiscoEntity extends Model {
     /**
      * @param {Element} stanza
      */
-    async onInfo (stanza) {
-        Array.from(stanza.querySelectorAll('identity')).forEach(identity => {
+    async onInfo(stanza) {
+        Array.from(stanza.querySelectorAll('identity')).forEach((identity) => {
             this.identities.create({
-                'category': identity.getAttribute('category'),
-                'type': identity.getAttribute('type'),
-                'name': identity.getAttribute('name'),
+                category: identity.getAttribute('category'),
+                type: identity.getAttribute('type'),
+                name: identity.getAttribute('name'),
             });
         });
 
-        sizzle(`x[type="result"][xmlns="${Strophe.NS.XFORM}"]`, stanza).forEach(form => {
+        sizzle(`x[type="result"][xmlns="${Strophe.NS.XFORM}"]`, stanza).forEach((form) => {
             const data = {};
-            sizzle('field', form).forEach(field => {
+            sizzle('field', form).forEach((field) => {
                 data[field.getAttribute('var')] = {
                     'value': field.querySelector('value')?.textContent,
                     'type': field.getAttribute('type'),
@@ -196,7 +237,7 @@ class DiscoEntity extends Model {
         }
         this.waitUntilItemsFetched.resolve();
 
-        Array.from(stanza.querySelectorAll('feature')).forEach(feature => {
+        Array.from(stanza.querySelectorAll('feature')).forEach((feature) => {
             this.features.create({
                 'var': feature.getAttribute('var'),
                 'from': stanza.getAttribute('from'),
@@ -204,7 +245,7 @@ class DiscoEntity extends Model {
         });
 
         // XEP-0128 Service Discovery Extensions
-        sizzle('x[type="result"][xmlns="jabber:x:data"] field', stanza).forEach(field => {
+        sizzle('x[type="result"][xmlns="jabber:x:data"] field', stanza).forEach((field) => {
             this.fields.create({
                 'var': field.getAttribute('var'),
                 'value': field.querySelector('value')?.textContent,

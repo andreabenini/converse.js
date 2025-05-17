@@ -1,4 +1,4 @@
-declare const XMPPStatus_base: {
+declare const Profile_base: {
     new (...args: any[]): {
         _vcard: import("../vcard/vcard.js").default;
         lazy_load_vcard: boolean;
@@ -137,11 +137,17 @@ declare const XMPPStatus_base: {
         propertyIsEnumerable(v: PropertyKey): boolean;
     };
 } & typeof Model;
-export default class XMPPStatus extends XMPPStatus_base {
+export default class Profile extends Profile_base {
     defaults(): {
+        presence: string;
         status: any;
+        show: any;
+        groups: any[];
     };
-    getStatus(): any;
+    /**
+     * @return {import('./types').connection_status}
+     */
+    getStatus(): import("./types").connection_status;
     /**
      * @param {string|Object} key
      * @param {string|Object} [val]
@@ -149,15 +155,18 @@ export default class XMPPStatus extends XMPPStatus_base {
      */
     set(key: string | any, val?: string | any, options?: any): false | this;
     initialize(): void;
-    getDisplayName(): any;
-    getNickname(): any;
-    /** Constructs a presence stanza
-     * @param {string} [type]
-     * @param {string} [to] - The JID to which this presence should be sent
-     * @param {string} [status_message]
+    /**
+     * @param {import('../roster/types.js').ContactDisplayNameOptions} [options]
      */
-    constructPresence(type?: string, to?: string, status_message?: string): Promise<any>;
+    getDisplayName(options?: import("../roster/types.js").ContactDisplayNameOptions): any;
+    getNickname(): any;
+    /**
+     * Constructs a presence stanza
+     * @param {import('./types').presence_attrs} [attrs={}]
+     * @returns {Promise<Stanza>}
+     */
+    constructPresence(attrs?: import("./types").presence_attrs): Promise<any>;
 }
 import { Model } from '@converse/skeletor';
 export {};
-//# sourceMappingURL=status.d.ts.map
+//# sourceMappingURL=profile.d.ts.map

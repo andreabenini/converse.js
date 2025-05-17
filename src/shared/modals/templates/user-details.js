@@ -3,7 +3,6 @@ import { until } from "lit/directives/until.js";
 import { api, converse, _converse } from "@converse/headless";
 import { getGroupsAutoCompleteList } from "plugins/rosterview/utils.js";
 import { __ } from "i18n";
-import avatar from "shared/avatar/templates/avatar.js";
 
 const { Strophe } = converse.env;
 
@@ -54,7 +53,7 @@ export function tplUserDetailsModal(el) {
     const vcard_json = vcard ? vcard.toJSON() : {};
     const o = { ...el.model.toJSON(), ...vcard_json };
 
-    const is_roster_contact = el.model.contact !== undefined;
+    const is_roster_contact = el.getContact() !== undefined;
     const allow_contact_removal = api.settings.get("allow_contact_removal");
 
     const domain = _converse.session.get("domain");
@@ -83,13 +82,6 @@ export function tplUserDetailsModal(el) {
     const i18n_omemo = __("OMEMO");
     const i18n_profile = __("Profile");
     const ii18n_edit = __("Edit");
-
-    const avatar_data = {
-        alt_text: __("The User's Profile Image"),
-        extra_classes: "mb-3",
-        height: "160",
-        width: "160",
-    };
 
     const navigation_tabs = [
         html`<li role="presentation" class="nav-item">
@@ -141,7 +133,7 @@ export function tplUserDetailsModal(el) {
         );
     }
 
-    const { contact } = el.model;
+    const contact = el.getContact();
     if (!contact) return ''; // Happens during tests
 
     const name = contact.get("nickname") || contact.vcard?.get('fullname');
@@ -158,7 +150,12 @@ export function tplUserDetailsModal(el) {
                 role="tabpanel"
                 aria-labelledby="profile-tab"
             >
-                ${o.image ? html`<div class="mb-4">${avatar(Object.assign(o, avatar_data))}</div>` : ""}
+                <div class="mb-4 centered">
+                    <converse-avatar
+                        .model="${el.model}"
+                        name="${el.model.getDisplayName()}"
+                        height="140" width="140" ></converse-avatar>
+                </div>
                 ${o.fullname
                     ? html`
                           <div class="row mb-2">

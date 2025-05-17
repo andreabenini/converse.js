@@ -4,7 +4,7 @@
  * @typedef {import('@converse/headless').RosterContacts} RosterContacts
  */
 import { __ } from 'i18n';
-import { _converse, api, converse, log, constants, u, XMPPStatus } from '@converse/headless';
+import { _converse, api, converse, log, constants, u, Profile } from '@converse/headless';
 
 const { Strophe } = converse.env;
 const { STATUS_WEIGHTS } = constants;
@@ -17,7 +17,7 @@ const { STATUS_WEIGHTS } = constants;
 export async function removeContact(contact, unauthorize = false) {
     if (!api.settings.get('allow_contact_removal')) return;
 
-    const result = await api.confirm(__('Are you sure you want to remove this contact?'));
+    const result = await api.confirm(__('Confirm'), __('Are you sure you want to remove this contact?'));
     if (!result) return false;
 
     const chat = await api.chats.get(contact.get('jid'));
@@ -111,20 +111,20 @@ export function toggleGroup(ev, name) {
  *
  * The goal is to be able to filter against the VCard fullname,
  * roster nickname and JID.
- * @param {RosterContact|XMPPStatus} contact
+ * @param {RosterContact|Profile} contact
  * @returns {string} Lower-cased, tab-separated values
  */
 function getFilterCriteria(contact) {
-    const nick = contact instanceof XMPPStatus ? contact.getNickname() : contact.get('nickname');
+    const nick = contact instanceof Profile ? contact.getNickname() : contact.get('nickname');
     const jid = contact.get('jid');
-    let criteria = contact.getDisplayName();
+    let criteria = contact.getDisplayName({ context: 'roster' });
     criteria = !criteria.includes(jid) ? criteria.concat(`   ${jid}`) : criteria;
     criteria = !criteria.includes(nick) ? criteria.concat(`   ${nick}`) : criteria;
     return criteria.toLowerCase();
 }
 
 /**
- * @param {RosterContact|XMPPStatus} contact
+ * @param {RosterContact|Profile} contact
  * @param {string} groupname
  * @returns {boolean}
  */
@@ -207,12 +207,13 @@ export function shouldShowGroup(group, model) {
  */
 export function populateContactsMap(contacts_map, contact) {
     const { labels } = _converse;
-
     const contact_groups = /** @type {string[]} */ (u.unique(contact.get('groups') ?? []));
 
-    if (contact.get('requesting')) {
+    if (u.isOwnJID(contact.get('jid')) && !contact_groups.length) {
+        contact_groups.push(/** @type {string} */ (labels.HEADER_UNGROUPED));
+    } else if (contact.get('requesting')) {
         contact_groups.push(/** @type {string} */ (labels.HEADER_REQUESTING_CONTACTS));
-    } else if (contact.get('subscription') === 'none') {
+    } else if (contact.get('subscription') === undefined) {
         contact_groups.push(/** @type {string} */ (labels.HEADER_UNSAVED_CONTACTS));
     } else if (!api.settings.get('roster_groups')) {
         contact_groups.push(/** @type {string} */ (labels.HEADER_CURRENT_CONTACTS));
@@ -235,8 +236,8 @@ export function populateContactsMap(contacts_map, contact) {
 }
 
 /**
- * @param {RosterContact|XMPPStatus} contact1
- * @param {RosterContact|XMPPStatus} contact2
+ * @param {RosterContact|Profile} contact1
+ * @param {RosterContact|Profile} contact2
  * @returns {(-1|0|1)}
  */
 export function contactsComparator(contact1, contact2) {
@@ -258,16 +259,18 @@ export function contactsComparator(contact1, contact2) {
 export function groupsComparator(a, b) {
     const HEADER_WEIGHTS = {};
     const {
-        HEADER_UNREAD,
-        HEADER_REQUESTING_CONTACTS,
         HEADER_CURRENT_CONTACTS,
+        HEADER_REQUESTING_CONTACTS,
         HEADER_UNGROUPED,
+        HEADER_UNREAD,
+        HEADER_UNSAVED_CONTACTS,
     } = _converse.labels;
 
     HEADER_WEIGHTS[HEADER_UNREAD] = 0;
-    HEADER_WEIGHTS[HEADER_REQUESTING_CONTACTS] = 1;
-    HEADER_WEIGHTS[HEADER_CURRENT_CONTACTS] = 2;
-    HEADER_WEIGHTS[HEADER_UNGROUPED] = 3;
+    HEADER_WEIGHTS[HEADER_UNSAVED_CONTACTS] = 1;
+    HEADER_WEIGHTS[HEADER_REQUESTING_CONTACTS] = 2;
+    HEADER_WEIGHTS[HEADER_CURRENT_CONTACTS] = 3;
+    HEADER_WEIGHTS[HEADER_UNGROUPED] = 4;
 
     const WEIGHTS = HEADER_WEIGHTS;
     const special_groups = Object.keys(HEADER_WEIGHTS);
@@ -317,7 +320,7 @@ export async function getNamesAutoCompleteList(query) {
         return [];
     }
 
-    const json = response.json;
+    const json = await response.json();
     if (!Array.isArray(json)) {
         log.error(`Invalid JSON returned"`);
         return [];

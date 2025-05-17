@@ -15,14 +15,18 @@ export default class MessageUnfurl extends CustomElement {
         url: {
             type: StringConstructor;
         };
+        site_name: {
+            type: StringConstructor;
+        };
     };
     jid: any;
     url: any;
     title: any;
     image: any;
     description: any;
+    site_name: any;
     initialize(): void;
-    render(): "" | import("lit-html").TemplateResult<1>;
+    render(): import("lit-html").TemplateResult<1> | "";
     onImageLoad(): void;
 }
 import { CustomElement } from 'shared/components/element.js';

@@ -1,5 +1,7 @@
 export const BOSH_WAIT: 59;
 export const VERSION_NAME: "v11.0.0";
+export const PRES_SHOW_VALUES: string[];
+export const PRES_TYPE_VALUES: string[];
 export namespace STATUS_WEIGHTS {
     let offline: number;
     let unavailable: number;
@@ -31,6 +33,7 @@ export const CONTROLBOX_TYPE: "controlbox";
 export const CONNECTION_STATUS: typeof CONNECTION_STATUS;
 export const CORE_PLUGINS: string[];
 export const CHAT_STATES: string[];
+export const MARKER_TYPES: string[];
 export namespace KEYCODES {
     let TAB: string;
     let ENTER: string;

@@ -151,14 +151,15 @@ declare class RosterContact extends RosterContact_base {
         resolve: (value: any) => void;
         reject: (reason?: any) => void;
     };
-    setPresence(): void;
+    setPresence(): Promise<void>;
     presence: any;
     getStatus(): any;
     openChat(): void;
     /**
-     * @returns {string|null}
+     * @param {import('./types').ContactDisplayNameOptions} [options]
+     * @returns {string}
      */
-    getDisplayName(jid_fallback?: boolean): string | null;
+    getDisplayName(options?: import("./types").ContactDisplayNameOptions): string;
     /**
      * Send a presence subscription request to this roster contact
      * @param {string} message - An optional message to explain the

@@ -215,6 +215,10 @@ async function openChatBoxFor (_converse, jid) {
     return u.waitUntil(() => _converse.chatboxviews.get(jid), 1000);
 }
 
+/**
+ * Returns an item-not-found disco info result, simulating that this was a
+ * new MUC being entered.
+ */
 async function waitForNewMUCDiscoInfo(_converse, muc_jid) {
     const { api } = _converse;
     const connection = api.connection.get();
@@ -370,22 +374,24 @@ async function receiveOwnMUCPresence (_converse, muc_jid, nick, affiliation='own
     const sent_stanzas = _converse.api.connection.get().sent_stanzas;
     await u.waitUntil(() => sent_stanzas.filter(iq => sizzle('presence history', iq).length).pop());
 
-    const presence = $pres({
-            to: _converse.api.connection.get().jid,
-            from: `${muc_jid}/${nick}`,
-            id: u.getUniqueId()
-    }).c('x').attrs({xmlns:'http://jabber.org/protocol/muc#user'})
-        .c('item').attrs({ affiliation, role, 'jid': _converse.bare_jid }).up()
-        .c('status').attrs({code:'110'}).up().up()
-
-    if (features.includes(Strophe.NS.OCCUPANTID)) {
-        presence.c('occupant-id', {'xmlns': Strophe.NS.OCCUPANTID, 'id': u.getUniqueId() });
-    }
-
-    if (_converse.xmppstatus.get('status')) {
-       presence.c('show').t(_converse.xmppstatus.get('status'));
-    }
-    _converse.api.connection.get()._dataRecv(createRequest(presence));
+    _converse.api.connection.get()._dataRecv(createRequest(stx`
+        <presence xmlns="jabber:client"
+                to="${_converse.api.connection.get().jid}"
+                from="${muc_jid}/${nick}"
+                id="${u.getUniqueId()}">
+            <x xmlns="http://jabber.org/protocol/muc#user">
+                <item affiliation="${affiliation}" role="${role}" jid="${_converse.bare_jid}"/>
+                <status code="110"/>
+            </x>
+            ${ (features.includes(Strophe.NS.OCCUPANTID))
+                ? stx`<occupant-id xmlns="${Strophe.NS.OCCUPANTID}" id="${u.getUniqueId()}"/>`
+                : ''
+            }
+            ${ _converse.state.profile.get('show')
+                ? stx`<show>${_converse.state.profile.get('show')}</show>`
+                : ''
+            }
+        </presence>`));
 }
 
 async function openAddMUCModal (_converse) {
@@ -526,11 +532,11 @@ async function waitForRoster (_converse, type='current', length=-1, include_nick
     await _converse.api.waitUntil('rosterContactsFetched');
 }
 
-function createChatMessage (_converse, sender_jid, message) {
+function createChatMessage (_converse, sender_jid, message, type='chat') {
     return $msg({
                 from: sender_jid,
                 to: _converse.api.connection.get().jid,
-                type: 'chat',
+                type,
                 id: (new Date()).getTime()
             })
             .c('body').t(message).up()
@@ -747,7 +753,7 @@ function getMockVcardFetcher (settings) {
         if (nickname) vcard.c('NICKNAME').t(nickname);
         const vcard_el = vcard.tree();
 
-        return {
+        return Promise.resolve({
             stanza: vcard_el,
             fullname: vcard_el.querySelector('FN')?.textContent,
             nickname: vcard_el.querySelector('NICKNAME')?.textContent,
@@ -756,15 +762,17 @@ function getMockVcardFetcher (settings) {
             url: vcard_el.querySelector('URL')?.textContent,
             vcard_updated: dayjs().format(),
             vcard_error: undefined
-        };
+        });
     }
 }
 
 const theme = ['dracula', 'classic', 'cyberpunk', 'nordic'][Math.floor(Math.random()*4)];
+let originalVCardGet;
 
 async function _initConverse (settings) {
     clearStores();
     await clearIndexedDB();
+
 
     _converse = await converse.initialize(Object.assign({
         animate: false,
@@ -787,8 +795,12 @@ async function _initConverse (settings) {
 
     window._converse = _converse;
 
-    if (_converse.api.vcard) {
+    originalVCardGet = originalVCardGet || _converse.api.vcard.get;
+
+    if (!settings?.no_vcard_mocks && _converse.api.vcard) {
         _converse.api.vcard.get = getMockVcardFetcher(settings);
+    } else {
+        _converse.api.vcard.get = originalVCardGet;
     }
 
     if (settings?.auto_login !== false) {

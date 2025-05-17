@@ -1,8 +1,8 @@
+import { Model } from '@converse/skeletor';
+import { _converse, api, converse } from "@converse/headless";
+import { __ } from 'i18n';
 import BaseModal from "plugins/modal/modal.js";
 import tplOccupantModal from "./templates/occupant.js";
-import { Model } from '@converse/skeletor';
-import { __ } from 'i18n';
-import { _converse, api, converse } from "@converse/headless";
 
 const { u } = converse.env;
 
@@ -28,6 +28,19 @@ export default class OccupantModal extends BaseModal {
         api.trigger('occupantModalInitialized', { 'model': this.model, 'message': this.message });
     }
 
+    renderModal () {
+        return tplOccupantModal(this);
+    }
+
+    /**
+     * @param {MouseEvent} ev
+     */
+    openChat (ev) {
+        ev.preventDefault();
+        api.chats.open(this.model.get('jid'), {}, true);
+        this.close();
+    }
+
     getVcard () {
         const model = this.model ?? this.message;
         if (model.vcard) {
@@ -35,10 +48,6 @@ export default class OccupantModal extends BaseModal {
         }
         const jid = model?.get('jid') || model?.get('from');
         return jid ? _converse.state.vcards.get(jid) : null;
-    }
-
-    renderModal () {
-        return tplOccupantModal(this);
     }
 
     getModalTitle () {
@@ -55,7 +64,6 @@ export default class OccupantModal extends BaseModal {
     toggleForm (ev) {
         const toggle = u.ancestor(ev.target, '.toggle-form');
         const form = toggle.getAttribute('data-form');
-
         if (form === 'row-form') {
             this.show_role_form = !this.show_role_form;
         } else {

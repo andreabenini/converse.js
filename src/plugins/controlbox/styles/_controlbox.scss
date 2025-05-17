@@ -63,6 +63,7 @@
             .box-flyout {
                 .controlbox-pane {
                     overflow-y: auto;
+                    padding-top: 0;
                 }
             }
         }
@@ -83,11 +84,6 @@
         a.subscribe-to-user {
             padding-inline-start: 2em;
             font-weight: bold;
-        }
-
-        #converse-login .conn-feedback {
-            text-align: center;
-            width: 100%;
         }
 
         #chatrooms {
@@ -141,8 +137,7 @@
             left: 0;
             overflow-x: hidden;
             overflow-y: auto;
-            padding: 0;
-            padding-top: 1em;
+            padding: 1em 0;
             text-align: start;
 
             .add-converse-contact {
@@ -172,6 +167,9 @@
         &.converse-overlayed {
             display: flex;
             flex-direction: row-reverse;
+            .flyout {
+                border: 0;
+            }
 
             .toggle-controlbox {
                 background-color: var(--controlbox-color);
@@ -199,30 +197,17 @@
             }
 
             .converse-svg-logo {
+                margin-right: 0.1em;
                 height: 1em;
             }
         }
 
         &.converse-embedded,
         &.converse-fullscreen {
-            #controlbox {
-                .flyout {
-                    border-inline-end: 0.2rem solid var(--controlbox-color);
-                }
-            }
             .toggle-controlbox {
                 display: none;
             }
-        }
 
-        &.converse-overlayed {
-            .flyout {
-                border: 0;
-            }
-        }
-
-        &.converse-embedded,
-        &.converse-fullscreen {
             #controlbox {
                 margin: 0;
 
@@ -248,15 +233,25 @@
                 }
 
                 .flyout {
+                    border-inline-end: 0.2rem solid var(--controlbox-color);
                     border-radius: 0;
                     width: 100%;
                     z-index: 1;
                 }
 
+                .converse-svg-logo {
+                    margin-top: 0.1em;
+                    height: 1.8em;
+                }
+
                 converse-brand-logo {
+                    margin-top: 2em;
+                    margin-bottom: 0;
                     @include make-col(12);
-                    margin-top: 5em;
-                    margin-bottom: 1em;
+                    @include media-breakpoint-up(xl) {
+                        margin-top: 5em;
+                        margin-bottom: 1em;
+                    }
                     .brand-heading {
                         width: 100%;
                         font-size: 500%;
@@ -298,6 +293,7 @@
                 }
             }
             .controlbox-pane {
+                height: 100%;
                 padding-top: 2em;
                 padding-bottom: 1em;
             }

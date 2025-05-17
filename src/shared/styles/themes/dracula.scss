@@ -20,15 +20,27 @@
     --foreground-color: #f8f8f2;
 
     // Bootstrap variables
-    --primary-color: var(--purple) !important;
-    --secondary-color: var(--pink) !important;
+    --primary-color: var(--pink) !important;
+    --secondary-color: var(--purple) !important;
     --success-color: var(--green);
     --danger-color: var(--red);
     --warning-color: var(--orange);
     --info-color: var(--yellow);
 
     --converse-body-bg: var(--background-color);
+    --converse-body-color: var(--foreground-color) !important;
     --converse-highlight-color: var(--yellow) !important;
+    .navbar-nav {
+        --converse-nav-link-color: var(--link-color) !important;
+        --converse-nav-link-hover-color: var(--link-color-hover) !important;
+    }
+    .popover {
+        --converse-popover-header-color: var(--background-color) !important;
+        --converse-popover-header-bg: var(--info-color) !important;
+    }
+    .modal {
+        --converse-modal-color: var(--foreground-color) !important;
+    }
     .list-group-item {
         --converse-list-group-color: var(--foreground-color);
         &.active {
@@ -50,6 +62,10 @@
     --headlines-color: var(--pink);
     --link-color: var(--cyan);
     --subdued-color: var(--gray);
+
+    // toast colors
+    --toast-color: var(--background-color);
+    --toast-bg-color: var(--secondary-color);
 
     // The background when selecting text with your mouse
     --selection-color: black;

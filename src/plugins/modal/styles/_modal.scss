@@ -4,6 +4,28 @@ $prefix: 'converse-';
 @import "bootstrap/scss/mixins";
 
 .conversejs {
+    &.fullscreen {
+        .modal {
+            @include media-breakpoint-up(sm) {
+                --converse-modal-width: 75vw;
+            }
+            @include media-breakpoint-up(lg) {
+                --converse-modal-width: 50vw;
+            }
+            @include media-breakpoint-up(xl) {
+                --converse-modal-width: 30vw;
+            }
+        }
+        .modal-dialog {
+            @include media-breakpoint-up(sm) {
+                margin-top: 5vh;
+            }
+            @include media-breakpoint-up(xl) {
+                margin-top: 10vh;
+            }
+        }
+    }
+
     .modal-header {
         background-color: var(--primary-color);
         border-bottom: none;
@@ -13,10 +35,20 @@ $prefix: 'converse-';
             background-color: var(--error-color);
         }
         .modal-title {
+            line-break: anywhere;
             color: var(--background-color);
+            a {
+                color: var(--background-color);
+            }
         }
         .btn-close {
+            --converse-btn-close-bg: none;
             margin: 0;
+            padding: 0;
+            font-size: 2.5em;
+            svg {
+                fill: var(--background-color);
+            }
         }
         .close {
             color: var(--background-color);
@@ -71,6 +103,7 @@ $prefix: 'converse-';
                 margin-bottom: 2em;
                 p {
                     padding: 0.25rem 0;
+                    line-height: 1.5em;
                     &.form-help {
                         padding: 0;
                         margin-bottom: 0.5em;
@@ -107,15 +140,8 @@ $prefix: 'converse-';
             overflow-y: auto;
         }
 
-        .role-form, .affiliation-form {
-            padding: 2em 0 1em 0;
-        }
-
         .set-xmpp-status {
             margin: 1em;
-            .custom-control-label {
-                padding-top: 0.25em;
-            }
         }
 
         #omemo-tabpanel {

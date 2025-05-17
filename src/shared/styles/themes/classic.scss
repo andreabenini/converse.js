@@ -27,7 +27,20 @@
     --danger-color: var(--dark-red);
     --warning-color: var(--orange);
     --info-color: var(--light-blue);
+
+    --converse-body-bg: var(--background-color);
+    --converse-body-color: var(--foreground-color) !important;
     --converse-highlight-color: var(--dark-red);
+    .navbar-nav {
+        --converse-nav-link-color: var(--link-color) !important;
+    }
+    .popover {
+        --converse-popover-header-color: var(--background-color) !important;
+        --converse-popover-header-bg: var(--info-color) !important;
+    }
+    .modal {
+        --converse-modal-color: var(--foreground-color) !important;
+    }
 
     // Online status indicators
     --chat-status-away: var(--orange);
@@ -43,6 +56,10 @@
     --headlines-color: var(--orange);
     --link-color: #2D3991;
     --subdued-color: gray;
+
+    // toast colors
+    --toast-color: var(--background-color);
+    --toast-bg-color: var(--secondary-color);
 
     // The background when selecting text with your mouse
     --selection-color: black;
@@ -66,7 +83,7 @@
     --brand-heading-color: var(--blue);
     --chat-color-hover: var(--chat-color);
     --danger-color-hover: var(--danger-color);
-    --global-background-color: var(--dark-blue);
+    --global-background-color: var(--background-color);
     --link-color-hover: var(--link-color);
     --muc-color-hover: var(--muc-color);
     --primary-color-hover: var(--dark-blue);

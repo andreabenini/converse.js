@@ -9,8 +9,11 @@ export default class Confirm extends BaseModal {
     };
     renderModal(): import("lit-html").TemplateResult<1>;
     getModalTitle(): any;
-    onConfimation(ev: any): void;
     renderModalFooter(): string;
+    /**
+     * @param {SubmitEvent} ev
+     */
+    onConfimation(ev: SubmitEvent): void;
 }
 import BaseModal from 'plugins/modal/modal.js';
 //# sourceMappingURL=confirm.d.ts.map

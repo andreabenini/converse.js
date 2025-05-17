@@ -1,3 +1,21 @@
+/**
+ * @param {string} text
+ * @param {string} input
+ * @returns {boolean}
+ */
+export function FILTER_CONTAINS(text: string, input: string): boolean;
+/**
+ * @param {string} text
+ * @param {string} input
+ * @returns {boolean}
+ */
+export function FILTER_STARTSWITH(text: string, input: string): boolean;
+/**
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
+export function SORT_BY_LENGTH(a: string, b: string): number;
 export namespace helpers {
     function getElement(expr: any, el: any): any;
     function bind(element: any, o: any): void;
@@ -5,8 +23,6 @@ export namespace helpers {
     function regExpEscape(s: any): any;
     function isMention(word: any, ac_triggers: any): any;
 }
-export function FILTER_CONTAINS(text: any, input: any): boolean;
-export function FILTER_STARTSWITH(text: any, input: any): boolean;
 export function SORT_BY_QUERY_POSITION(a: any, b: any): number;
 export function ITEM(text: any, input: any): HTMLLIElement;
 //# sourceMappingURL=utils.d.ts.map

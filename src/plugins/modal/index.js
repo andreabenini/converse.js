@@ -2,12 +2,13 @@
  * @copyright The Converse.js contributors
  * @license Mozilla Public License (MPLv2)
  */
+import { _converse, api, converse } from "@converse/headless";
+import modal_api from "./api.js";
 import BaseModal from "./modal.js";
 import Popover from "./popover.js";
-import modal_api from "./api.js";
-import { _converse, api, converse } from "@converse/headless";
-
-Object.assign(converse.env, { BaseModal, Popover });
+import Toast from './toast.js';
+import './modals.js';
+import './toasts.js';
 
 converse.plugins.add("converse-modal", {
     initialize() {
@@ -20,6 +21,7 @@ converse.plugins.add("converse-modal", {
 
         api.listen.on("clearSession", () => api.modal.removeAll());
 
+        Object.assign(_converse.exports, { BaseModal, Popover, Toast });
         Object.assign(_converse.api, modal_api);
     },
 });

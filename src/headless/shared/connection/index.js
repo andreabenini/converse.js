@@ -108,7 +108,6 @@ export class Connection extends Strophe.Connection {
     /**
      * Establish a new XMPP session by logging in with the supplied JID and
      * password.
-     * @method Connnection.connect
      * @param {String} jid
      * @param {String} password
      * @param {Function} callback
@@ -281,6 +280,7 @@ export class Connection extends Strophe.Connection {
     }
 
     async finishDisconnection () {
+        this.setConnectionStatus(Strophe.Status.DISCONNECTED);
         const { api } = _converse;
         // Properly tear down the session so that it's possible to manually connect again.
         log.debug('DISCONNECTED');
@@ -413,11 +413,11 @@ export class Connection extends Strophe.Connection {
             } else if (condition !== undefined && condition === Strophe?.ErrorCondition?.NO_AUTH_MECH) {
                 feedback = __("The XMPP server did not offer a supported authentication mechanism");
             }
-
             this.setConnectionStatus(status, feedback);
             this.setDisconnectionCause(status, condition);
 
         } else if (status === Strophe.Status.DISCONNECTING) {
+            this.setConnectionStatus(status);
             this.setDisconnectionCause(status, condition);
         }
     }

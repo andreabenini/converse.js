@@ -1,9 +1,10 @@
 import { Strophe } from "strophe.js";
-import { _converse, api, log, u } from "@converse/headless";
-import "shared/autocomplete/index.js";
+import { _converse, api, log } from "@converse/headless";
 import BaseModal from "plugins/modal/modal.js";
 import tplAddContactModal from "./templates/add-contact.js";
 import { __ } from "i18n";
+
+import './styles/add-contact.scss';
 
 export default class AddContactModal extends BaseModal {
     initialize() {
@@ -41,12 +42,12 @@ export default class AddContactModal extends BaseModal {
     }
 
     /**
-     * @param {HTMLFormElement} _form
+     * @param {HTMLFormElement} form
      * @param {string} jid
      * @param {string} name
      * @param {string[]} groups
      */
-    async afterSubmission(_form, jid, name, groups) {
+    async afterSubmission(form, jid, name, groups) {
         try {
             await api.contacts.add({ jid, name, groups });
         } catch (e) {
@@ -54,7 +55,10 @@ export default class AddContactModal extends BaseModal {
             this.model.set("error", __("Sorry, something went wrong"));
             return;
         }
+        api.chats.open(jid, {}, true);
+        form.reset();
         this.model.clear();
+        api.toast.show('contact-added', { body: __("Contact added successfully") });
         this.modal.hide();
     }
 

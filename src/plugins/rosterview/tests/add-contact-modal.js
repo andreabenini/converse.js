@@ -59,11 +59,11 @@ describe("The 'Add Contact' widget", function () {
         await mock.waitForRoster(_converse, 'all', 0);
 
         spyOn(window, 'fetch').and.callFake(() => {
-            const json = [
+            const json = () => [
                 {"jid": "marty@mcfly.net", "fullname": "Marty McFly"},
                 {"jid": "doc@brown.com", "fullname": "Doc Brown"}
             ];
-            return { json };
+            return Promise.resolve({ json });
         });
 
         await mock.openControlBox(_converse);

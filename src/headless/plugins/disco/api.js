@@ -328,6 +328,10 @@ export default {
                 if (!jid) throw new TypeError('api.disco.feature.has: You need to provide an entity JID');
 
                 const entity = await api.disco.entities.get(jid, true);
+                if (!entity) {
+                    log.warn(`api.disco.has: could not get entity for ${jid}`);
+                    return false;
+                }
 
                 if (_converse.state.disco_entities === undefined && !api.connection.connected()) {
                     // Happens during tests when disco lookups happen asynchronously after teardown.
@@ -393,12 +397,15 @@ export default {
                 if (!entity.waitUntilFeaturesDiscovered.isPending) {
                     entity.waitUntilFeaturesDiscovered = getOpenPromise();
                 }
+                if (!entity.waitUntilItemsFetched.isPending) {
+                    entity.waitUntilItemsFetched = getOpenPromise();
+                }
                 entity.queryInfo();
             } else {
                 // Create it if it doesn't exist
                 entity = await api.disco.entities.create({ jid }, { ignore_cache: true });
             }
-            return entity.waitUntilFeaturesDiscovered;
+            return entity.waitUntilItemsFetched;
         },
 
         /**
