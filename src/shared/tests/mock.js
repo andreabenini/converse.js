@@ -54,6 +54,29 @@ function initConverse (promise_names=[], settings=null, func) {
     }
 }
 
+function getContactJID(index) {
+    return mock.cur_names[index].replace(/ /g,'.').toLowerCase() + '@montague.lit';
+}
+
+async function checkHeaderToggling(group) {
+    const toggle = group.querySelector('a.group-toggle');
+    expect(u.isVisible(group)).toBeTruthy();
+    expect(group.querySelectorAll('ul.collapsed').length).toBe(0);
+    expect(u.hasClass('fa-caret-right', toggle.firstElementChild)).toBeFalsy();
+    expect(u.hasClass('fa-caret-down', toggle.firstElementChild)).toBeTruthy();
+    toggle.click();
+
+    await u.waitUntil(() => group.querySelectorAll('ul.collapsed').length === 1);
+    expect(u.hasClass('fa-caret-right', toggle.firstElementChild)).toBeTruthy();
+    expect(u.hasClass('fa-caret-down', toggle.firstElementChild)).toBeFalsy();
+    toggle.click();
+    await u.waitUntil(() => group.querySelectorAll('li .open-chat').length ===
+        Array.from(group.querySelectorAll('li .open-chat')).filter(u.isVisible).length);
+
+    expect(u.hasClass('fa-caret-right', toggle.firstElementChild)).toBeFalsy();
+    expect(u.hasClass('fa-caret-down', toggle.firstElementChild)).toBeTruthy();
+};
+
 async function waitUntilDiscoConfirmed (_converse, entity_jid, identities, features=[], items=[], type='info') {
     const sel = `iq[to="${entity_jid}"] query[xmlns="http://jabber.org/protocol/disco#${type}"]`;
     const iq = await u.waitUntil(() => _converse.api.connection.get().IQ_stanzas.find(iq => sizzle(sel, iq).length));
@@ -141,6 +164,7 @@ async function waitUntilBookmarksReturned (
     bookmarks=[],
     features=[
         'http://jabber.org/protocol/pubsub#publish-options',
+        'http://jabber.org/protocol/pubsub#config-node-max',
         'urn:xmpp:bookmarks:1#compat'
    ],
     node='urn:xmpp:bookmarks:1'
@@ -396,7 +420,7 @@ async function receiveOwnMUCPresence (_converse, muc_jid, nick, affiliation='own
 
 async function openAddMUCModal (_converse) {
     await mock.openControlBox(_converse);
-    const controlbox = _converse.chatboxviews.get('controlbox');
+    const controlbox = await u.waitUntil(() => _converse.chatboxviews.get('controlbox'));
     controlbox.querySelector('converse-rooms-list .show-add-muc-modal').click();
     const modal = _converse.api.modal.get('converse-add-muc-modal');
     await u.waitUntil(() => u.isVisible(modal), 1000);
@@ -471,7 +495,7 @@ async function createContacts (_converse, type, length) {
         ask = null;
     } else if (type === 'pending') {
         names = pend_names;
-        subscription = 'from';
+        subscription = 'none';
         requesting = false;
         ask = 'subscribe';
     } else if (type === 'current') {
@@ -505,9 +529,9 @@ async function waitForRoster (_converse, type='current', length=-1, include_nick
     if (type === 'pending' || type === 'all') {
         ((length > -1) ? pend_names.slice(0, length) : pend_names).map(name =>
             result.c('item', {
-                jid: name.replace(/ /g,'.').toLowerCase() + '@montague.lit',
+                jid: `${name.replace(/ /g,'.').toLowerCase()}@${domain}`,
                 name: include_nick ? name : undefined,
-                subscription: 'from',
+                subscription: 'none',
                 ask: 'subscribe'
             }).up()
         );
@@ -517,7 +541,7 @@ async function waitForRoster (_converse, type='current', length=-1, include_nick
         const names = (length > -1) ? cur_names.slice(0, length) : cur_names;
         names.forEach(name => {
             result.c('item', {
-                jid: name.replace(/ /g,'.').toLowerCase() + '@montague.lit',
+                jid: `${name.replace(/ /g,'.').toLowerCase()}@${domain}`,
                 name: include_nick ? name : undefined,
                 subscription: 'both',
                 ask: null
@@ -629,10 +653,14 @@ const default_muc_features = [
 
 const view_mode = 'overlayed';
 
+const domain = 'montague.lit';
+
 // Names from http://www.fakenamegenerator.com/
 const req_names = [
     'Escalus, prince of Verona', 'The Nurse', 'Paris'
 ];
+
+
 const pend_names = [
     'Lord Capulet', 'Guard', 'Servant'
 ];
@@ -654,6 +682,7 @@ const current_contacts_map = {
     'Friar John': []
 }
 
+
 const map = current_contacts_map;
 const groups_map = {};
 Object.keys(map).forEach(k => {
@@ -665,6 +694,9 @@ Object.keys(map).forEach(k => {
 
 const cur_names = Object.keys(current_contacts_map);
 const num_contacts = req_names.length + pend_names.length + cur_names.length;
+
+const req_jids = req_names.map((name) => `${name.replace(/ /g, '.').toLowerCase()}@${domain}`);
+const cur_jids = cur_names.map((name) => `${name.replace(/ /g, '.').toLowerCase()}@${domain}`);
 
 const groups = {
     'colleagues': 3,
@@ -920,22 +952,25 @@ async function initializedOMEMO(
 }
 
 Object.assign(mock, {
-    bundleIQRequestSent,
     bundleFetched,
     bundleHasBeenPublished,
+    bundleIQRequestSent,
     chatroom_names,
     chatroom_roles,
+    checkHeaderToggling,
     closeAllChatBoxes,
     closeControlBox,
     createChatMessage,
     createContact,
     createContacts,
     createRequest,
+    cur_jids,
     cur_names,
     current_contacts_map,
     default_muc_features,
     deviceListFetched,
     event,
+    getContactJID,
     groups,
     groups_map,
     initConverse,
@@ -949,6 +984,7 @@ Object.assign(mock, {
     ownDeviceHasBeenPublished,
     pend_names,
     receiveOwnMUCPresence,
+    req_jids,
     req_names,
     returnMemberLists,
     sendMessage,

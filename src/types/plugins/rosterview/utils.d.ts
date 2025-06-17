@@ -6,6 +6,10 @@
 export function removeContact(contact: RosterContact, unauthorize?: boolean): Promise<boolean>;
 /**
  * @param {RosterContact} contact
+ */
+export function declineContactRequest(contact: RosterContact): Promise<any>;
+/**
+ * @param {RosterContact} contact
  * @returns {Promise<boolean>}
  */
 export function blockContact(contact: RosterContact): Promise<boolean>;
@@ -64,10 +68,7 @@ export function getJIDsAutoCompleteList(): any[];
 /**
  * @param {string} query
  */
-export function getNamesAutoCompleteList(query: string): Promise<{
-    label: string;
-    value: string;
-}[]>;
+export function getNamesAutoCompleteList(query: string): Promise<any[]>;
 export type Model = import("@converse/skeletor").Model;
 export type RosterContact = import("@converse/headless").RosterContact;
 export type RosterContacts = import("@converse/headless").RosterContacts;

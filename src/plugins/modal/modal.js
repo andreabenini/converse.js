@@ -3,7 +3,7 @@ import Modal from 'bootstrap/js/src/modal.js';
 import { getOpenPromise } from '@converse/openpromise';
 import { Model } from '@converse/skeletor';
 import { CustomElement } from 'shared/components/element.js';
-import { u } from '@converse/headless';
+import { api, u } from '@converse/headless';
 import { modal_close_button } from './templates/buttons.js';
 import tplModal from './templates/modal.js';
 
@@ -29,6 +29,9 @@ class BaseModal extends CustomElement {
     constructor(options) {
         super();
         this.model = null;
+        this.state = new Model();
+        this.listenTo(this.state, 'change', () => this.requestUpdate());
+
         this.className = u.isTestEnv() ? 'modal' : 'modal fade';
         this.tabIndex = -1;
         this.ariaHidden = 'true';
@@ -50,6 +53,7 @@ class BaseModal extends CustomElement {
         });
         this.addEventListener('hidden.bs.modal', () => {
             this.ariaHidden = 'true';
+            api.modal.remove(this.nodeName.toLowerCase());
         });
     }
 
@@ -124,14 +128,20 @@ class BaseModal extends CustomElement {
     }
 
     /**
-     * @param {string} message
-     * @param {'primary'|'secondary'|'danger'} type
+     * @param {string|null} [message]
+     * @param {'info'|'primary'|'secondary'|'danger'} type
+     * @param {boolean} [is_ephemeral=true]
      */
-    alert(message, type = 'primary') {
-        this.model.set('alert', { message, type });
-        setTimeout(() => {
-            this.model.set('alert', undefined);
-        }, 5000);
+    alert(message, type = 'primary', is_ephemeral = true) {
+        this.state.set('alert', { message, type });
+        if (is_ephemeral) {
+            if (this.alertTimeout) {
+                clearTimeout(this.alertTimeout);
+            }
+            this.alertTimeout = setTimeout(() => {
+                this.state.set('alert', undefined);
+            }, 5000);
+        }
     }
 
     async show() {

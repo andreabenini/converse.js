@@ -1,6 +1,6 @@
 {
   "name": "@converse/headless",
-  "version": "10.1.7",
+  "version": "11.0.1",
   "description": "Converse.js Headless build",
   "author": "JC Brand <jc@opkode.com>",
   "contributors": [
@@ -58,7 +58,7 @@
     "url": "https://github.com/conversejs/converse.js/issues"
   },
   "dependencies": {
-    "@converse/log": "file:../log",
+    "@converse/log": "^0.0.1",
     "@converse/openpromise": "^0.0.4",
     "@converse/skeletor": "^0.0.9",
     "dayjs": "^1.11.8",
@@ -69,7 +69,7 @@
     "pluggable.js": "3.0.1",
     "sizzle": "^2.3.5",
     "sprintf-js": "^1.1.2",
-    "strophe.js": "strophe/strophejs#fb70dcb4e202f632bc9932915b4522f70ad4d47c"
+    "strophe.js": "4.0.0-rc0"
   },
   "devDependencies": {}
 }

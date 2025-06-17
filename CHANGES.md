@@ -1,6 +1,28 @@
 # Changelog
 
-## 11.0.0 (Unreleased)
+## 11.0.2 (Unreleased)
+
+- #3700: Fix exception that occurs when optional cp attribute is missing
+- Add approval banner in chats with requesting contacts or unsaved contacts
+- Some fixes regarding manually resized chats in `overlayed` view mode.
+- Replace webpack with [rspack](https://rspack.rs)
+
+## 11.0.1 (2025-06-09)
+
+- #2938: Add a service discovery browser
+- #3672: Images not rendering
+- #3676: Flyout box is not positioned correctly on mobile devices in "overlayed" mode
+- #3689: Chat view not accesible for certain widths in "fullscreen" mode
+- Remove modal from the DOM when it's closed
+- Fix login form style for `classic` theme
+- Fix css for the `headlines` feed
+- Properly handle OGP metadata that doesn't have an image
+- Fix TypeError which prevents logging out
+- Fix auto zoom in when input message in ios safari
+- Add a modal to view blocked XMPP addresses
+- Check for PubSub `config-node-max` feature before using the `max` value
+
+## 11.0.0 (2025-05-21)
 
 ### Github Issues
 - #122: Set horizontal layout direction based on the language
@@ -15,6 +37,7 @@
 - #1195: Add actions to quote and copy messages
 - #1303: Display non-contacts who sent us a message somehow in fullscreen 
 - #1349: XEP-0392 Consistent Color Generation
+- #1521: Display locked domain behind login field?
 - #1700: Deleted pending contacts reappear after page reload
 - #1810: Create clickable link to load older MAM messages if there is no scrollbars.
 - #2118: Show reflected message in MUC 
@@ -28,7 +51,7 @@
 - #2980: Allow setting an avatar for MUCs
 - #3033: Add the `muc_grouped_by_domain` option to display MUCs on the same domain in collapsible groups
 - #3038: Message to self from other client is ignored
-- #3038: Support showing yourself in the left sidebar. Adds new config option `[show_self_in_roster](https://conversejs.org/docs/html/configuration.html#show-self-in-roster)`.
+- #3038: Support showing yourself in the left sidebar. Adds new config option [show_self_in_roster](https://conversejs.org/docs/html/configuration.html#show-self-in-roster).
 - #3100: fixed width `.box-flyout` breaks responsive design in embedded, mobile viewport mode.
 - #3155: Some ad-hoc commands not working
 - #3155: Some adhoc commands aren't working

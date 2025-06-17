@@ -2,31 +2,33 @@ import { _converse, api, constants } from '@converse/headless';
 import 'plugins/chatview/heading.js';
 import 'plugins/chatview/bottom-panel.js';
 import BaseChatView from 'shared/chat/baseview.js';
-import tplChat from './templates/chat.js';
 import { __ } from 'i18n';
+import DragResizable from 'plugins/dragresize/mixin.js';
+import tplChat from './templates/chat.js';
 
 const { ACTIVE } = constants;
 
 /**
  * The view of an open/ongoing chat conversation.
- * @class
- * @namespace _converse.ChatView
- * @memberOf _converse
  */
-export default class ChatView extends BaseChatView {
-    length = 200
+export default class ChatView extends DragResizable(BaseChatView) {
+    length = 200;
 
-    async initialize () {
+    async initialize() {
         const { chatboxviews, chatboxes } = _converse.state;
         chatboxviews.add(this.jid, this);
         this.model = chatboxes.get(this.jid);
+        this.listenTo(this.model, 'change:requesting', () => this.requestUpdate());
         this.listenTo(this.model, 'change:hidden', () => !this.model.get('hidden') && this.afterShown());
         this.listenTo(this.model, 'change:show_help_messages', () => this.requestUpdate());
+        this.listenTo(this.model, 'contact:add', () => this.requestUpdate());
+        this.listenTo(this.model, 'contact:change', () => this.requestUpdate());
+        this.listenTo(this.model, 'contact:destroy', () => this.requestUpdate());
 
-        document.addEventListener('visibilitychange',  () => this.onWindowStateChanged());
+        document.addEventListener('visibilitychange', () => this.onWindowStateChanged());
 
         await this.model.messages.fetched;
-        !this.model.get('hidden') && this.afterShown()
+        !this.model.get('hidden') && this.afterShown();
         /**
          * Triggered once the {@link ChatView} has been initialized
          * @event _converse#chatBoxViewInitialized
@@ -36,24 +38,20 @@ export default class ChatView extends BaseChatView {
         api.trigger('chatBoxViewInitialized', this);
     }
 
-    render () {
-        return tplChat(Object.assign({
-            'model': this.model,
-            'help_messages': this.getHelpMessages(),
-            'show_help_messages': this.model.get('show_help_messages'),
-        }, this.model.toJSON()));
+    render() {
+        return tplChat(this);
     }
 
-    getHelpMessages () { // eslint-disable-line class-methods-use-this
+    getHelpMessages() {
         return [
             `<strong>/clear</strong>: ${__('Remove messages')}`,
             `<strong>/close</strong>: ${__('Close this chat')}`,
             `<strong>/me</strong>: ${__('Write in the third person')}`,
-            `<strong>/help</strong>: ${__('Show this menu')}`
+            `<strong>/help</strong>: ${__('Show this menu')}`,
         ];
     }
 
-    afterShown () {
+    afterShown() {
         this.model.setChatState(ACTIVE);
         this.model.clearUnreadMsgCounter();
         this.maybeFocus();

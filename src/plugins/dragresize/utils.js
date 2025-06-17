@@ -40,18 +40,6 @@ export function dragresizeOverIframeHandler(e) {
 }
 
 /**
- * @param {import('@converse/headless/types/shared/chatbox').default} model
- */
-export function initializeDragResize(model) {
-    const height = model.get('height');
-    const width = model.get('width');
-    u.safeSave(model, {
-        'height': applyDragResistance(height, model.get('default_height')),
-        'width': applyDragResistance(width, model.get('default_width')),
-    });
-}
-
-/**
  * @typedef {Object} ResizingData
  * @property {HTMLElement} chatbox
  * @property {string} direction
@@ -65,6 +53,10 @@ export function getResizingDirection() {
     return resizing.direction;
 }
 
+/**
+ * @param {MouseEvent} ev
+ * @param {boolean} [trigger=true]
+ */
 export function onStartVerticalResize(ev, trigger = true) {
     if (!api.settings.get('allow_dragresize')) {
         return true;
@@ -78,6 +70,7 @@ export function onStartVerticalResize(ev, trigger = true) {
     resizing.chatbox = chatbox_el;
     resizing.direction = 'top';
     chatbox_el.prev_pageY = ev.pageY;
+
     if (trigger) {
         /**
          * Triggered once the user starts to vertically resize a {@link _converse.ChatBoxView}
@@ -88,6 +81,10 @@ export function onStartVerticalResize(ev, trigger = true) {
     }
 }
 
+/**
+ * @param {MouseEvent} ev
+ * @param {boolean} [trigger=true]
+ */
 export function onStartHorizontalResize(ev, trigger = true) {
     if (!api.settings.get('allow_dragresize')) {
         return true;
@@ -111,6 +108,9 @@ export function onStartHorizontalResize(ev, trigger = true) {
     }
 }
 
+/**
+ * @param {MouseEvent} ev
+ */
 export function onStartDiagonalResize(ev) {
     onStartHorizontalResize(ev, false);
     onStartVerticalResize(ev, false);
@@ -127,9 +127,9 @@ export function onStartDiagonalResize(ev) {
  * Applies some resistance to `value` around the `default_value`.
  * If value is close enough to `default_value`, then it is returned, otherwise
  * `value` is returned.
- * @param { number } value
- * @param { number } default_value
- * @returns { number }
+ * @param {number} value
+ * @param {number} default_value
+ * @returns {number}
  */
 export function applyDragResistance(value, default_value) {
     if (value === undefined) {
@@ -144,6 +144,9 @@ export function applyDragResistance(value, default_value) {
     return value;
 }
 
+/**
+ * @param {MouseEvent} ev
+ */
 export function onMouseMove(ev) {
     if (!resizing.chatbox || !api.settings.get('allow_dragresize')) {
         return true;
@@ -152,20 +155,35 @@ export function onMouseMove(ev) {
     resizing.chatbox.resizeChatBox(ev);
 }
 
+/**
+ * @param {MouseEvent} ev
+ */
 export function onMouseUp(ev) {
     if (!resizing.chatbox || !api.settings.get('allow_dragresize')) {
         return true;
     }
     ev.preventDefault();
-    const height = applyDragResistance(resizing.chatbox.height, resizing.chatbox.model.get('default_height'));
-    const width = applyDragResistance(resizing.chatbox.width, resizing.chatbox.model.get('default_width'));
-    if (api.connection.connected()) {
-        resizing.chatbox.model.save({ 'height': height });
-        resizing.chatbox.model.save({ 'width': width });
+    const default_width = resizing.chatbox.model.get('default_width');
+    const default_height = resizing.chatbox.model.get('default_height');
+    const height = applyDragResistance(resizing.chatbox.height, default_height);
+    const width = applyDragResistance(resizing.chatbox.width, default_width);
+
+    if (height !== default_height || width !== default_width) {
+        u.safeSave(resizing.chatbox.model, { height, width });
     } else {
-        resizing.chatbox.model.set({ 'height': height });
-        resizing.chatbox.model.set({ 'width': width });
+        u.safeSave(resizing.chatbox.model, { height: undefined, width: undefined });
     }
     delete resizing.chatbox;
     delete resizing.direction;
+}
+
+/**
+ * @param {import('@converse/headless/types/shared/chatbox').default} chatbox
+ * @param {boolean} should_destroy
+ */
+export function shouldDestroyOnClose(chatbox, should_destroy) {
+    if (chatbox.get('height') || chatbox.get('width')) {
+        return false;
+    }
+    return should_destroy;
 }

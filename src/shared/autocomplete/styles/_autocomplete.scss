@@ -40,7 +40,7 @@
                 z-index: -1;
             }
             border-radius: .3em;
-            border: 0.15em solid var(--muc-color);
+            border: 0.15em solid var(--secondary-color);
             box-shadow: .05em .2em .6em rgba(0,0,0,.1);
             box-sizing: border-box;
             left: 0;
@@ -57,12 +57,13 @@
                 background: var(--background-color);
                 color: var(--text-color);
                 cursor: pointer;
-                display: flex;
+                display: block;
                 overflow-x: hidden;
                 padding: 1em;
                 position: relative;
+                text-align: left;
                 text-overflow: ellipsis;
-                white-space: pre;
+                white-space: nowrap;
                 &:hover {
                     mark {
                         background-color: unset;
@@ -122,18 +123,13 @@
     }
 
     .suggestion-box > ul > li[aria-selected="true"] {
-        background: var(--secondary-color);
+        background: var(--highlight-color);
         color: var(--foreground-color);
     }
 
     .suggestion-box li:hover mark {
-        background: var(--secondary-color);
+        background: var(--secondary-color-hover);
         color: var(--link-color);
-    }
-
-    .suggestion-box li[aria-selected="true"] mark {
-        background: var(--muc-color);
-        color: inherit;
     }
 }
 

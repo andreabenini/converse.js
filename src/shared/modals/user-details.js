@@ -1,5 +1,5 @@
 import { api, _converse } from '@converse/headless';
-import { blockContact, removeContact, unblockContact } from 'plugins/rosterview/utils.js';
+import { blockContact, declineContactRequest, removeContact, unblockContact } from 'plugins/rosterview/utils.js';
 import BaseModal from 'plugins/modal/modal.js';
 import { __ } from 'i18n';
 import { tplUserDetailsModal } from './templates/user-details.js';
@@ -29,9 +29,7 @@ export default class UserDetailsModal extends BaseModal {
 
         if (this.model instanceof _converse.exports.ChatBox) {
             this.model.rosterContactAdded.then(() => this.registerContactEventHandlers(this.model.contact));
-            if (this.model.contact !== undefined) {
-                this.registerContactEventHandlers(this.model.contact);
-            }
+            this.registerContactEventHandlers(this.model.contact);
         } else {
             this.registerContactEventHandlers(this.model);
         }
@@ -70,12 +68,23 @@ export default class UserDetailsModal extends BaseModal {
      * @param {import('@converse/headless/types/plugins/roster/contact').default} contact
      */
     registerContactEventHandlers(contact) {
+        if (!contact) return; // happens during tests
         this.listenTo(contact, 'change', () => this.requestUpdate());
         this.listenTo(contact, 'destroy', () => this.close());
         this.listenTo(contact.vcard, 'change', () => this.requestUpdate());
-        if (contact.vcard) { // Refresh the vcard
+        if (contact.vcard) {
+            // Refresh the vcard
             api.vcard.update(contact.vcard, true);
         }
+    }
+
+    /**
+     * @param {MouseEvent} ev
+     */
+    async addContact(ev) {
+        ev?.preventDefault?.();
+        this.modal.hide();
+        api.modal.show('converse-add-contact-modal', { contact: this.model }, ev);
     }
 
     /**
@@ -118,6 +127,30 @@ export default class UserDetailsModal extends BaseModal {
     async unblockContact(ev) {
         ev?.preventDefault?.();
         setTimeout(() => unblockContact(this.getContact()), 1);
+        this.modal.hide();
+    }
+
+    /**
+     * @param {MouseEvent} ev
+     */
+    async acceptContactRequest(ev) {
+        ev?.preventDefault?.();
+        setTimeout(() => {
+            api.modal.show(
+                'converse-accept-contact-request-modal',
+                { contact: this.getContact() },
+                ev
+            );
+        });
+        this.modal.hide();
+    }
+
+    /**
+     * @param {MouseEvent} ev
+     */
+    async declineContactRequest(ev) {
+        ev?.preventDefault?.();
+        setTimeout(() => declineContactRequest(this.getContact()));
         this.modal.hide();
     }
 }
