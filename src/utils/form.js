@@ -1,9 +1,6 @@
-/**
- * @copyright 2022, the Converse.js contributors
- * @license Mozilla Public License (MPLv2)
- * @description This is the form utilities module.
- */
-import { Strophe, toStanza } from 'strophe.js';
+import { converse, u } from '@converse/headless';
+
+const { Strophe } = converse.env;
 
 /**
  * @param {string} name
@@ -18,7 +15,7 @@ const tplXformValue = (value) => `<value>${Strophe.xmlescape(value)}</value>`;
  * @param {HTMLSelectElement} select
  * @return {string[]}
  */
-export function getSelectValues (select) {
+export function getSelectValues(select) {
     const result = [];
     const options = select?.options;
     for (let i = 0, iLen = options.length; i < iLen; i++) {
@@ -35,14 +32,15 @@ export function getSelectValues (select) {
  * @param {HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement} field - the field to convert
  * @return {Element}
  */
-export function webForm2xForm (field) {
+export function webForm2xForm(field) {
     const name = field.getAttribute('name');
     if (!name) {
         return null; // See #1924
     }
     let value;
     if (field.getAttribute('type') === 'checkbox') {
-        value = /** @type {HTMLInputElement} */ (field).checked && '1' || '0';
+        const { checked } = /** @type {HTMLInputElement} */ (field);
+        value = (checked && '1') || '0';
     } else if (field.tagName == 'TEXTAREA') {
         value = field.value.split('\n').filter((s) => s.trim());
     } else if (field.tagName == 'SELECT') {
@@ -50,54 +48,13 @@ export function webForm2xForm (field) {
     } else {
         value = field.value;
     }
-    return toStanza(tplXformField(name, Array.isArray(value) ? value.map(tplXformValue) : tplXformValue(value)));
-}
-
-/**
- * Returns the current word being written in the input element
- * @method u#getCurrentWord
- * @param {HTMLInputElement|HTMLTextAreaElement} input - The HTMLElement in which text is being entered
- * @param {number} [index] - An optional rightmost boundary index. If given, the text
- *  value of the input element will only be considered up until this index.
- * @param {string|RegExp} [delineator] - An optional string delineator to
- *  differentiate between words.
- */
-export function getCurrentWord (input, index, delineator) {
-    if (!index) {
-        index = input.selectionEnd || undefined;
-    }
-    let [word] = input.value.slice(0, index).split(/\s/).slice(-1);
-    if (delineator) {
-        [word] = word.split(delineator).slice(-1);
-    }
-    return word;
-}
-
-/**
- * @param {string} s
- */
-export function isMentionBoundary (s) {
-    return s !== '@' && RegExp(`(\\p{Z}|\\p{P})`, 'u').test(s);
-}
-
-/**
- * @param {HTMLInputElement} input - The HTMLElement in which text is being entered
- * @param {string} new_value
- */
-export function replaceCurrentWord (input, new_value) {
-    const caret = input.selectionEnd || undefined;
-    const current_word = input.value.slice(0, caret).split(/\s/).pop();
-    const value = input.value;
-    const mention_boundary = isMentionBoundary(current_word[0]) ? current_word[0] : '';
-    input.value = value.slice(0, caret - current_word.length) + mention_boundary + `${new_value} ` + value.slice(caret);
-    const selection_end = caret - current_word.length + new_value.length + 1;
-    input.selectionEnd = mention_boundary ? selection_end + 1 : selection_end;
+    return u.toStanza(tplXformField(name, Array.isArray(value) ? value.map(tplXformValue) : tplXformValue(value)));
 }
 
 /**
  * @param {HTMLTextAreaElement} textarea
  */
-export function placeCaretAtEnd (textarea) {
+export function placeCaretAtEnd(textarea) {
     if (textarea !== document.activeElement) {
         textarea.focus();
     }
@@ -109,3 +66,45 @@ export function placeCaretAtEnd (textarea) {
     // (Necessary for Firefox and Chrome)
     textarea.scrollTop = 999999;
 }
+
+/**
+ * @param {string} s
+ */
+export function isMentionBoundary(s) {
+    return s !== '@' && RegExp(`(\\p{Z}|\\p{P})`, 'u').test(s);
+}
+
+/**
+ * Returns the current word being written in the input element
+ * @method u#getCurrentWord
+ * @param {HTMLInputElement|HTMLTextAreaElement} input - The HTMLElement in which text is being entered
+ * @param {number} [index] - An optional rightmost boundary index. If given, the text
+ *  value of the input element will only be considered up until this index.
+ * @param {string|RegExp} [delineator] - An optional string delineator to
+ *  differentiate between words.
+ */
+export function getCurrentWord(input, index, delineator) {
+    if (!index) {
+        index = input.selectionEnd || undefined;
+    }
+    let [word] = input.value.slice(0, index).split(/\s/).slice(-1);
+    if (delineator) {
+        [word] = word.split(delineator).slice(-1);
+    }
+    return word;
+}
+
+/**
+ * @param {HTMLInputElement} input - The HTMLElement in which text is being entered
+ * @param {string} new_value
+ */
+export function replaceCurrentWord(input, new_value) {
+    const caret = input.selectionEnd || undefined;
+    const current_word = input.value.slice(0, caret).split(/\s/).pop();
+    const value = input.value;
+    const mention_boundary = isMentionBoundary(current_word[0]) ? current_word[0] : '';
+    input.value = value.slice(0, caret - current_word.length) + mention_boundary + `${new_value} ` + value.slice(caret);
+    const selection_end = caret - current_word.length + new_value.length + 1;
+    input.selectionEnd = mention_boundary ? selection_end + 1 : selection_end;
+}
+

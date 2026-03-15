@@ -2,6 +2,8 @@
 
 ## Next release
 
+- #2740: Add autocomplete of possible XMPP servers when registering a new account
+- #2929: Add XMPP providers autocomplete when adding contacts (new `autocomplete_providers_url` setting)
 - #3382: Fix audio player accessibility for screen reader users (NVDA, JAWS)
 - #3815: Removal of boomark leads to new bookmark named `Symbol(lit-nothing)`
 - #3824: Dates and times are not translated 
@@ -10,7 +12,9 @@
 - #3863: Shift `unescapeHTML` helper function (used to set `isOnlyEmoji` on a message) to converse-headless
 - #3889: MUC join: Use room jids localpart as name in case name or identity not found
 - #3916: Add support for XEP-0461 Message Replies, allowing users to reply to specific messages
+- #3939: Don't show invitations to groupchats in which the user is already present
 - Don't render unfurls for retracted messages.
+- #3941: add adhoc completed command result and text-multi as merged lines of text
 
 ## 12.0.0 (2025-08-28)
 

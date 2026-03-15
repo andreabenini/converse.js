@@ -67,6 +67,7 @@ declare const _default: {
     isUndefined(x: unknown): boolean;
     isErrorObject(o: unknown): boolean;
     isPersistableModel(model: import("@converse/skeletor").Model): import("@converse/skeletor").BrowserStorage;
+    isEmpty(obj: any | undefined | null): boolean;
     isValidJID(jid?: string | null): boolean;
     isValidMUCJID(jid: string): boolean;
     isSameBareJID(jid1: string, jid2: string): boolean;
@@ -92,12 +93,6 @@ declare const _default: {
     siblingIndex(el: Element): number;
     decodeHTMLEntities(str: string): string;
     unescapeHTML(string: string): string;
-    getSelectValues(select: HTMLSelectElement): string[];
-    webForm2xForm(field: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): Element;
-    getCurrentWord(input: HTMLInputElement | HTMLTextAreaElement, index?: number, delineator?: string | RegExp): string;
-    isMentionBoundary(s: string): boolean;
-    replaceCurrentWord(input: HTMLInputElement, new_value: string): void;
-    placeCaretAtEnd(textarea: HTMLTextAreaElement): void;
     colorize(s: string): Promise<string>;
     appendArrayBuffer(buffer1: any, buffer2: any): ArrayBufferLike;
     arrayBufferToHex(ab: any): any;
