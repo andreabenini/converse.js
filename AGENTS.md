@@ -58,7 +58,14 @@ src/
 │   └── locales/          # Translation files (.po)
 ├── types/                # Generated TypeScript definitions
 └── utils/                # Utility functions
+media/                    # Sponsor logos (separate repo: conversejs/media)
 ```
+
+#### Media Repository
+
+Sponsor logos are stored in a separate repository at `https://github.com/conversejs/media`.
+This repo should be checked out to the `media/` directory and is git-ignored in the main repo.
+Without this repo, sponsor logos in `index.html` and the fullscreen footer will show as broken images.
 
 ## Essential Commands
 
@@ -476,15 +483,17 @@ Read: RELEASE.md
 
 ## Documentation
 
-- **Source**: `docs/source/` (ReStructuredText)
-- **Build**: `make doc` (requires Python + Sphinx)
-- **Output**: `docs/html/`
-- **Online**: https://conversejs.org/docs/html/
+- **Source**: `docs/src/content/docs/` (Markdown)
+- **Framework**: Starlight (Astro)
+- **Build**: `make doc` or `npm run docs:build`
+- **Dev server**: `npm run docs:dev`
+- **Output**: `docs/dist/`
+- **Online**: https://conversejs.org/docs/
 
 Generate docs:
 
 ```bash
-make docsdev  # Install Python dependencies
-make doc      # Build HTML documentation
+make doc           # Build HTML documentation
+npm run docs:dev   # Start dev server with live reload
+npm run docs:build # Build for production
 ```
-
