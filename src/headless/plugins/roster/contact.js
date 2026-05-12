@@ -8,21 +8,21 @@ import ColorAwareModel from '../../shared/color.js';
 import ModelWithVCard from '../../shared/model-with-vcard.js';
 import { rejectPresenceSubscription } from './utils.js';
 
-const { Strophe, $pres, stx } = converse.env;
+const { Strophe, stx, u } = converse.env;
 
 class RosterContact extends ModelWithVCard(ColorAwareModel(Model)) {
-    get idAttribute () {
+    get idAttribute() {
         return 'jid';
     }
 
-    defaults () {
+    defaults() {
         return {
             groups: [],
             num_unread: 0,
-        }
+        };
     }
 
-    async initialize (attrs) {
+    async initialize(attrs) {
         this.lazy_load_vcard = true;
         super.initialize();
         this.initialized = getOpenPromise();
@@ -32,8 +32,8 @@ class RosterContact extends ModelWithVCard(ColorAwareModel(Model)) {
             ...attrs,
             ...{
                 jid: Strophe.getBareJidFromJid(jid).toLowerCase(),
-                user_id: Strophe.getNodeFromJid(jid)
-            }
+                user_id: Strophe.getNodeFromJid(jid),
+            },
         });
         /**
          * When a contact's presence status has changed.
@@ -51,22 +51,22 @@ class RosterContact extends ModelWithVCard(ColorAwareModel(Model)) {
          * @event _converse#rosterContactInitialized
          * @param {RosterContact} contact
          */
-        await api.trigger('rosterContactInitialized', this, {synchronous: true});
+        await api.trigger('rosterContactInitialized', this, { synchronous: true });
         this.initialized.resolve();
     }
 
-    async setPresence () {
+    async setPresence() {
         const jid = this.get('jid');
         await api.waitUntil('presencesInitialized');
         const { presences } = _converse.state;
         this.presence = presences.get(jid) || presences.create({ jid });
     }
 
-    getStatus () {
+    getStatus() {
         return this.presence?.getStatus() || 'offline';
     }
 
-    async openChat () {
+    async openChat() {
         return await api.chats.open(this.get('jid'), {}, true);
     }
 
@@ -74,7 +74,7 @@ class RosterContact extends ModelWithVCard(ColorAwareModel(Model)) {
      * @param {import('./types').ContactDisplayNameOptions} [options]
      * @returns {string}
      */
-    getDisplayName (options) {
+    getDisplayName(options) {
         return this.get('nickname') || this.vcard?.getDisplayName() || (options?.no_jid ? null : this.get('jid'));
     }
 
@@ -83,13 +83,13 @@ class RosterContact extends ModelWithVCard(ColorAwareModel(Model)) {
      * @param {string} [message] - An optional message to explain the
      *      reason for the subscription request.
      */
-    subscribe (message) {
+    subscribe(message) {
         api.user.presence.send({
             type: 'subscribe',
             to: this.get('jid'),
-            status: message
+            status: message,
         });
-        this.save('ask', "subscribe"); // ask === 'subscribe' Means we have asked to subscribe to them.
+        this.save('ask', 'subscribe'); // ask === 'subscribe' Means we have asked to subscribe to them.
         return this;
     }
 
@@ -99,11 +99,8 @@ class RosterContact extends ModelWithVCard(ColorAwareModel(Model)) {
      * state notification by sending a presence stanza of type
      * "subscribe" to the contact
      */
-    ackSubscribe () {
-        api.send($pres({
-            'type': 'subscribe',
-            'to': this.get('jid')
-        }));
+    ackSubscribe() {
+        api.send(stx`<presence type="subscribe" to="${this.get('jid')}" xmlns="jabber:client"></presence>`);
     }
 
     /**
@@ -113,8 +110,8 @@ class RosterContact extends ModelWithVCard(ColorAwareModel(Model)) {
      * this step lets the user's server know that it MUST no longer
      * send notification of the subscription state change to the user.
      */
-    ackUnsubscribe () {
-        api.send($pres({'type': 'unsubscribe', 'to': this.get('jid')}));
+    ackUnsubscribe() {
+        api.send(stx`<presence type="unsubscribe" to="${this.get('jid')}" xmlns="jabber:client"></presence>`);
         this.sendRosterRemoveStanza();
         this.destroy();
     }
@@ -123,7 +120,7 @@ class RosterContact extends ModelWithVCard(ColorAwareModel(Model)) {
      * Unauthorize this contact's presence subscription
      * @param {string} [message] - Optional message to send to the person being unauthorized
      */
-    unauthorize (message) {
+    unauthorize(message) {
         rejectPresenceSubscription(this.get('jid'), message);
         this.save({ requesting: false });
         return this;
@@ -133,13 +130,13 @@ class RosterContact extends ModelWithVCard(ColorAwareModel(Model)) {
      * Authorize presence subscription
      * @param {string} [message] - Optional message to send to the person being authorized
      */
-    authorize (message) {
+    authorize(message) {
         api.send(stx`
             <presence
                 to="${this.get('jid')}"
                 type="subscribed"
                 xmlns="jabber:client">
-                    ${message && message !== "" ? stx`<status>${message}</status>` : '' }
+                    ${message && message !== '' ? stx`<status>${message}</status>` : ''}
             </presence>`);
 
         this.save({
@@ -151,11 +148,10 @@ class RosterContact extends ModelWithVCard(ColorAwareModel(Model)) {
 
     /**
      * Remove this contact from the roster
-     * @async
      * @param {boolean} [unauthorize] - Whether to also unauthorize the
      * @returns {Promise<Error|Element>}
      */
-    remove (unauthorize) {
+    async remove(unauthorize) {
         const subscription = this.get('subscription');
         if (subscription === 'none' && this.get('ask') !== 'subscribe') {
             this.destroy();
@@ -163,7 +159,7 @@ class RosterContact extends ModelWithVCard(ColorAwareModel(Model)) {
         }
         if (this.get('ask') === 'subscribe' || subscription === 'to') {
             // See: https://datatracker.ietf.org/doc/html/rfc6121#section-3.3.1
-            api.send($pres({ type: 'unsubscribe',  to: this.get('jid')}));
+            api.send(stx`<presence type="unsubscribe" to="${this.get('jid')}" xmlns="jabber:client"></presence>`);
         }
         if (unauthorize && ['from', 'both'].includes(subscription)) {
             // See: https://datatracker.ietf.org/doc/html/rfc6121#section-3.2.1
@@ -172,23 +168,31 @@ class RosterContact extends ModelWithVCard(ColorAwareModel(Model)) {
         const promise = this.sendRosterRemoveStanza();
         if (this.collection) this.destroy();
 
-        return promise;
+        try {
+            return await promise;
+        } catch (e) {
+            if (u.isElement(e)) {
+                // Return if it's only an error stanza
+                return e;
+            }
+            throw e;
+        }
     }
 
     /**
      * @param {import('./types').RosterContactUpdateAttrs} attrs
      * @returns {Promise}
      */
-    async update (attrs) {
+    async update(attrs) {
         this.save(attrs);
         return await api.sendIQ(
             stx`<iq xmlns="jabber:client" type="set">
                 <query xmlns="${Strophe.NS.ROSTER}">
-                    <item jid="${this.get("jid")}" name="${this.get("nickname")}">
-                        ${this.get("groups")?.map(/** @param {string} group */ (group) => stx`<group>${group}</group>`)}
+                    <item jid="${this.get('jid')}" name="${this.get('nickname')}">
+                        ${this.get('groups')?.map(/** @param {string} group */ (group) => stx`<group>${group}</group>`)}
                     </item>
                 </query>
-            </iq>`
+            </iq>`,
         );
     }
 
@@ -196,7 +200,7 @@ class RosterContact extends ModelWithVCard(ColorAwareModel(Model)) {
      * Instruct the XMPP server to remove this contact from our roster
      * @returns {Promise}
      */
-    async sendRosterRemoveStanza () {
+    async sendRosterRemoveStanza() {
         const iq = stx`<iq type="set" xmlns="jabber:client">
             <query xmlns="${Strophe.NS.ROSTER}">
                 <item jid="${this.get('jid')}" subscription="remove"/>
@@ -205,7 +209,7 @@ class RosterContact extends ModelWithVCard(ColorAwareModel(Model)) {
         return await api.sendIQ(iq);
     }
 
-    isUnsaved () {
+    isUnsaved() {
         return this.get('subscription') === undefined;
     }
 }
