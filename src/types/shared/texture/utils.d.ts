@@ -22,7 +22,14 @@ export function getHeaders(url: string): Promise<Headers>;
  * @param {string} text
  */
 export function collapseLineBreaks(text: string): string;
-export function tplMention(o: any): import("lit-html").TemplateResult<1>;
+/**
+ * @param {{uri: string, mention: string}} o
+ * @returns {import('lit').TemplateResult}
+ */
+export function tplMention(o: {
+    uri: string;
+    mention: string;
+}): import("lit").TemplateResult;
 /**
  * @param {import('./texture').Texture} text
  * @param {number} i
@@ -49,13 +56,16 @@ export function containsDirectives(text: import("./texture").Texture): boolean;
  * @returns {Array<[number, number]>} - Array of [start, end] index pairs for detected URLs
  */
 export function getURLRanges(string: string): Array<[number, number]>;
-export function tplMentionWithNick(o: any): import("lit-html").TemplateResult<1>;
+export function tplMentionWithNick(o: {
+    uri: string;
+    mention: string;
+}): import("lit-html").TemplateResult<1>;
 declare const _default: {
-    getRandomInt: typeof import("headless/types/utils").getRandomInt;
-    getUniqueId: typeof import("headless/types/utils").getUniqueId;
-    isEmptyMessage: typeof import("headless/types/utils").isEmptyMessage;
+    getRandomInt: typeof import("headless/types/utils/index.js").getRandomInt;
+    getUniqueId: typeof import("headless/types/utils/index.js").getUniqueId;
+    isEmptyMessage: typeof import("headless/types/utils/index.js").isEmptyMessage;
     onMultipleEvents: (events: any[], callback: Function) => void;
-    prefixMentions: typeof import("headless/types/utils").prefixMentions;
+    prefixMentions: typeof import("headless/types/utils/index.js").prefixMentions;
     shouldCreateMessage: (attrs: any) => any;
     triggerEvent: (el: Element, name: string, type?: string, bubbles?: boolean, cancelable?: boolean) => void;
     isValidURL(text: string): boolean;
@@ -67,20 +77,25 @@ declare const _default: {
     isVideoURL(url: string | URL, headers?: Headers): boolean;
     isImageURL(url: string | URL, headers?: Headers): boolean;
     isEncryptedFileURL(url: string | URL): boolean;
-    withinString(string: string, callback: Function, options?: import("headless/types/utils/types").ProcessStringOptions): string;
+    withinString(string: string, callback: Function, options?: import("headless/types/utils/types.js").ProcessStringOptions): string;
     getHeaders(url: string): Promise<Headers>;
-    getMetadataForURL(o: import("headless/types/utils/types").MediaURLIndexes): Promise<import("headless/types/utils/types").MediaURLMetadata>;
+    getMetadataForURL(o: import("headless/types/utils/types.js").MediaURLIndexes): Promise<import("headless/types/utils/types.js").MediaURLMetadata>;
     getMediaURLsMetadata(text: string, offset?: number): Promise<{
-        media_urls?: import("headless/types/utils/types").MediaURLMetadata[];
+        media_urls?: import("headless/types/utils/types.js").MediaURLMetadata[];
     }>;
-    getMediaURLs(arr: Array<import("headless/types/utils/types").MediaURLMetadata>, text: string): import("headless/types/utils/types").MediaURLMetadata[];
-    addMediaURLsOffset(arr: Array<import("headless/types/utils/types").MediaURLMetadata>, text: string, offset?: number): import("headless/types/utils/types").MediaURLMetadata[];
+    getMediaURLs(arr: Array<import("headless/types/utils/types.js").MediaURLMetadata>, text: string): import("headless/types/utils/types.js").MediaURLMetadata[];
+    addMediaURLsOffset(arr: Array<import("headless/types/utils/types.js").MediaURLMetadata>, text: string, offset?: number): import("headless/types/utils/types.js").MediaURLMetadata[];
     firstCharToUpperCase(text: string): string;
     getLongestSubstring(string: string, candidates: string[]): string;
     isString(s: any): boolean;
-    getDefaultStorageType(): import("headless/types/utils/types").StorageType;
-    createStore(id: string, type: import("headless/types/utils/types").StorageType): import("@converse/skeletor").BrowserStorage;
-    initStorage(model: import("headless/types/utils/types").StorageModel, id: string, type?: import("headless/types/utils/types").StorageType): void;
+    getDefaultStorageType(): import("headless/types/utils/types.js").StorageType;
+    createStore(id: string, type: import(
+    /**
+     * @param {{uri: string, mention: string}} o
+     * @returns {import('lit').TemplateResult}
+     */
+    "headless/types/utils/types.js").StorageType): import("@converse/skeletor").BrowserStorage;
+    initStorage(model: import("headless/types/utils/types.js").StorageModel, id: string, type?: import("headless/types/utils/types.js").StorageType): void;
     isErrorStanza(stanza: Element): boolean;
     isForbiddenError(stanza: Element): boolean;
     isServiceUnavailableError(stanza: Element): boolean;
@@ -121,7 +136,7 @@ declare const _default: {
     initSession(_converse: ConversePrivateGlobal, jid: string): Promise<void>;
     registerGlobalEventHandlers(_converse: ConversePrivateGlobal): void;
     cleanup(_converse: ConversePrivateGlobal): Promise<void>;
-    attemptNonPreboundSession(credentials?: import("headless/types/utils/types").Credentials, automatic?: boolean): Promise<void>;
+    attemptNonPreboundSession(credentials?: import("headless/types/utils/types.js").Credentials, automatic?: boolean): Promise<void>;
     savedLoginInfo(jid: string): Promise<import("@converse/skeletor").Model>;
     safeSave(model: import("@converse/skeletor").Model, attributes: any, options: any): void;
     isElement(el: unknown): boolean;
@@ -141,7 +156,7 @@ declare const _default: {
     base64ToArrayBuffer(b64: any): ArrayBufferLike;
     hexToArrayBuffer(hex: any): ArrayBufferLike;
     unique<T extends unknown>(arr: Array<T>): Array<T>;
-} & import("headless/types/utils/types").CommonUtils & import("headless/types/utils/types").PluginUtils & {
+} & import("headless/types/utils/types.js").CommonUtils & import("headless/types/utils/types.js").PluginUtils & {
     getURLRanges: typeof getURLRanges;
 };
 export default _default;

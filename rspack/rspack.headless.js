@@ -1,7 +1,7 @@
-const path = require('path');
-const { rspack } = require('@rspack/core');
-const { merge } = require('webpack-merge');
-const common = require('../rspack/rspack.common.js');
+import path from 'path';
+import { rspack } from '@rspack/core';
+import { merge } from 'webpack-merge';
+import common, { __dirname } from '../rspack/rspack.common.js';
 
 const plugins = [
     new rspack.CopyRspackPlugin({
@@ -9,7 +9,7 @@ const plugins = [
     }),
 ];
 
-module.exports = (_env, argv) => {
+export default (_env, argv) => {
     const isDev = argv?.mode === 'development';
 
     const sharedConfig = {
@@ -35,13 +35,13 @@ module.exports = (_env, argv) => {
                         /node_modules\/pluggable/,
                         /node_modules\/@converse/,
                     ],
-                    type: 'javascript/auto', // Let RSPack handle these files with built-in SWC
+                    type: 'javascript/auto',
                 },
             ],
         },
     };
 
-    const nonMinConfig = merge(common, {
+    const nonMinESMConfig = merge(common, {
         ...sharedConfig,
         optimization: {
             minimize: false,
@@ -50,33 +50,6 @@ module.exports = (_env, argv) => {
             path: path.resolve(__dirname, '../src/headless/dist'),
             filename: 'converse-headless.js',
             chunkFilename: 'converse-headless.js',
-            globalObject: 'this',
-        },
-    });
-
-    const minConfig = merge(common, {
-        ...sharedConfig,
-        output: {
-            path: path.resolve(__dirname, '../src/headless/dist'),
-            filename: 'converse-headless.min.js',
-            chunkFilename: 'converse-headless.min.js',
-            globalObject: 'this',
-        },
-    });
-
-    const nonMinESMConfig = merge(common, {
-        ...sharedConfig,
-        optimization: {
-            minimize: false,
-        },
-        experiments: {
-            outputModule: true,
-            topLevelAwait: true,
-        },
-        output: {
-            path: path.resolve(__dirname, '../src/headless/dist'),
-            filename: 'converse-headless.esm.js',
-            chunkFilename: 'converse-headless.esm.js',
             library: {
                 type: 'module',
             },
@@ -85,14 +58,10 @@ module.exports = (_env, argv) => {
 
     const minESMConfig = merge(common, {
         ...sharedConfig,
-        experiments: {
-            outputModule: true,
-            topLevelAwait: true,
-        },
         output: {
             path: path.resolve(__dirname, '../src/headless/dist'),
-            filename: 'converse-headless.min.esm.js',
-            chunkFilename: 'converse-headless.min.esm.js',
+            filename: 'converse-headless.min.js',
+            chunkFilename: 'converse-headless.min.js',
             library: {
                 type: 'module',
             },
@@ -100,10 +69,6 @@ module.exports = (_env, argv) => {
     });
 
     return [
-        // CJS Build
-        nonMinConfig,
-        minConfig,
-        // ESM Build
         nonMinESMConfig,
         minESMConfig,
     ];

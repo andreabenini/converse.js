@@ -1,9 +1,26 @@
 export default class DropdownBase extends CustomElement {
-    firstUpdated(changed: any): void;
-    menu: Element;
+    menu: HTMLElement;
     button: HTMLButtonElement;
-    dropdown: BootstrapDropdown;
+    /** @param {MouseEvent} ev */
+    _onButtonClick: (ev: MouseEvent) => void;
+    /**
+     * Override in subclass to register event listeners.
+     * Called automatically from connectedCallback().
+     */
+    registerEvents(): void;
+    /**
+     * Override in subclass to unregister event listeners.
+     * Called automatically from disconnectedCallback().
+     */
+    unregisterEvents(): void;
+    /** Toggle the dropdown's visibility */
+    toggle(): void;
+    /** Show the dropdown */
+    show(): void;
+    _popper: import("@popperjs/core").Instance;
+    _onDocumentClick: (ev: MouseEvent) => void;
+    /** Hide the dropdown */
+    hide(): void;
 }
 import { CustomElement } from './element.js';
-import { default as BootstrapDropdown } from 'bootstrap/js/src/dropdown.js';
 //# sourceMappingURL=dropdownbase.d.ts.map

@@ -4,7 +4,7 @@ import { until } from 'lit/directives/until.js';
 import { api } from '@converse/headless';
 import { CustomElement } from 'shared/components/element.js';
 import { getDayIndicator } from './utils.js';
-import './message';
+import './message.js';
 
 export default class MessageHistory extends CustomElement {
     /**
@@ -14,6 +14,7 @@ export default class MessageHistory extends CustomElement {
     constructor() {
         super();
         this.model = null;
+        /** @type {any[]} */
         this.messages = [];
     }
 

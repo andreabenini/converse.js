@@ -8,13 +8,10 @@ export default class Dropdown extends DropdownBase {
         };
     };
     icon_classes: string;
-    items: any[];
+    /** @type {any[]} */ items: any[];
     render(): import("lit-html").TemplateResult<1>;
-    firstUpdated(): void;
-    connectedCallback(): void;
-    registerEvents(): void;
-    onKeyDown: (ev: any) => void;
-    onDropdownHide(): void;
+    _onKeyDown: (ev: KeyboardEvent) => void;
+    _onDropdownHide: () => void;
     initArrowNavigation(): void;
     navigator: DOMNavigator;
     disableArrowNavigation(): void;
@@ -29,6 +26,6 @@ export default class Dropdown extends DropdownBase {
     #private;
 }
 export type DOMNavigatorOptions = any;
-import DropdownBase from "shared/components/dropdownbase.js";
-import { DOMNavigator } from "shared/dom-navigator";
+import DropdownBase from 'shared/components/dropdownbase.js';
+import { DOMNavigator } from '../dom-navigator/index.js';
 //# sourceMappingURL=dropdown.d.ts.map

@@ -7,14 +7,13 @@
 /**
  * @typedef {import('@converse/headless/types/shared/message').default} BaseMessage
  * @typedef {import('@converse/headless/types/shared/types').ChatBoxOrMUC} ChatBoxOrMUC
+ * @typedef {import('lit').TemplateResult} TemplateResult
  */
 import { CustomElement } from 'shared/components/element.js';
-import { api, u, _converse, EmojiPicker } from '@converse/headless';
-import { __ } from 'i18n';
+import { api, u } from '@converse/headless';
 import tplReactionPicker from './templates/reaction-picker.js';
 import { sendReaction, getPopularReactions } from './utils.js';
-import 'shared/components/dropdown.js';
-import 'shared/chat/emoji-picker.js';
+import './emoji-picker-dropdown.js';
 import 'shared/chat/styles/emoji.scss';
 import './reaction-picker.scss';
 
@@ -53,12 +52,15 @@ export default class ReactionPicker extends CustomElement {
 
     /**
      * Render the reaction picker UI
-     * @returns {import('lit').TemplateResult|''}
+     * @returns {TemplateResult|''}
      */
     render() {
         return this.opened ? tplReactionPicker(this) : '';
     }
 
+    /**
+     * @param {import('lit').PropertyValues} changed
+     */
     updated(changed) {
         super.updated(changed);
         if (changed.has('opened')) {
@@ -80,7 +82,9 @@ export default class ReactionPicker extends CustomElement {
         const btn = /** @type {HTMLElement} */ (ev.currentTarget ?? ev.target);
         this.#anchor_rect = btn?.getBoundingClientRect() ?? null;
         await api.emojis.initialize();
-        this.popular_reactions_promise = getPopularReactions(this.allowed_emojis);
+        /** @type {ChatBoxOrMUC|undefined} */
+        const chatbox = this.model?.collection?.chatbox;
+        this.popular_reactions_promise = getPopularReactions(chatbox?.get('allowed_reactions'));
         this.opened = true;
     }
 
@@ -145,36 +149,6 @@ export default class ReactionPicker extends CustomElement {
             const top = anchor.bottom - parent_rect.top;
             set('bottom', 'auto');
             set('top', `${top}px`);
-        }
-    }
-
-    /**
-     * @returns {string[]|undefined}
-     */
-    get allowed_emojis() {
-        /** @type {ChatBoxOrMUC|undefined} */
-        const chatbox = this.model?.collection?.chatbox;
-        return chatbox?.get('allowed_reactions');
-    }
-
-    /**
-     * Initialize the emoji picker for this chat if it doesn't exist
-     * @returns {Promise<void>}
-     */
-    async initEmojiPicker() {
-        /** @type {ChatBoxOrMUC|undefined} */
-        const chatbox = this.model?.collection?.chatbox;
-        if (!chatbox) return;
-        if (!chatbox.emoji_picker) {
-            await api.emojis.initialize();
-
-            const bare_jid = _converse.session.get('bare_jid');
-            const id = `converse.emoji-${bare_jid}-${chatbox.get('jid')}`;
-            chatbox.emoji_picker = new EmojiPicker({ id });
-            u.initStorage(chatbox.emoji_picker, id);
-            await new Promise((resolve) => chatbox.emoji_picker.fetch({ 'success': resolve, 'error': resolve }));
-
-            this.requestUpdate();
         }
     }
 

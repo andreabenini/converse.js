@@ -7,7 +7,7 @@ import api from '../shared/api/index.js';
 import { SUCCESS, FAILURE } from '../shared/constants.js';
 import ColorAwareModel from '../shared/color.js';
 import ModelWithContact from '../shared/model-with-contact.js';
-import ModelWithVCard from '../shared/model-with-vcard';
+import ModelWithVCard from '../shared/model-with-vcard.js';
 import { getUniqueId } from '../utils/index.js';
 import converse from './api/public.js';
 
@@ -26,15 +26,12 @@ class BaseMessage extends ModelWithVCard(ModelWithContact(ColorAwareModel(Model)
     }
 
     /**
-     * @param {Model[]} [models]
-     * @param {object} [options]
+     * @param {import('./types').MessageAttributes} attrs
+     * @param {import('@converse/skeletor').ModelOptions} options
      */
-    constructor(models, options) {
-        super(models, options);
+    constructor(attrs, options) {
+        super(attrs, options);
         this.file = null;
-
-        /** @type {import('./types').MessageAttributes} */
-        this.attributes;
     }
 
     initialize() {
@@ -269,7 +266,7 @@ class BaseMessage extends ModelWithVCard(ModelWithContact(ColorAwareModel(Model)
                     this.set('progress', evt.loaded / evt.total);
                 }
             },
-            false
+            false,
         );
 
         xhr.onerror = () => {
@@ -278,7 +275,7 @@ class BaseMessage extends ModelWithVCard(ModelWithContact(ColorAwareModel(Model)
             if (xhr.responseText) {
                 message = __(
                     'Sorry, could not successfully upload your file. Your server’s response: "%1$s"',
-                    xhr.responseText
+                    xhr.responseText,
                 );
             } else {
                 message = __('Sorry, could not successfully upload your file.');

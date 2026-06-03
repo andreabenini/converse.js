@@ -1,5 +1,11 @@
-import { PATTERN_POSITION_TABLE, QRCodeLimitLength, QRErrorCorrectLevelMap, QRMaskPattern, QRMode } from "./constants";
-import QRPolynomial, { QRMath } from "./polynomial";
+import {
+    PATTERN_POSITION_TABLE,
+    QRCodeLimitLength,
+    QRErrorCorrectLevelMap,
+    QRMaskPattern,
+    QRMode,
+} from './constants.js';
+import QRPolynomial, { QRMath } from './polynomial.js';
 
 /**
  * Get the type by string length
@@ -9,7 +15,7 @@ import QRPolynomial, { QRMath } from "./polynomial";
  */
 export function getTypeNumber(text, nCorrectLevel) {
     let nType = 1;
-    let length = getUTF8Length(text);
+    const length = getUTF8Length(text);
 
     for (let i = 0, len = QRCodeLimitLength.length; i <= len; i++) {
         let nLimit = 0;
@@ -37,17 +43,21 @@ export function getTypeNumber(text, nCorrectLevel) {
     }
 
     if (nType > QRCodeLimitLength.length) {
-        throw new Error("Too long data");
+        throw new Error('Too long data');
     }
 
     return nType;
 }
 
+/**
+ * @param {string} sText
+ * @returns {number}
+ */
 function getUTF8Length(sText) {
-    let replacedText = encodeURI(sText)
+    const replacedText = encodeURI(sText)
         .toString()
-        .replace(/\%[0-9a-fA-F]{2}/g, "a");
-    return replacedText.length + (replacedText.length != sText ? 3 : 0);
+        .replace(/\%[0-9a-fA-F]{2}/g, 'a');
+    return replacedText.length + (replacedText != sText ? 3 : 0);
 }
 
 export const QRUtil = {
@@ -55,6 +65,10 @@ export const QRUtil = {
     G18: (1 << 12) | (1 << 11) | (1 << 10) | (1 << 9) | (1 << 8) | (1 << 5) | (1 << 2) | (1 << 0),
     G15_MASK: (1 << 14) | (1 << 12) | (1 << 10) | (1 << 4) | (1 << 1),
 
+    /**
+     * @param {number} data
+     * @returns {number}
+     */
     getBCHTypeInfo(data) {
         let d = data << 10;
         while (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G15) >= 0) {
@@ -63,6 +77,10 @@ export const QRUtil = {
         return ((data << 10) | d) ^ QRUtil.G15_MASK;
     },
 
+    /**
+     * @param {number} data
+     * @returns {number}
+     */
     getBCHTypeNumber(data) {
         let d = data << 12;
         while (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G18) >= 0) {
@@ -71,6 +89,10 @@ export const QRUtil = {
         return (data << 12) | d;
     },
 
+    /**
+     * @param {number} data
+     * @returns {number}
+     */
     getBCHDigit(data) {
         let digit = 0;
         while (data != 0) {
@@ -80,10 +102,20 @@ export const QRUtil = {
         return digit;
     },
 
+    /**
+     * @param {number} typeNumber
+     * @returns {number[]}
+     */
     getPatternPosition(typeNumber) {
         return PATTERN_POSITION_TABLE[typeNumber - 1];
     },
 
+    /**
+     * @param {number} maskPattern
+     * @param {number} i
+     * @param {number} j
+     * @returns {boolean}
+     */
     getMask(maskPattern, i, j) {
         switch (maskPattern) {
             case QRMaskPattern.PATTERN000:
@@ -103,10 +135,14 @@ export const QRUtil = {
             case QRMaskPattern.PATTERN111:
                 return (((i * j) % 3) + ((i + j) % 2)) % 2 == 0;
             default:
-                throw new Error("bad maskPattern:" + maskPattern);
+                throw new Error('bad maskPattern:' + maskPattern);
         }
     },
 
+    /**
+     * @param {number} errorCorrectLength
+     * @returns {import('./polynomial').default}
+     */
     getErrorCorrectPolynomial(errorCorrectLength) {
         let a = new QRPolynomial([1], 0);
         for (let i = 0; i < errorCorrectLength; i++) {
@@ -115,6 +151,11 @@ export const QRUtil = {
         return a;
     },
 
+    /**
+     * @param {number} mode
+     * @param {number} type
+     * @returns {number}
+     */
     getLengthInBits(mode, type) {
         if (1 <= type && type < 10) {
             switch (mode) {
@@ -127,7 +168,7 @@ export const QRUtil = {
                 case QRMode.MODE_KANJI:
                     return 8;
                 default:
-                    throw new Error("mode:" + mode);
+                    throw new Error('mode:' + mode);
             }
         } else if (type < 27) {
             switch (mode) {
@@ -140,7 +181,7 @@ export const QRUtil = {
                 case QRMode.MODE_KANJI:
                     return 10;
                 default:
-                    throw new Error("mode:" + mode);
+                    throw new Error('mode:' + mode);
             }
         } else if (type < 41) {
             switch (mode) {
@@ -153,20 +194,24 @@ export const QRUtil = {
                 case QRMode.MODE_KANJI:
                     return 12;
                 default:
-                    throw new Error("mode:" + mode);
+                    throw new Error('mode:' + mode);
             }
         } else {
-            throw new Error("type:" + type);
+            throw new Error('type:' + type);
         }
     },
 
+    /**
+     * @param {import('./generator').QRCodeModel} qrCode
+     * @returns {number}
+     */
     getLostPoint(qrCode) {
-        let moduleCount = qrCode.getModuleCount();
+        const moduleCount = qrCode.getModuleCount();
         let lostPoint = 0;
         for (let row = 0; row < moduleCount; row++) {
             for (let col = 0; col < moduleCount; col++) {
                 let sameCount = 0;
-                let dark = qrCode.isDark(row, col);
+                const dark = qrCode.isDark(row, col);
                 for (let r = -1; r <= 1; r++) {
                     if (row + r < 0 || moduleCount <= row + r) {
                         continue;
@@ -238,7 +283,7 @@ export const QRUtil = {
                 }
             }
         }
-        let ratio = Math.abs((100 * darkCount) / moduleCount / moduleCount - 50) / 5;
+        const ratio = Math.abs((100 * darkCount) / moduleCount / moduleCount - 50) / 5;
         lostPoint += ratio * 10;
         return lostPoint;
     },

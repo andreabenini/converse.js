@@ -68,6 +68,8 @@ node_modules
 .sv?
 /vendor/
 .aider*
+.agents/
 .prompts/
+.agents
 
 Session.vim

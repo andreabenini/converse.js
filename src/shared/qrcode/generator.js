@@ -4,9 +4,9 @@
  * @license MIT
  * The word "QR Code" is registered trademark of DENSO WAVE INCORPORATED
  */
-import { QRErrorCorrectLevelMap, QRMode, RS_BLOCK_TABLE } from "./constants";
-import QRPolynomial from "./polynomial";
-import { QRUtil, getTypeNumber } from "./utils";
+import { QRErrorCorrectLevelMap, QRMode, RS_BLOCK_TABLE } from './constants.js';
+import QRPolynomial from './polynomial.js';
+import { QRUtil, getTypeNumber } from './utils.js';
 
 export class QRCodeModel {
     /**
@@ -17,10 +17,10 @@ export class QRCodeModel {
         this.text = text;
         this.errorCorrectLevel = errorCorrectLevel;
         this.typeNumber = getTypeNumber(this.text, this.errorCorrectLevel);
-        this.modules = null;
+        /** @type {any[][]|null} */ this.modules = null;
         this.moduleCount = 0;
         this.dataCache = null;
-        this.dataList = [new QR8bitByte(this.text)];
+        /** @type {any[]} */ this.dataList = [new QR8bitByte(this.text)];
     }
 
     static get PAD0() {
@@ -37,7 +37,7 @@ export class QRCodeModel {
      */
     isDark(row, col) {
         if (row < 0 || this.moduleCount <= row || col < 0 || this.moduleCount <= col) {
-            throw new Error(row + "," + col);
+            throw new Error(row + ',' + col);
         }
         return this.modules[row][col];
     }
@@ -56,7 +56,7 @@ export class QRCodeModel {
      */
     makeImpl(test, maskPattern) {
         this.moduleCount = this.typeNumber * 4 + 17;
-        this.modules = new Array(this.moduleCount);
+        /** @type {any[][]} */ (this.modules) = new Array(this.moduleCount);
         for (let row = 0; row < this.moduleCount; row++) {
             this.modules[row] = new Array(this.moduleCount);
             for (let col = 0; col < this.moduleCount; col++) {
@@ -199,6 +199,10 @@ export class QRCodeModel {
         this.modules[this.moduleCount - 8][8] = !test;
     }
 
+    /**
+     * @param {*} data
+     * @param {Number} maskPattern
+     */
     mapData(data, maskPattern) {
         let inc = -1;
         let row = this.moduleCount - 1;
@@ -235,6 +239,11 @@ export class QRCodeModel {
         }
     }
 
+    /**
+     * @param {Number} typeNumber
+     * @param {import('./types').ErrorCorrectLevel} errorCorrectLevel
+     * @param {any[]} dataList
+     */
     static createData(typeNumber, errorCorrectLevel, dataList) {
         let rsBlocks = QRRSBlock.getRSBlocks(typeNumber, errorCorrectLevel);
         const buffer = new QRBitBuffer();
@@ -249,7 +258,7 @@ export class QRCodeModel {
             totalDataCount += rsBlocks[i].dataCount;
         }
         if (buffer.getLengthInBits() > totalDataCount * 8) {
-            throw new Error("code length overflow. (" + buffer.getLengthInBits() + ">" + totalDataCount * 8 + ")");
+            throw new Error('code length overflow. (' + buffer.getLengthInBits() + '>' + totalDataCount * 8 + ')');
         }
         if (buffer.getLengthInBits() + 4 <= totalDataCount * 8) {
             buffer.put(0, 4);
@@ -270,6 +279,11 @@ export class QRCodeModel {
         return QRCodeModel.createBytes(buffer, rsBlocks);
     }
 
+    /**
+     * @param {QRBitBuffer} buffer
+     * @param {QRRSBlock[]} rsBlocks
+     * @returns {number[]}
+     */
     static createBytes(buffer, rsBlocks) {
         let offset = 0;
         let maxDcCount = 0;
@@ -376,15 +390,24 @@ class QR8bitByte {
 }
 
 class QRRSBlock {
+    /**
+     * @param {number} totalCount
+     * @param {number} dataCount
+     */
     constructor(totalCount, dataCount) {
         this.totalCount = totalCount;
         this.dataCount = dataCount;
     }
 
+    /**
+     * @param {Number} typeNumber
+     * @param {import('./types').ErrorCorrectLevel} errorCorrectLevel
+     * @returns {QRRSBlock[]}
+     */
     static getRSBlocks(typeNumber, errorCorrectLevel) {
         let rsBlock = QRRSBlock.getRsBlockTable(typeNumber, errorCorrectLevel);
         if (rsBlock == undefined) {
-            throw new Error("bad rs block @ typeNumber:" + typeNumber + "/errorCorrectLevel:" + errorCorrectLevel);
+            throw new Error('bad rs block @ typeNumber:' + typeNumber + '/errorCorrectLevel:' + errorCorrectLevel);
         }
         let length = rsBlock.length / 3;
         let list = [];
@@ -399,6 +422,11 @@ class QRRSBlock {
         return list;
     }
 
+    /**
+     * @param {Number} typeNumber
+     * @param {import('./types').ErrorCorrectLevel} errorCorrectLevel
+     * @returns {number[]|undefined}
+     */
     static getRsBlockTable(typeNumber, errorCorrectLevel) {
         switch (errorCorrectLevel) {
             case QRErrorCorrectLevelMap.L:
@@ -417,7 +445,7 @@ class QRRSBlock {
 
 class QRBitBuffer {
     constructor() {
-        this.buffer = [];
+        /** @type {number[]} */ this.buffer = [];
         this.length = 0;
     }
 
@@ -452,7 +480,7 @@ class QRBitBuffer {
             this.buffer.push(0);
         }
         if (bit) {
-            this.buffer[bufIndex] |= 0x80 >>> this.length % 8;
+            this.buffer[bufIndex] |= 0x80 >>> (this.length % 8);
         }
         this.length++;
     }

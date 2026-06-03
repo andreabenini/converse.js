@@ -1,7 +1,7 @@
-const { rspack } = require('@rspack/core');
-const path = require('path');
-const { merge } = require('webpack-merge');
-const common = require('../rspack/rspack.common.js');
+import { rspack } from '@rspack/core';
+import path from 'path';
+import { merge } from 'webpack-merge';
+import common, { __dirname } from '../rspack/rspack.common.js';
 
 const buildConfig = (_env, argv) => {
     const isDev = argv?.mode === 'development';
@@ -9,16 +9,28 @@ const buildConfig = (_env, argv) => {
     return merge(common, {
         mode: isDev ? 'development' : 'production',
         entry: {
-            'converse': path.resolve(__dirname, '../src/entry.js'),
-            'converse.min': path.resolve(__dirname, '../src/entry.js'),
+            'converse': path.resolve(__dirname, '../src/index.js'),
+            'converse.min': path.resolve(__dirname, '../src/index.js'),
         },
         devtool: isDev ? 'cheap-module-source-map' : 'source-map',
+        output: {
+            module: true,
+            chunkFormat: 'module',
+            chunkLoading: 'import',
+            filename: '[name].js',
+            chunkFilename: 'chunkjs/[name].js',
+            library: {
+                type: 'module',
+            },
+        },
         optimization: {
             minimize: !isDev,
-            moduleIds: 'named', // Helps with debugging
+            moduleIds: 'named',
             minimizer: [
                 new rspack.SwcJsMinimizerRspackPlugin({
+                    test: /\.min\.js$/,
                     minimizerOptions: {
+                        module: true,
                         minify: true,
                         mangle: true,
                         compress: {
@@ -30,7 +42,6 @@ const buildConfig = (_env, argv) => {
                         },
                     },
                 }),
-                new rspack.LightningCssMinimizerRspackPlugin(),
             ],
         },
         module: {
@@ -62,7 +73,8 @@ const buildConfig = (_env, argv) => {
                             loader: 'sass-loader',
                             options: {
                                 sassOptions: {
-                                    silenceDeprecations: ['color-functions', 'global-builtin', 'import', 'mixed-decls'],
+                                    style: 'expanded',
+                                    silenceDeprecations: ['color-functions', 'global-builtin', 'import'],
                                     includePaths: [
                                         path.resolve(__dirname, '../node_modules/'),
                                         path.resolve(__dirname, '../src/'),
@@ -76,9 +88,6 @@ const buildConfig = (_env, argv) => {
             ],
         },
         plugins: [
-            new rspack.CssExtractRspackPlugin({
-                filename: '../dist/converse.min.css',
-            }),
             new rspack.CssExtractRspackPlugin({
                 filename: '../dist/converse.css',
             }),
@@ -106,4 +115,4 @@ const buildConfig = (_env, argv) => {
     });
 };
 
-module.exports = buildConfig;
+export default buildConfig;

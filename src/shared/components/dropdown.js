@@ -1,15 +1,15 @@
 /**
  * @typedef {module:dom-navigator.DOMNavigatorOptions} DOMNavigatorOptions
  */
-import { html } from "lit";
-import { until } from "lit/directives/until.js";
-import { api, constants, u } from "@converse/headless";
-import { DOMNavigator } from "shared/dom-navigator";
-import DropdownBase from "shared/components/dropdownbase.js";
-import "shared/components/icons.js";
-import { __ } from "i18n";
+import { html } from 'lit';
+import { until } from 'lit/directives/until.js';
+import { api, constants, u } from '@converse/headless';
+import { DOMNavigator } from '../dom-navigator/index.js';
+import DropdownBase from 'shared/components/dropdownbase.js';
+import 'shared/components/icons.js';
+import { __ } from 'i18n';
 
-import "./styles/dropdown.scss";
+import './styles/dropdown.scss';
 
 const { KEYCODES } = constants;
 
@@ -23,8 +23,8 @@ export default class Dropdown extends DropdownBase {
 
     constructor() {
         super();
-        this.icon_classes = "fa fa-bars";
-        this.items = [];
+        this.icon_classes = 'fa fa-bars';
+        /** @type {any[]} */ this.items = [];
         this.id = u.getUniqueId();
     }
 
@@ -33,20 +33,22 @@ export default class Dropdown extends DropdownBase {
             <button class="btn btn--transparent btn--standalone dropdown-toggle dropdown-toggle--no-caret"
                     id="${this.id}"
                     type="button"
-                    data-bs-toggle="dropdown"
                     aria-haspopup="true"
                     aria-expanded="false"
-                    aria-label=${__("Menu")}>
+                    aria-label=${__('Menu')}>
                 <converse-icon aria-hidden="true" size="1em" class="${this.icon_classes}">
             </button>
             <ul class="dropdown-menu" aria-labelledby="${this.id}">
-                ${this.items.map((b) => html`<li>${until(b, "")}</li>`)}
+                ${/** @type {any[]} */ (this.items).map((b) => html`<li>${until(b, '')}</li>`)}
             </ul>
         `;
     }
 
-    firstUpdated() {
-        super.firstUpdated();
+    /**
+     * @param {import('lit').PropertyValues} changed
+     */
+    firstUpdated(changed) {
+        super.firstUpdated(changed);
         this.initArrowNavigation();
     }
 
@@ -56,26 +58,31 @@ export default class Dropdown extends DropdownBase {
     }
 
     disconnectedCallback() {
-        this.removeEventListener("keydown", this.onKeyDown);
         this.disableArrowNavigation();
         super.disconnectedCallback();
     }
 
     registerEvents() {
-        this.onKeyDown = (ev) => this.#onKeyDown(ev);
-        this.addEventListener("hide.bs.dropdown", () => this.onDropdownHide());
-        this.addEventListener("keydown", this.onKeyDown);
+        this._onKeyDown = /** @param {KeyboardEvent} ev */ (ev) => this.#onKeyDown(ev);
+        this._onDropdownHide = () => this.#onDropdownHide();
+        this.addEventListener('converse:dropdown:hide', this._onDropdownHide);
+        this.addEventListener('keydown', this._onKeyDown);
     }
 
-    onDropdownHide() {
+    unregisterEvents() {
+        this.removeEventListener('keydown', this._onKeyDown);
+        this.removeEventListener('converse:dropdown:hide', this._onDropdownHide);
+    }
+
+    #onDropdownHide() {
         this.disableArrowNavigation();
     }
 
     initArrowNavigation() {
         if (!this.navigator) {
             const options = /** @type DOMNavigatorOptions */ ({
-                selector: ".dropdown-menu li",
-                onSelected: (el) => el.focus(),
+                selector: '.dropdown-menu li',
+                onSelected: /** @param {HTMLElement} el */ (el) => el.focus(),
             });
             this.navigator = new DOMNavigator(/** @type HTMLElement */ (this.menu), options);
         }
@@ -103,7 +110,7 @@ export default class Dropdown extends DropdownBase {
         ev.preventDefault();
         ev.stopPropagation();
         this.navigator.selected?.querySelector('a')?.click();
-        this.dropdown.hide();
+        this.hide();
     }
 
     /**
@@ -117,9 +124,9 @@ export default class Dropdown extends DropdownBase {
         } else if (ev.key === KEYCODES.DOWN_ARROW && !this.navigator.enabled) {
             this.enableArrowNavigation(ev);
         } else if (ev.key === KEYCODES.ESCAPE) {
-            this.dropdown.hide();
+            this.hide();
         }
     }
 }
 
-api.elements.define("converse-dropdown", Dropdown);
+api.elements.define('converse-dropdown', Dropdown);

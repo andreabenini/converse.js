@@ -1,13 +1,13 @@
 /**
  * @module:headless-plugins-muc-muc
  */
-import debounce from 'lodash-es/debounce';
-import pick from 'lodash-es/pick';
+import debounce from 'lodash-es/debounce.js';
+import pick from 'lodash-es/pick.js';
 import sizzle from 'sizzle';
 import { getOpenPromise } from '@converse/openpromise';
 import { Model } from '@converse/skeletor';
 import log from '@converse/log';
-import p from '../../utils/parse-helpers';
+import p from '../../utils/parse-helpers.js';
 import _converse from '../../shared/_converse.js';
 import api from '../../shared/api/index.js';
 import converse from '../../shared/api/public.js';
@@ -41,12 +41,12 @@ import { safeSave } from '../../utils/init.js';
 import { isUniView } from '../../utils/session.js';
 import { parseMUCMessage, parseMUCPresence } from './parsers.js';
 import { sendMarker } from '../../shared/actions.js';
-import ChatBoxBase from '../../shared/chatbox';
-import ColorAwareModel from '../../shared/color';
-import ModelWithMessages from '../../shared/model-with-messages';
-import ModelWithVCard from '../../shared/model-with-vcard';
+import ChatBoxBase from '../../shared/chatbox.js';
+import ColorAwareModel from '../../shared/color.js';
+import ModelWithMessages from '../../shared/model-with-messages.js';
+import ModelWithVCard from '../../shared/model-with-vcard.js';
 import { shouldCreateGroupchatMessage, isInfoVisible } from './utils.js';
-import MUCSession from './session';
+import MUCSession from './session.js';
 
 const { u, stx } = converse.env;
 
@@ -63,6 +63,8 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
      * @typedef {import('./types').NonOutcastAffiliation} NonOutcastAffiliation
      * @typedef {import('./types').MemberListItem} MemberListItem
      * @typedef {import('../../shared/types').MessageAttributes} MessageAttributes
+     * @typedef {import('../../shared/types').InfoMessageAttributes} InfoMessageAttributes
+     * @typedef {import('../../shared/types').ErrorMessageAttributes} ErrorMessageAttributes
      * @typedef {import('./types').MUCMessageAttributes} MUCMessageAttributes
      * @typedef {import('./types').MUCPresenceAttributes} MUCPresenceAttributes
      * @typedef {module:shared.converse.UserMessage} UserMessage
@@ -189,13 +191,16 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
         if (this.isEntered()) {
             // We have restored a groupchat from session storage,
             // so we don't send out a presence stanza again.
+            log.info(`MUC ${this.get('jid')} join() early return: isEntered=true`);
             return;
         }
+        log.info(`MUC ${this.get('jid')} join() called, setting status to CONNECTING`);
         // Set this early, so we don't rejoin in onHiddenChange
         this.session.save('connection_status', ROOMSTATUS.CONNECTING);
 
         const result = await this.refreshDiscoInfo({ timeout: DISCO_INFO_TIMEOUT_ON_JOIN });
         const is_new = result instanceof ItemNotFoundError;
+        log.info(`MUC ${this.get('jid')} refreshDiscoInfo complete, is_new: ${is_new}`);
 
         nick = await this.getAndPersistNickname(nick);
         if (!nick) {
@@ -205,6 +210,7 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
             }
             return;
         }
+        log.info(`MUC ${this.get('jid')} sending join presence`);
         api.send(await this.constructJoinPresence(password, is_new));
         if (is_new) await this.refreshDiscoInfo();
     }
@@ -213,6 +219,7 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
      * Clear stale cache and re-join a MUC we've been in before.
      */
     rejoin() {
+        log.info(`MUC ${this.get('jid')} rejoin() called, current status: ${this.session.get('connection_status')}`);
         this.session.save('connection_status', ROOMSTATUS.DISCONNECTED);
         this.registerHandlers();
         this.clearOccupantsCache();
@@ -414,6 +421,7 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
     }
 
     async onReconnection() {
+        log.info(`MUC ${this.get('jid')} onReconnection called, status: ${this.session.get('connection_status')}`);
         await this.rejoin();
         this.announceReconnection();
     }
@@ -1530,7 +1538,7 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
         }
         if (show_error) {
             const message = __('Forbidden: you do not have the necessary affiliation in order to do that.');
-            this.createMessage({ message, 'type': 'error' });
+            this.createMessage({ message, type: 'error' });
         }
         return false;
     }
@@ -1999,12 +2007,8 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
             if (!attrs.is_delayed && author) {
                 const message = subject ? __('Topic set by %1$s', author) : __('Topic cleared by %1$s', author);
                 const prev_msg = this.messages.last();
-                if (
-                    prev_msg?.get('nick') !== attrs.nick ||
-                    prev_msg?.get('type') !== 'info' ||
-                    prev_msg?.get('message') !== message
-                ) {
-                    this.createMessage({ message, 'nick': attrs.nick, 'type': 'info', 'is_ephemeral': true });
+                if (prev_msg?.get('type') !== 'info' || prev_msg?.get('message') !== message) {
+                    this.createMessage({ message, type: 'info', is_ephemeral: true });
                 }
                 if (await this.isSubjectHidden()) {
                     this.toggleSubjectHiddenState();
@@ -2073,19 +2077,17 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
     async getUpdatedMessageAttributes(message, attrs) {
         const new_attrs = {
             ...(await super.getUpdatedMessageAttributes(message, attrs)),
-            ...pick(attrs, ['from_muc', 'occupant_id']),
+            from_muc: attrs.from_muc,
         };
 
         if (this.isMUCReflectedMessage(message, attrs)) {
             const stanza_id_keys = Object.keys(attrs).filter((k) => k.startsWith('stanza_id'));
-            Object.assign(
-                new_attrs,
-                { ...pick(attrs, stanza_id_keys) },
-                attrs.body !== undefined ? { body: attrs.body } : {},
-            );
-            if (!message.get('received')) {
-                new_attrs.received = new Date().toISOString();
-            }
+            return {
+                ...new_attrs,
+                ...pick(attrs, [...stanza_id_keys, 'occupant_id']),
+                ...(message.get('received') ? {} : { received: new Date().toISOString() }),
+                ...(attrs.body !== undefined ? { body: attrs.body } : {}),
+            };
         }
         return new_attrs;
     }
@@ -2494,11 +2496,11 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
             if (this.session.get('connection_status') === ROOMSTATUS.CONNECTING) {
                 this.setDisconnectionState(text);
             } else {
-                const attrs = {
-                    'type': 'error',
-                    'message': text,
-                    'is_ephemeral': true,
-                };
+                const attrs = /** @type {ErrorMessageAttributes} */ ({
+                    type: 'error',
+                    message: text,
+                    is_ephemeral: true,
+                });
                 this.createMessage(attrs);
             }
         }
@@ -2648,12 +2650,12 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
 
         const { STATUS_CODE_MESSAGES } = /** @type {UserMessage} */ (_converse.labels.muc);
         const message = STATUS_CODE_MESSAGES[code];
-        const data = {
+        const data = /** @type {InfoMessageAttributes} */ ({
             type: 'info',
             is_ephemeral: true,
             message,
             code,
-        };
+        });
 
         if (!is_self && ACTION_INFO_CODES.includes(code)) {
             data.message = this.getActionInfoMessage(code, attrs);
@@ -2822,6 +2824,9 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
         }
 
         const attrs = await parseMUCPresence(stanza, this);
+        log.debug(
+            `MUC ${this.get('jid')} onPresence received, is_self: ${attrs.is_self}, nick: ${attrs.nick}, status: ${this.session.get('connection_status')}`,
+        );
         attrs.codes.forEach(async (code) => {
             this.createInfoMessageFromPresence(code, attrs);
 
@@ -2867,6 +2872,9 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
      * @param {MUCPresenceAttributes} attrs
      */
     async onOwnPresence(attrs) {
+        log.info(
+            `MUC ${this.get('jid')} onOwnPresence, old_status: ${this.session.get('connection_status')}, codes: ${attrs.codes.join(',')}`,
+        );
         await this.occupants.fetched;
 
         if (attrs['type'] === 'unavailable') {
@@ -2876,6 +2884,7 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
 
         const old_status = this.session.get('connection_status');
         if (old_status !== ROOMSTATUS.ENTERED && old_status !== ROOMSTATUS.CLOSING) {
+            log.info(`MUC ${this.get('jid')} onOwnPresence setting status to ENTERED`);
             // Set connection_status before creating the occupant, but
             // only trigger afterwards, so that plugins can access the
             // occupant in their event handlers.

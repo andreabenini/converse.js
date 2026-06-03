@@ -1,11 +1,14 @@
-const { rspack } = require('@rspack/core');
-const path = require('path');
+import { fileURLToPath } from 'url';
+import path, { dirname } from 'path';
+import { rspack } from '@rspack/core';
 
-module.exports = {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+export { __dirname };
+
+export default {
     plugins: [
-        new rspack.DefinePlugin({
-            'process.env.ASSET_PATH': JSON.stringify(process.env.ASSET_PATH || '/dist/'),
-        }),
         new rspack.CircularDependencyRspackPlugin({
             exclude: /node_modules/,
             failOnError: true,
@@ -15,7 +18,7 @@ module.exports = {
     ],
     output: {
         path: path.resolve(__dirname, '../dist'),
-        publicPath: process.env.ASSET_PATH || '/dist/',
+        publicPath: 'auto',
         chunkFilename: '[name].js',
     },
     devtool: 'source-map',

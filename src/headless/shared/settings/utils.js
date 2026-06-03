@@ -1,5 +1,5 @@
 import isEqual from 'lodash-es/isEqual.js';
-import pick from 'lodash-es/pick';
+import pick from 'lodash-es/pick.js';
 import { EventEmitter } from '@converse/skeletor';
 import { DEFAULT_SETTINGS } from './constants.js';
 import { merge } from '../../utils/object.js';
@@ -28,7 +28,7 @@ export function getInitSettings() {
 }
 
 export function getAppSetting(key) {
-    if (Object.keys(DEFAULT_SETTINGS).includes(key)) {
+    if (app_settings && Object.keys(DEFAULT_SETTINGS).includes(key)) {
         return app_settings[key];
     }
 }

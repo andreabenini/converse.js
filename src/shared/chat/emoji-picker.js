@@ -3,27 +3,27 @@
  * @typedef {module:dom-navigator.DOMNavigatorOptions} DOMNavigatorOptions
  * @typedef {module:dom-navigator.DOMNavigatorDirection} DOMNavigatorDirection
  */
-import debounce from "lodash-es/debounce";
-import { api, converse, u, constants } from "@converse/headless";
-import { DOMNavigator } from "shared/dom-navigator";
-import { CustomElement } from "shared/components/element.js";
-import { FILTER_CONTAINS } from "shared/autocomplete/utils.js";
-import { getTonedEmojis } from "./utils.js";
-import { tplEmojiPicker } from "./templates/emoji-picker.js";
-import "./emoji-picker-content.js";
-import "./emoji-dropdown.js";
+import debounce from 'lodash-es/debounce.js';
+import { api, converse, u, constants } from '@converse/headless';
+import { DOMNavigator } from 'shared/dom-navigator/index.js';
+import { CustomElement } from 'shared/components/element.js';
+import { FILTER_CONTAINS } from 'shared/autocomplete/utils.js';
+import { getTonedEmojis } from './utils.js';
+import { tplEmojiPicker } from './templates/emoji-picker.js';
+import './emoji-picker-content.js';
+import './emoji-dropdown.js';
 
-import "./styles/emoji.scss";
+import './styles/emoji.scss';
 
 const { KEYCODES } = constants;
 
 export default class EmojiPicker extends CustomElement {
     static get properties() {
         return {
-            current_category: { type: String, "reflect": true },
-            current_skintone: { type: String, "reflect": true },
+            current_category: { type: String, 'reflect': true },
+            current_skintone: { type: String, 'reflect': true },
             model: { type: Object },
-            query: { type: String, "reflect": true },
+            query: { type: String, 'reflect': true },
             state: { type: Object },
             // This is an optimization to lazily render the emoji picker
             render_emojis: { type: Boolean },
@@ -35,25 +35,28 @@ export default class EmojiPicker extends CustomElement {
         super();
         this.state = null;
         this.model = null;
-        this.query = "";
+        this.query = '';
         this.render_emojis = null;
         this._search_results = [];
 
         this.debouncedFilter = debounce(
-            /** @param {HTMLInputElement} input */ (input) => this.state.set({ "query": input.value }),
-            250
+            /** @param {HTMLInputElement} input */ (input) => this.state.set({ 'query': input.value }),
+            250,
         );
         this.allowed_emojis = undefined;
     }
 
     initialize() {
         super.initialize();
-        this.dropdown = this.closest("converse-emoji-dropdown") || this.closest(".emoji-picker__dropdown");
+        this.dropdown = this.closest('converse-emoji-dropdown') || this.closest('.emoji-picker__dropdown');
     }
 
+    /**
+     * @param {import('lit').PropertyValues} changed
+     */
     firstUpdated(changed) {
         super.firstUpdated(changed);
-        this.listenTo(this.state, "change", (o) => this.onModelChanged(o.changed));
+        this.listenTo(this.state, 'change', (o) => this.onModelChanged(o.changed));
         this.initArrowNavigation();
     }
 
@@ -70,10 +73,10 @@ export default class EmojiPicker extends CustomElement {
         return tplEmojiPicker(this, {
             current_category: this.current_category,
             current_skintone: this.current_skintone,
-            onCategoryPicked: (ev) => this.chooseCategory(ev),
+            onCategoryPicked: /** @param {MouseEvent} ev */ (ev) => this.chooseCategory(ev),
             onSearchInputFocus: () => this.disableArrowNavigation(),
-            onSearchInputKeyDown: (ev) => this.onSearchInputKeyDown(ev),
-            onSkintonePicked: (ev) => this.chooseSkinTone(ev),
+            onSearchInputKeyDown: /** @param {KeyboardEvent} ev */ (ev) => this.onSearchInputKeyDown(ev),
+            onSkintonePicked: /** @param {MouseEvent} ev */ (ev) => this.chooseSkinTone(ev),
             query: this.query,
             search_results: this.search_results,
             render_emojis: this.render_emojis,
@@ -81,15 +84,18 @@ export default class EmojiPicker extends CustomElement {
         });
     }
 
+    /**
+     * @param {import('lit').PropertyValues} changed
+     */
     updated(changed) {
-        changed.has("query") && this.updateSearchResults(changed);
-        changed.has("current_category") && this.setScrollPosition();
+        if (changed.has('query')) this.updateSearchResults(changed);
+        if (changed.has('current_category')) this.setScrollPosition();
     }
 
     onModelChanged(changed) {
-        if ("current_category" in changed) this.current_category = changed.current_category;
-        if ("current_skintone" in changed) this.current_skintone = changed.current_skintone;
-        if ("query" in changed) this.query = changed.query;
+        if ('current_category' in changed) this.current_category = changed.current_category;
+        if ('current_skintone' in changed) this.current_skintone = changed.current_skintone;
+        if ('query' in changed) this.query = changed.query;
     }
 
     setScrollPosition() {
@@ -97,7 +103,7 @@ export default class EmojiPicker extends CustomElement {
             this.preserve_scroll = false;
             return;
         }
-        const el = this.querySelector(".emoji-lists__container--browse");
+        const el = this.querySelector('.emoji-lists__container--browse');
         const heading = this.querySelector(`#emoji-picker-${this.current_category}`);
         if (heading instanceof HTMLElement) {
             // +4 due to 2px padding on list elements
@@ -105,29 +111,26 @@ export default class EmojiPicker extends CustomElement {
         }
     }
 
+    /** @param {Map<PropertyKey, unknown>} changed */
     updateSearchResults(changed) {
-        const old_query = changed.get("query");
+        const old_query = changed.get('query');
         const contains = FILTER_CONTAINS;
         if (this.query) {
             if (this.query === old_query) {
                 return this.search_results;
-            } else if (old_query && this.query.includes(old_query)) {
-                this.search_results = this.search_results.filter((e) => contains(e.sn, this.query));
+            } else if (old_query && this.query.includes(/** @type {string} */ (old_query))) {
+                this.search_results = this.search_results.filter(
+                    /** @param {{ sn: string }} e */ (e) => contains(e.sn, this.query),
+                );
             } else {
-                this.search_results = converse.emojis.list.filter((e) => contains(e.sn, this.query));
+                this.search_results = /** @type {any[]} */ (converse.emojis.list).filter(
+                    /** @param {{ sn: string }} e */ (e) => contains(e.sn, this.query),
+                );
             }
         } else if (this.search_results.length) {
             // Avoid re-rendering by only setting to new empty array if it wasn't empty before
             this.search_results = [];
         }
-    }
-
-    registerEvents() {
-        this.onKeyDown = (ev) => this.#onKeyDown(ev);
-        // The emoji picker might not be inside a dropdown (e.g. when used in the chat bottom panel).
-        // In that case, we don't need to listen for the hide event.
-        this.dropdown?.addEventListener("hide.bs.dropdown", () => this.onDropdownHide());
-        this.addEventListener("keydown", this.onKeyDown);
     }
 
     connectedCallback() {
@@ -136,9 +139,20 @@ export default class EmojiPicker extends CustomElement {
     }
 
     disconnectedCallback() {
-        this.removeEventListener("keydown", this.onKeyDown);
         this.disableArrowNavigation();
         super.disconnectedCallback();
+    }
+
+    registerEvents() {
+        this._onKeyDown = /** @param {KeyboardEvent} ev */ (ev) => this.#onKeyDown(ev);
+        this._onDropdownHide = () => this.#onDropdownHide();
+        this.addEventListener('keydown', this._onKeyDown);
+        this.dropdown?.addEventListener('converse:dropdown:hide', this._onDropdownHide);
+    }
+
+    unregisterEvents() {
+        this.removeEventListener('keydown', this._onKeyDown);
+        this.dropdown?.removeEventListener('converse:dropdown:hide', this._onDropdownHide);
     }
 
     /**
@@ -154,9 +168,9 @@ export default class EmojiPicker extends CustomElement {
         }
     }
 
-    onDropdownHide() {
+    #onDropdownHide() {
         this.disableArrowNavigation();
-        this.dispatchEvent(new CustomEvent("emojipickerblur", { bubbles: true }));
+        this.dispatchEvent(new CustomEvent('emojipickerblur', { bubbles: true }));
     }
 
     /**
@@ -164,9 +178,9 @@ export default class EmojiPicker extends CustomElement {
      */
     setCategoryForElement(el) {
         const old_category = this.current_category;
-        const category = el?.getAttribute("data-category") || old_category;
+        const category = el?.getAttribute('data-category') || old_category;
         if (old_category !== category) {
-            this.state.save({ "current_category": category });
+            this.state.save({ 'current_category': category });
         }
     }
 
@@ -174,16 +188,16 @@ export default class EmojiPicker extends CustomElement {
      * @param {string} value
      */
     selectEmoji(value) {
-        const autocompleting = this.state.get("autocompleting");
-        const ac_position = this.state.get("ac_position");
-        this.state.set({ "autocompleting": null, "query": "", "ac_position": null });
+        const autocompleting = this.state.get('autocompleting');
+        const ac_position = this.state.get('ac_position');
+        this.state.set({ 'autocompleting': null, 'query': '', 'ac_position': null });
         this.disableArrowNavigation();
-        const jid = this.model.get("jid");
+        const jid = this.model.get('jid');
         const options = {
-            "bubbles": true,
-            "detail": { value, autocompleting, ac_position, jid },
+            'bubbles': true,
+            'detail': { value, autocompleting, ac_position, jid },
         };
-        this.dispatchEvent(new CustomEvent("emojiSelected", options));
+        this.dispatchEvent(new CustomEvent('emojiSelected', options));
     }
 
     /**
@@ -193,12 +207,12 @@ export default class EmojiPicker extends CustomElement {
         ev.preventDefault();
         ev.stopPropagation();
         const target = /** @type {Element} */ (ev.target);
-        const el = target.nodeName === "IMG" ? target.parentElement : target;
-        const skintone = el.getAttribute("data-skintone").trim();
+        const el = target.nodeName === 'IMG' ? target.parentElement : target;
+        const skintone = el.getAttribute('data-skintone').trim();
         if (this.current_skintone === skintone) {
-            this.state.save({ "current_skintone": "" });
+            this.state.save({ 'current_skintone': '' });
         } else {
-            this.state.save({ "current_skintone": skintone });
+            this.state.save({ 'current_skintone': skintone });
         }
     }
 
@@ -206,13 +220,13 @@ export default class EmojiPicker extends CustomElement {
      * @param {MouseEvent} ev
      */
     chooseCategory(ev) {
-        ev.preventDefault && ev.preventDefault();
-        ev.stopPropagation && ev.stopPropagation();
+        if (ev.preventDefault) ev.preventDefault();
+        if (ev.stopPropagation) ev.stopPropagation();
         const target = /** @type {Element} */ (ev.target ?? ev.relatedTarget);
-        const el = target.matches("li") ? target : u.ancestor(target, "li");
+        const el = target.matches('li') ? target : u.ancestor(target, 'li');
         this.setCategoryForElement(el);
         this.navigator.select(el);
-        !this.navigator.enabled && this.navigator.enable();
+        if (!this.navigator.enabled) this.navigator.enable();
     }
 
     /**
@@ -223,8 +237,10 @@ export default class EmojiPicker extends CustomElement {
         if (ev.key === KEYCODES.TAB) {
             if (target.value) {
                 ev.preventDefault();
-                const match = converse.emojis.shortnames.find((sn) => FILTER_CONTAINS(sn, target.value));
-                match && this.state.set({ "query": match });
+                const match = converse.emojis.shortnames.find(
+                    /** @param {string} sn */ (sn) => FILTER_CONTAINS(sn, target.value),
+                );
+                if (match) this.state.set({ query: match });
             } else if (!this.navigator.enabled) {
                 this.enableArrowNavigation(ev);
             }
@@ -246,10 +262,10 @@ export default class EmojiPicker extends CustomElement {
             this.selectEmoji(target.value);
         } else if (this.search_results.length === 1) {
             this.selectEmoji(this.search_results[0].sn);
-        } else if (this.navigator.selected && this.navigator.selected.matches(".insert-emoji")) {
-            this.selectEmoji(this.navigator.selected.getAttribute("data-emoji"));
-        } else if (this.navigator.selected && this.navigator.selected.matches(".emoji-category")) {
-            this.chooseCategory(new MouseEvent("click", { relatedTarget: this.navigator.selected }));
+        } else if (this.navigator.selected && this.navigator.selected.matches('.insert-emoji')) {
+            this.selectEmoji(this.navigator.selected.getAttribute('data-emoji'));
+        } else if (this.navigator.selected && this.navigator.selected.matches('.emoji-category')) {
+            this.chooseCategory(new MouseEvent('click', { relatedTarget: this.navigator.selected }));
         }
     }
 
@@ -265,16 +281,16 @@ export default class EmojiPicker extends CustomElement {
 
     initArrowNavigation() {
         if (!this.navigator) {
-            const default_selector = "li:not(.hidden):not(.emoji-skintone), .emoji-search";
+            const default_selector = 'li:not(.hidden):not(.emoji-skintone), .emoji-search';
             const options = /** @type DOMNavigatorOptions */ ({
-                jump_to_picked: ".emoji-category",
-                jump_to_picked_selector: ".emoji-category.picked",
+                jump_to_picked: '.emoji-category',
+                jump_to_picked_selector: '.emoji-category.picked',
                 jump_to_picked_direction: DOMNavigator.DIRECTION.down,
-                picked_selector: ".picked",
-                scroll_container: this.querySelector(".emoji-picker__lists"),
+                picked_selector: '.picked',
+                scroll_container: this.querySelector('.emoji-picker__lists'),
                 getSelector: /** @param {keyof(DOMNavigatorDirection)} dir */ (dir) => {
                     if (dir === DOMNavigator.DIRECTION.down) {
-                        const c = this.navigator.selected && this.navigator.selected.getAttribute("data-category");
+                        const c = this.navigator.selected && this.navigator.selected.getAttribute('data-category');
                         return c
                             ? `ul[data-category="${c}"] li:not(.hidden):not(.emoji-skintone), .emoji-search`
                             : default_selector;
@@ -283,11 +299,11 @@ export default class EmojiPicker extends CustomElement {
                     }
                 },
                 onSelected: /** @param {HTMLElement} el */ (el) => {
-                    if (el.matches(".insert-emoji")) this.setCategoryForElement(el.parentElement);
-                    if (el.matches(".insert-emoji, .emoji-category")) {
+                    if (el.matches('.insert-emoji')) this.setCategoryForElement(el.parentElement);
+                    if (el.matches('.insert-emoji, .emoji-category')) {
                         /** @type {HTMLInputElement} */ (el.firstElementChild).focus();
                     }
-                    if (el.matches(".emoji-search")) el.focus();
+                    if (el.matches('.emoji-search')) el.focus();
                 },
             });
             this.navigator = new DOMNavigator(this, options);
@@ -310,4 +326,4 @@ export default class EmojiPicker extends CustomElement {
     }
 }
 
-api.elements.define("converse-emoji-picker", EmojiPicker);
+api.elements.define('converse-emoji-picker', EmojiPicker);

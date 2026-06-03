@@ -32,23 +32,21 @@ export default class EmojiPicker extends CustomElement {
     _search_results: any[];
     debouncedFilter: import("lodash").DebouncedFunc<(input: HTMLInputElement) => any>;
     allowed_emojis: any;
-    initialize(): void;
     dropdown: Element;
-    firstUpdated(changed: any): void;
     set search_results(value: any[]);
     get search_results(): any[];
     render(): import("lit-html").TemplateResult<1>;
-    updated(changed: any): void;
     onModelChanged(changed: any): void;
     current_category: any;
     current_skintone: any;
     setScrollPosition(): void;
     preserve_scroll: boolean;
-    updateSearchResults(changed: any): any[];
+    /** @param {Map<PropertyKey, unknown>} changed */
+    updateSearchResults(changed: Map<PropertyKey, unknown>): any[];
     registerEvents(): void;
-    onKeyDown: (ev: any) => void;
-    connectedCallback(): void;
-    onDropdownHide(): void;
+    _onKeyDown: (ev: KeyboardEvent) => void;
+    _onDropdownHide: () => void;
+    unregisterEvents(): void;
     /**
      * @param {HTMLElement} el
      */
@@ -88,6 +86,6 @@ export default class EmojiPicker extends CustomElement {
 }
 export type DOMNavigatorOptions = any;
 export type DOMNavigatorDirection = any;
-import { CustomElement } from "shared/components/element.js";
-import { DOMNavigator } from "shared/dom-navigator";
+import { CustomElement } from 'shared/components/element.js';
+import { DOMNavigator } from 'shared/dom-navigator/index.js';
 //# sourceMappingURL=emoji-picker.d.ts.map

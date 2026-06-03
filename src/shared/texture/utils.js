@@ -1,6 +1,6 @@
 import { u } from '@converse/headless';
 import { html } from 'lit';
-import { bracketing_directives, dont_escape, styling_directives, styling_map } from './constants';
+import { bracketing_directives, dont_escape, styling_directives, styling_map } from './constants.js';
 
 const URL_REGEXES = {
     // valid "scheme://" or "www."
@@ -69,9 +69,13 @@ export function collapseLineBreaks(text) {
     });
 }
 
-export const tplMentionWithNick = (o) =>
+export const tplMentionWithNick = /** @param {{uri: string, mention: string}} o */ (o) =>
     html`<span class="mention mention--self badge badge-info" data-uri="${o.uri}">${o.mention}</span>`;
 
+/**
+ * @param {{uri: string, mention: string}} o
+ * @returns {import('lit').TemplateResult}
+ */
 export function tplMention(o) {
     return html`<span class="mention" data-uri="${o.uri}">${o.mention}</span>`;
 }
