@@ -1,14 +1,60 @@
 # Changelog
 
-## 14.0.0 (Unreleased)
+## 15.0.0 (Unreleased)
+
+- #194: Full support for XEP-0115: Entity capabilities
+
+## 14.0.0 (2026-06-26)
+
+- feat(version): Add XEP-0092 Software Version support and show the server's software version in the profile modal
+- fix(omemo): Detect omemo:2-only contacts as OMEMO-capable
+- refactor: Drop deprecated Karma test runner and Jasmine testing library and use Vitest instead.
+
+## 14.0.0-beta.4 (2026-06-22)
+
+- Bump libomemo.js to version 2.0.2
+- fix(omemo): Enable self-healing of abandoned or unpublished bundle
+- fix(omemo): Gracefully handle contact device listed but bundle not published
+- fix(theme): Clear the background class list before setting theme attributes.
+- feat(pubsub): Add new API methods to create, subscribe and unsubscribe.
+
+## 14.0.0-beta.3 (2026-06-19)
+
+- Bump libomemo.js to version 2.0.1
+
+## 14.0.0-beta.2 (2026-06-18)
+
+- Remove `client-compress` and use browser APIs
+- fix: Prior theme CSS class is not removed when changing the theme dynamically.
+
+## 14.0.0-beta.1 (2026-06-18)
+
+- #1472: feat(omemo): remember the per-chat encryption (on/off) state across chat-close and re-login
+- #2097: fix(omemo): surface an error for an undecryptable OMEMO message instead of silently dropping it when it carries no fallback body
+- #2336: fix(omemo): hide the encryption toggle on an untrusted device, where OMEMO can't be used
+- #2606: fix(omemo): hiding media now also hides decrypted OMEMO media instead of re-rendering it
+- #2632: fix(omemo): preserve the original filename when downloading a received encrypted image
+- #4041: fix: strip trailing slashes from `assets_path` to prevent double-slash asset URLs
+- #4076: fix(omemo): don't send encrypted MUC messages to banned (outcast) or non-affiliated occupants
+- feat: add support for OMEMO 2 (`urn:xmpp:omemo:2`), using Stanza Content Encryption (XEP-0420)
+- fix: `isTrustedIdentity` in OMEMO store wasn't properly loading the identity
+- fix: broadcast presence when the chat status (`show`) is cleared
+- fix: the idle status flag could never be cleared, leaving stale idle presence after the user became active again
 
 ### Backwards incompatible changes
 
+- OMEMO now uses a WebAssembly crypto module (libomemo). If you serve Converse
+  under a strict Content-Security-Policy, you must add `'wasm-unsafe-eval'` to
+  your `script-src` directive, otherwise OMEMO fails to initialize with a
+  `WebAssembly.instantiate()` CSP error. This token is much narrower than
+  `'unsafe-eval'` (it permits WASM compilation only).
+  See the [security docs](https://conversejs.org/docs/security/) for the recommended CSP.
 - `api.modal.show` no longer takes a modal instance as first parameter
 - The CJS build has been removed. Only ESM builds are produced.
   If you include Converse via a `<script>` tag, you must add `type="module"`:
   `<script type="module" src="converse.js"></script>`.
   Any inline scripts calling `converse.initialize()` must also use `type="module"`.
+- #2405: Hide the trusted device login checkbox when persistent browser storage is unavailable.
 
 ## 13.0.1 (2026-05-27)
 

@@ -9,13 +9,13 @@ import OMEMOStore from './store.js';
 import omemo_api from './api.js';
 import { parseEncryptedMessage } from './parsers.js';
 import {
-    createOMEMOMessageStanza,
+    createMessageStanzaHandler,
     encryptFile,
     getOutgoingMessageAttributes,
-    handleMessageSendError,
     initOMEMO,
     onChatInitialized,
     registerPEPPushHandler,
+    sendOMEMO2Marker,
     setEncryptedFileURL,
 } from './utils.js';
 
@@ -28,11 +28,7 @@ converse.plugins.add('converse-omemo', {
      * @param {import('../../shared/_converse.js').ConversePrivateGlobal} _converse
      */
     enabled(_converse) {
-        /**
-         * @typedef {Window & globalThis & {libsignal: any} } WindowWithLibsignal
-         */
         return (
-            /** @type WindowWithLibsignal */ (window).libsignal &&
             _converse.state.config.get('trusted') &&
             !_converse.api.settings.get('clear_cache_on_logout') &&
             !_converse.api.settings.get('blacklisted_plugins').includes('converse-omemo')
@@ -55,33 +51,27 @@ converse.plugins.add('converse-omemo', {
         Object.assign(_converse, exports); // DEPRECATED
         Object.assign(_converse.exports, exports);
 
-        api.listen.on(
-            'createMessageStanza',
-            /**
-             * @param {import('../../shared/chatbox.js').default} chat
-             * @param {import('../../shared/types').MessageAndStanza} data
-             */
-            async (chat, data) => {
-                try {
-                    data = await createOMEMOMessageStanza(chat, data);
-                } catch (e) {
-                    handleMessageSendError(e, chat);
-                }
-                return data;
-            },
-        );
-
         api.listen.on('connected', registerPEPPushHandler);
+        api.listen.on('createMessageStanza', createMessageStanzaHandler);
 
         api.listen.on('chatRoomInitialized', onChatInitialized);
         api.listen.on('chatBoxInitialized', onChatInitialized);
         api.listen.on('getOutgoingMessageAttributes', getOutgoingMessageAttributes);
 
         api.listen.on('statusInitialized', initOMEMO);
-        api.listen.on('addClientFeatures', () => api.disco.own.features.add(`${Strophe.NS.OMEMO_DEVICELIST}+notify`));
+        api.listen.on('addClientFeatures', () => {
+            api.disco.own.features.add(`${Strophe.NS.OMEMO_DEVICELIST}+notify`);
+            api.disco.own.features.add(`${Strophe.NS.OMEMO2_DEVICELIST}+notify`);
+        });
 
         api.listen.on('parseMessage', parseEncryptedMessage);
         api.listen.on('parseMUCMessage', parseEncryptedMessage);
+
+        api.listen.on('sendMarker', async (chatbox, data) => {
+            if (!chatbox?.get('omemo_active')) return data;
+            await sendOMEMO2Marker(chatbox, data.to_jid, data.id, data.type, data.msg_type).catch(() => {});
+            return { ...data, handled: true };
+        });
 
         api.listen.on('afterFileUploaded', setEncryptedFileURL);
         api.listen.on(
@@ -95,10 +85,23 @@ converse.plugins.add('converse-omemo', {
 
         api.listen.on('clearSession', () => {
             delete _converse.state.omemo_store;
-            if (u.shouldClearCache(_converse) && _converse.state.devicelists) {
-                _converse.state.devicelists.clearStore();
-                delete _converse.state.devicelists;
+            if (u.shouldClearCache(_converse)) {
+                if (_converse.state.devicelists) {
+                    _converse.state.devicelists.clearStore();
+                    delete _converse.state.devicelists;
+                }
+                if (_converse.state.devicelists_v2) {
+                    _converse.state.devicelists_v2.clearStore();
+                    delete _converse.state.devicelists_v2;
+                }
+                if (_converse.state.omemo_active_states) {
+                    _converse.state.omemo_active_states.storage?.clear();
+                }
             }
+            // Drop the in-memory reference so it's re-fetched from storage on
+            // the next login (keeping the remembered states across re-login,
+            // unless the cache was cleared above). See #1472.
+            delete _converse.state.omemo_active_states;
         });
     },
 });

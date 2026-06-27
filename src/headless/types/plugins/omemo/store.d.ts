@@ -1,81 +1,112 @@
-export function generateDeviceID(): Promise<any>;
+export function generateDeviceID(): Promise<string>;
+export { VersionedOMEMOStore } from "./versioned-store.js";
 export default OMEMOStore;
-declare class OMEMOStore extends Model<import("@converse/skeletor").ModelAttributes> {
-    constructor(attributes?: Partial<import("@converse/skeletor").ModelAttributes>, options?: import("@converse/skeletor").ModelOptions);
-    /**
-     * @typedef {Window & globalThis & {libsignal: any} } WindowWithLibsignal
-     */
+/**
+ * @extends {Model<import('./types').OMEMOStoreAttributes>}
+ */
+declare class OMEMOStore extends Model<import("./types").OMEMOStoreAttributes> {
+    constructor(attributes?: Partial<import("./types").OMEMOStoreAttributes>, options?: import("@converse/skeletor").ModelOptions);
     get Direction(): {
         SENDING: number;
         RECEIVING: number;
     };
     /**
-     * @returns {Promise<import('./types').KeyPair>}
+     * @returns {import('libomemo.js').KeyPair}
      */
-    getIdentityKeyPair(): Promise<import("./types").KeyPair>;
-    getLocalRegistrationId(): Promise<number>;
+    getIdentityKeyPair(): import("libomemo.js").KeyPair;
     /**
-     * @param {string} identifier
+     * @returns {number}
+     */
+    getLocalRegistrationId(): number;
+    /**
+     * @param {string} address
      * @param {ArrayBuffer} identity_key
      * @param {unknown} _direction
+     * @returns {boolean}
      */
-    isTrustedIdentity(identifier: string, identity_key: ArrayBuffer, _direction: unknown): Promise<boolean>;
+    isTrustedIdentity(address: string, identity_key: ArrayBuffer, _direction: unknown): boolean;
     /**
-     * @param {string} identifier
+     * @param {string} address
+     * @returns {ArrayBuffer}
      */
-    loadIdentityKey(identifier: string): Promise<any>;
+    loadIdentityKey(address: string): ArrayBuffer;
     /**
-     * @param {string} identifier
-     * @param {string} identity_key
+     * @param {string} address
+     * @param {ArrayBuffer} identity_key
+     * @returns {boolean}
      */
-    saveIdentity(identifier: string, identity_key: string): Promise<boolean>;
+    saveIdentity(address: string, identity_key: ArrayBuffer): boolean;
     getPreKeys(): any;
     /**
-     * @param {string} key_id
+     * @param {string|number} key_id
+     * @returns {Promise<{ keyPair: import('libomemo.js').KeyPair }|void>}
      */
-    loadPreKey(key_id: string): Promise<void> | Promise<{
-        privKey: any;
-        pubKey: any;
-    }>;
+    loadPreKey(key_id: string | number): Promise<{
+        keyPair: import("libomemo.js").KeyPair;
+    } | void>;
     /**
-     * @param {string} key_id
-     * @param {import('./types').KeyPair} key_pair
+     * @param {number} key_id
+     * @param {import('libomemo.js').KeyPair} key_pair
      */
-    storePreKey(key_id: string, key_pair: import("./types").KeyPair): Promise<void>;
+    storePreKey(key_id: number, key_pair: import("libomemo.js").KeyPair): void;
     /**
-     * @param {string} key_id
+     * @param {string|number} key_id
      */
-    removePreKey(key_id: string): Promise<void>;
+    removePreKey(key_id: string | number): Promise<void>;
     /**
      * @param {string} _key_id
-     * @returns {Promise<import('./types').KeyPair|void>}
+     * @returns {{ keyPair: import('libomemo.js').KeyPair }|void}
      */
-    loadSignedPreKey(_key_id: string): Promise<import("./types").KeyPair | void>;
+    loadSignedPreKey(_key_id: string): {
+        keyPair: import("libomemo.js").KeyPair;
+    } | void;
     /**
-     * @param {import('./types').SignedPreKey} spk
+     * @param {import('libomemo.js').SignedPreKey} spk
      */
-    storeSignedPreKey(spk: import("./types").SignedPreKey): Promise<void>;
+    storeSignedPreKey(spk: import("libomemo.js").SignedPreKey): void;
     /**
-     * @param {string} key_id
+     * Store the v2 (urn:xmpp:omemo:2) signed prekey. Kept separate from the
+     * legacy SPK because the signature covers different bytes (32-byte curve vs
+     * 33-byte curve form).
+     * @param {import('libomemo.js').SignedPreKey} spk
      */
-    removeSignedPreKey(key_id: string): Promise<void>;
+    storeSignedPreKeyV2(spk: import("libomemo.js").SignedPreKey): void;
     /**
-     * @param {string} identifier
+     * @param {number} key_id
      */
-    loadSession(identifier: string): Promise<any>;
+    removeSignedPreKey(key_id: number): void;
     /**
-     * @param {string} identifier
+     * @param {string} address
+     */
+    loadSession(address: string): Promise<any>;
+    /**
+     * @param {string} address
      * @param {object} record
      */
-    storeSession(identifier: string, record: object): Promise<any>;
+    storeSession(address: string, record: object): Promise<any>;
     /**
-     * @param {string} identifier
+     * @param {string} address
      */
-    removeSession(identifier: string): Promise<Awaited<this>>;
+    removeSession(address: string): Promise<Awaited<this>>;
     /**
-     * @param {string} [identifier='']
+     * The ratchet key (base64) for which we last sent an OMEMO heartbeat to this
+     * session, or `undefined`. Used to enforce the XEP-0384 rule of sending at
+     * most one heartbeat per ratchet key, in a way that survives page reloads.
+     * @param {string} address
+     * @returns {string|undefined}
      */
-    removeAllSessions(identifier?: string): Promise<void>;
+    loadHeartbeatKey(address: string): string | undefined;
+    /**
+     * Records and persists the ratchet key we just heartbeated for.
+     * @param {string} address
+     * @param {string} key_b64 - base64 of the ratchet key we just heartbeated for
+     * @returns {Promise<void>}
+     */
+    storeHeartbeatKey(address: string, key_b64: string): Promise<void>;
+    /**
+     * @param {string} [address='']
+     */
+    removeAllSessions(address?: string): Promise<void>;
     publishBundle(): any;
     generateMissingPreKeys(): Promise<void>;
     /**
@@ -89,7 +120,7 @@ declare class OMEMOStore extends Model<import("@converse/skeletor").ModelAttribu
      * ones.
      */
     generatePreKeys(): Promise<{
-        id: any;
+        id: number;
         key: any;
     }[]>;
     /**
@@ -99,10 +130,39 @@ declare class OMEMOStore extends Model<import("@converse/skeletor").ModelAttribu
      * By generating a bundle, and publishing it via PubSub, we allow other
      * clients to download it and start asynchronous encrypted sessions with us,
      * even if we're offline at that time.
+     *
+     * Generates both legacy (0.3.0) and v2 (omemo:2) bundle material and
+     * publishes both PEP nodes.
      */
     generateBundle(): Promise<void>;
-    fetchSession(): Promise<any>;
-    _setup_promise: Promise<any>;
+    /**
+     * Backfills omemo:2 key material for an already provisioned device.
+     *
+     * Stores created before omemo:2 support have a device_id, identity key and
+     * legacy signed prekey, but no `signed_prekey_omemo2`.
+     *
+     * This generates the missing v2 signed prekey, reusing the existing
+     * identity key so our fingerprint and device_id are unchanged. The v2 bundle
+     * itself is published by the regular {@link OMEMOStore#publishBundle} call in
+     * initOMEMO, which runs right after the session is restored.
+     */
+    ensureV2SignedPreKey(): Promise<void>;
+    /**
+     * Self-heal a partially-provisioned store before its bundle is published.
+     *
+     * A {@link OMEMOStore#generateBundle} interrupted after persisting the
+     * device_id and identity key (e.g. the tab is closed while the 100 prekeys
+     * are still being generated) leaves a store with a device_id but missing
+     * its signed prekeys and/or one-time prekeys.
+     *
+     * This backfills whatever key material is missing, reusing the existing
+     * identity key and device_id so the fingerprint stays unchanged.
+     * It also subsumes the omemo:2 migration for stores created before omemo:2
+     * support.
+     */
+    ensureProvisioned(): Promise<void>;
+    fetchSession(): Promise<void>;
+    #private;
 }
 import { Model } from '@converse/skeletor';
 //# sourceMappingURL=store.d.ts.map

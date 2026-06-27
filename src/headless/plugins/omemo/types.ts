@@ -1,7 +1,23 @@
 import { MUCMessageAttributes } from '../../plugins/muc/types';
-import { MessageAttributes } from '../../shared/types';
+import { JIDModelAttributes, MessageAttributes, ModelAttributes } from '../../shared/types';
 
-export type PreKey = {
+declare global {
+    interface Window {
+        libomemo?: Record<string, unknown>;
+    }
+}
+
+export type OMEMOVersion = 'eu.siacs.conversations.axolotl' | 'urn:xmpp:omemo:2';
+
+export type OMEMOProfile = {
+    version: OMEMOVersion;
+    readonly devicelist_node: string;
+    readonly bundle_node_prefix: string;
+    usesSCE: boolean;
+    encodePubKey: (b64: string) => string;
+};
+
+export type CounterpartyPreKey = {
     id: number;
     key: string;
 };
@@ -13,18 +29,32 @@ export type Bundle = {
         public_key: string;
         signature: string;
     };
-    prekeys: PreKey[];
+    prekeys: CounterpartyPreKey[];
+    fingerprint?: string;
 };
 
-export type KeyPair = {
+export type DeviceAttributes = JIDModelAttributes & {
+    id: number;
+    bundle?: Bundle;
+    trusted: 0 | 1 | -1;
+    active: boolean;
+};
+
+type SerializedKeyPair = {
     pubKey: string;
     privKey: string;
 };
 
-export type SignedPreKey = {
-    keyId: string;
-    keyPair: KeyPair;
-    signature: ArrayBuffer;
+type SerializedPreKey = {
+    id: number;
+    privKey: string;
+    pubKey: string;
+    signature: string;
+};
+
+export type OMEMOStoreAttributes = ModelAttributes & {
+    identity_keypair: SerializedKeyPair;
+    signed_prekey: SerializedPreKey;
 };
 
 export type EncryptedMessage = {
@@ -44,5 +74,3 @@ export type EncryptedMessageAttributes = {
 
 export type MUCMessageAttrsWithEncryption = MUCMessageAttributes & EncryptedMessageAttributes;
 export type MessageAttrsWithEncryption = MessageAttributes & EncryptedMessageAttributes;
-
-export type WindowWithLibsignal = Window & typeof globalThis & { libsignal: any };

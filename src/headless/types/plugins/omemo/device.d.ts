@@ -1,14 +1,17 @@
 export default Device;
-declare class Device extends Model<import("@converse/skeletor").ModelAttributes> {
-    constructor(attributes?: Partial<import("@converse/skeletor").ModelAttributes>, options?: import("@converse/skeletor").ModelOptions);
+/**
+ * @extends {OMEMOVersionAwareModel<import('./types').DeviceAttributes>}
+ */
+declare class Device extends OMEMOVersionAwareModel<import("./types").DeviceAttributes> {
+    constructor(attributes?: Partial<import("./types").DeviceAttributes>, options?: import("@converse/skeletor").ModelOptions);
     defaults(): {
-        trusted: number;
+        trusted: 0;
         active: boolean;
     };
     /**
-     * @returns {import('./types').PreKey}
+     * @returns {import('./types').CounterpartyPreKey}
      */
-    getRandomPreKey(): import("./types").PreKey;
+    getRandomPreKey(): import("./types").CounterpartyPreKey;
     /**
      * Fetch the device's OMEMO bundle from the server.
      * A bundle is a collection of publicly accessible data that can
@@ -24,5 +27,5 @@ declare class Device extends Model<import("@converse/skeletor").ModelAttributes>
      */
     getBundle(): Promise<import("./types").Bundle>;
 }
-import { Model } from '@converse/skeletor';
+import { OMEMOVersionAwareModel } from './profiles.js';
 //# sourceMappingURL=device.d.ts.map

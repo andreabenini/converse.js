@@ -7,24 +7,31 @@ declare const MUC_base: {
         initialize(): void;
         readonly vcard: import("../vcard/vcard.js").default;
         getVCard(): Promise<import("../vcard/vcard.js").default | null>;
-        _browserStorage?: import("@converse/skeletor").BrowserStorage;
+        "__#4@#private": any;
+        _storage?: import("@converse/skeletor").PersistentStorage;
         _changing: boolean;
         _pending: boolean | import("@converse/skeletor").ModelOptions;
         _previousAttributes?: import("@converse/skeletor").ModelAttributes;
         _url: string;
         _urlRoot: string;
+        attrs: import("@converse/skeletor").ModelAttributes;
         attributes: import("@converse/skeletor").ModelAttributes;
         changed: Partial<import("@converse/skeletor").ModelAttributes>;
         cid: string;
         collection?: import("@converse/skeletor").Collection;
         id: string | number;
+        hydrated?: Promise<void>;
         validationError: string | number | null;
-        browserStorage: import("@converse/skeletor").BrowserStorage;
+        storage: import("@converse/skeletor").PersistentStorage;
+        browserStorage: import("@converse/skeletor").PersistentStorage;
+        readonly autoSync: boolean;
+        readonly autoSyncDelay: number;
         readonly idAttribute: string;
         readonly cidPrefix: string;
         preinitialize(...args: any[]): void;
         validate(attrs: import("@converse/skeletor").ObjectWithId | Partial<import("@converse/skeletor").ModelAttributes>, options?: import("@converse/skeletor").ModelOptions): string | number | null | void;
         defaults(): Partial<import("@converse/skeletor").ModelAttributes>;
+        readonly computed: import("@converse/skeletor").ComputedProperties<any>;
         toJSON(): import("@converse/skeletor").ModelAttributes;
         sync(method: import("@converse/skeletor").SyncOperation, model: Model<any>, options: import("@converse/skeletor").Options): any;
         get<K extends string | number>(attr: K): import("@converse/skeletor").ModelAttributes[K];
@@ -53,6 +60,8 @@ declare const MUC_base: {
         parse(resp: any, options?: import("@converse/skeletor").ModelOptions): void | Partial<import("@converse/skeletor").ModelAttributes>;
         isNew(): boolean;
         isValid(options?: import("@converse/skeletor").ModelOptions): boolean;
+        subscribe(event: string, callback: import("@converse/skeletor").EventCallback, context?: unknown): () => void;
+        subscribe(callback: (model: any, changed: Partial<import("@converse/skeletor").ModelAttributes>) => void): () => void;
         _validate(attrs: import("@converse/skeletor").ObjectWithId | Partial<import("@converse/skeletor").ModelAttributes>, options?: import("@converse/skeletor").ModelOptions): boolean;
         _events?: import("@converse/skeletor").EventHandlersMap;
         _listeners?: import("@converse/skeletor").EventListenerMap;
@@ -99,12 +108,14 @@ declare const MUC_base: {
         queueMessage(attrs: import("../../shared/types").MessageAttributes): any;
         msg_chain: any;
         getOutgoingMessageAttributes(_attrs?: import("../../shared/types").MessageAttributes): Promise<import("../../shared/types").MessageAttributes>;
+        getReferencedMessage(reply_to_id: string): import("../../shared/message.js").default | undefined;
+        addReplyFallback(attrs: import("../../shared/types").MessageAttributes): import("../../shared/types").MessageAttributes;
         sendMessage(attrs?: any): Promise<import("../../shared/message.js").default>;
         retractOwnMessage(message: import("../../shared/message.js").default): void;
         sendFiles(files: File[]): Promise<void>;
         setEditable(attrs: any, send_time: string): void;
         setChatState(state: string, options?: object): any;
-        chat_state_timeout: NodeJS.Timeout;
+        chat_state_timeout: number;
         onMessageAdded(message: import("../../shared/message.js").default): void;
         onMessageUploadChanged(message: import("../../shared/message.js").default): Promise<void>;
         onMessageCorrecting(message: import("../../shared/message.js").default): void;
@@ -142,24 +153,31 @@ declare const MUC_base: {
         debouncedPruneHistory: import("lodash").DebouncedFunc<() => void>;
         isScrolledUp(): any;
         isHidden(): boolean;
-        _browserStorage?: import("@converse/skeletor").BrowserStorage;
+        "__#4@#private": any;
+        _storage?: import("@converse/skeletor").PersistentStorage;
         _changing: boolean;
         _pending: boolean | import("@converse/skeletor").ModelOptions;
         _previousAttributes?: import("@converse/skeletor").ModelAttributes;
         _url: string;
         _urlRoot: string;
+        attrs: import("@converse/skeletor").ModelAttributes;
         attributes: import("@converse/skeletor").ModelAttributes;
         changed: Partial<import("@converse/skeletor").ModelAttributes>;
         cid: string;
         collection?: import("@converse/skeletor").Collection;
         id: string | number;
+        hydrated?: Promise<void>;
         validationError: string | number | null;
-        browserStorage: import("@converse/skeletor").BrowserStorage;
+        storage: import("@converse/skeletor").PersistentStorage;
+        browserStorage: import("@converse/skeletor").PersistentStorage;
+        readonly autoSync: boolean;
+        readonly autoSyncDelay: number;
         readonly idAttribute: string;
         readonly cidPrefix: string;
         preinitialize(...args: any[]): void;
         validate(attrs: import("@converse/skeletor").ObjectWithId | Partial<import("@converse/skeletor").ModelAttributes>, options?: import("@converse/skeletor").ModelOptions): string | number | null | void;
         defaults(): Partial<import("@converse/skeletor").ModelAttributes>;
+        readonly computed: import("@converse/skeletor").ComputedProperties<any>;
         toJSON(): import("@converse/skeletor").ModelAttributes;
         sync(method: import("@converse/skeletor").SyncOperation, model: Model<any>, options: import("@converse/skeletor").Options): any;
         get<K extends string | number>(attr: K): import("@converse/skeletor").ModelAttributes[K];
@@ -188,6 +206,8 @@ declare const MUC_base: {
         parse(resp: any, options?: import("@converse/skeletor").ModelOptions): void | Partial<import("@converse/skeletor").ModelAttributes>;
         isNew(): boolean;
         isValid(options?: import("@converse/skeletor").ModelOptions): boolean;
+        subscribe(event: string, callback: import("@converse/skeletor").EventCallback, context?: unknown): () => void;
+        subscribe(callback: (model: any, changed: Partial<import("@converse/skeletor").ModelAttributes>) => void): () => void;
         _validate(attrs: import("@converse/skeletor").ObjectWithId | Partial<import("@converse/skeletor").ModelAttributes>, options?: import("@converse/skeletor").ModelOptions): boolean;
         _events?: import("@converse/skeletor").EventHandlersMap;
         _listeners?: import("@converse/skeletor").EventListenerMap;
@@ -215,25 +235,32 @@ declare const MUC_base: {
         getIdentifier(): any;
         getColor(): Promise<string>;
         getAvatarStyle(append_style?: string): Promise<string>;
-        _browserStorage?: import("@converse/skeletor").BrowserStorage;
+        "__#4@#private": any;
+        _storage?: import("@converse/skeletor").PersistentStorage;
         _changing: boolean;
         _pending: boolean | import("@converse/skeletor").ModelOptions;
         _previousAttributes?: import("@converse/skeletor").ModelAttributes;
         _url: string;
         _urlRoot: string;
+        attrs: import("@converse/skeletor").ModelAttributes;
         attributes: import("@converse/skeletor").ModelAttributes;
         changed: Partial<import("@converse/skeletor").ModelAttributes>;
         cid: string;
         collection?: import("@converse/skeletor").Collection;
         id: string | number;
+        hydrated?: Promise<void>;
         validationError: string | number | null;
-        browserStorage: import("@converse/skeletor").BrowserStorage;
+        storage: import("@converse/skeletor").PersistentStorage;
+        browserStorage: import("@converse/skeletor").PersistentStorage;
+        readonly autoSync: boolean;
+        readonly autoSyncDelay: number;
         readonly idAttribute: string;
         readonly cidPrefix: string;
         preinitialize(...args: any[]): void;
         initialize(attrs?: Partial<import("@converse/skeletor").ModelAttributes>, options?: import("@converse/skeletor").ModelOptions): void;
         validate(attrs: import("@converse/skeletor").ObjectWithId | Partial<import("@converse/skeletor").ModelAttributes>, options?: import("@converse/skeletor").ModelOptions): string | number | null | void;
         defaults(): Partial<import("@converse/skeletor").ModelAttributes>;
+        readonly computed: import("@converse/skeletor").ComputedProperties<any>;
         toJSON(): import("@converse/skeletor").ModelAttributes;
         sync(method: import("@converse/skeletor").SyncOperation, model: Model<any>, options: import("@converse/skeletor").Options): any;
         get<K extends string | number>(attr: K): import("@converse/skeletor").ModelAttributes[K];
@@ -262,6 +289,8 @@ declare const MUC_base: {
         parse(resp: any, options?: import("@converse/skeletor").ModelOptions): void | Partial<import("@converse/skeletor").ModelAttributes>;
         isNew(): boolean;
         isValid(options?: import("@converse/skeletor").ModelOptions): boolean;
+        subscribe(event: string, callback: import("@converse/skeletor").EventCallback, context?: unknown): () => void;
+        subscribe(callback: (model: any, changed: Partial<import("@converse/skeletor").ModelAttributes>) => void): () => void;
         _validate(attrs: import("@converse/skeletor").ObjectWithId | Partial<import("@converse/skeletor").ModelAttributes>, options?: import("@converse/skeletor").ModelOptions): boolean;
         _events?: import("@converse/skeletor").EventHandlersMap;
         _listeners?: import("@converse/skeletor").EventListenerMap;
@@ -318,14 +347,9 @@ declare class MUC extends MUC_base {
         time_sent: string;
         type: string;
     };
-    initialize(): Promise<void>;
-    initialized: Promise<any> & {
-        isResolved: boolean;
-        isPending: boolean;
-        isRejected: boolean;
-        resolve: (value: any) => void;
-        reject: (reason?: any) => void;
-    };
+    initialize(): void;
+    initialized: Promise<void>;
+    setup(): Promise<void>;
     debouncedRejoin: import("lodash").DebouncedFunc<() => Promise<void>>;
     isEntered(): boolean;
     /**
@@ -954,7 +978,7 @@ declare class MUC extends MUC_base {
      * was mentioned in a message.
      * @param {BaseMessage} message - The text message
      */
-    isUserMentioned(message: import("../../shared/message.js").default): any;
+    isUserMentioned(message: import("../../shared/message.js").default): boolean;
     /**
      * @param {BaseMessage} message - The text message
      */

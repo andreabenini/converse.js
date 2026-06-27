@@ -14,7 +14,7 @@ import converse from './api/public.js';
 const { dayjs, stx } = converse.env;
 
 /**
- * @extends {Model}
+ * @extends {Model<import('./types').BaseMessageAttributes>}
  */
 class BaseMessage extends ModelWithVCard(ModelWithContact(ColorAwareModel(Model))) {
     defaults() {
@@ -76,18 +76,35 @@ class BaseMessage extends ModelWithVCard(ModelWithContact(ColorAwareModel(Model)
     setTimerForEphemeralMessage() {
         if (this.ephemeral_timer) {
             clearTimeout(this.ephemeral_timer);
+            this.ephemeral_timer = null;
         }
+        if (!this.isEphemeral()) return;
+
+        // Some ephemeral messages (e.g. an OMEMO "couldn't be decrypted" notice)
+        // shouldn't start counting down until we're confident the user has seen
+        // them. For those the countdown is started externally (by the view, once
+        // the message scrolls into view) via `startEphemeralTimer`.
+        if (this.get('defer_ephemeral_timer')) return;
+
+        this.startEphemeralTimer();
+    }
+
+    /**
+     * Start the auto-destruct countdown for this ephemeral message.
+     * Safe to call more than once; the running timer is reset each time.
+     */
+    startEphemeralTimer() {
         const is_ephemeral = this.isEphemeral();
-        if (is_ephemeral) {
-            const timeout = typeof is_ephemeral === 'number' ? is_ephemeral : 10000;
-            this.ephemeral_timer = setTimeout(() => this.safeDestroy(), timeout);
-        }
+        if (!is_ephemeral) return;
+        if (this.ephemeral_timer) clearTimeout(this.ephemeral_timer);
+        const timeout = typeof is_ephemeral === 'number' ? is_ephemeral : 10000;
+        this.ephemeral_timer = setTimeout(() => this.safeDestroy(), timeout);
     }
 
     /**
      * Returns a boolean indicating whether this message is ephemeral,
      * meaning it will get automatically removed after ten seconds.
-     * @returns {boolean}
+     * @returns {boolean | number}
      */
     isEphemeral() {
         return this.get('is_ephemeral');
@@ -109,7 +126,7 @@ class BaseMessage extends ModelWithVCard(ModelWithContact(ColorAwareModel(Model)
      * @returns {boolean}
      */
     isRetracted() {
-        return this.get('retracted') || this.get('moderated') === 'retracted';
+        return !!(this.get('retracted') || this.get('moderated') === 'retracted');
     }
 
     /**
@@ -157,14 +174,32 @@ class BaseMessage extends ModelWithVCard(ModelWithContact(ColorAwareModel(Model)
     }
 
     getMessageText() {
+        let text;
         if (this.get('is_encrypted')) {
             const { __ } = _converse;
-            return this.get('plaintext') || this.get('body') || __('Undecryptable OMEMO message');
+            text = this.get('plaintext') || this.get('body') || __('Undecryptable OMEMO message');
         } else if (['groupchat', 'chat', 'normal'].includes(this.get('type'))) {
-            return this.get('body');
+            text = this.get('body');
         } else {
-            return this.get('message');
+            text = this.get('message');
         }
+        return this.stripReplyFallback(text);
+    }
+
+    /**
+     * Strip the XEP-0461 compatibility fallback — the `>`-quoted copy of the
+     * replied-to message — from `text`. Converse renders the reply context from
+     * the structured `<reply>`, so per XEP-0461 it must not also show the quoted
+     * fallback. Offsets are XEP-0426 Unicode code points, so we slice on the
+     * code-point array rather than UTF-16 units.
+     * @param {string} text
+     * @returns {string}
+     */
+    stripReplyFallback(text) {
+        const fallback = this.get('fallback')?.[Strophe.NS.REPLY];
+        if (!text || !fallback || !this.get('reply_to_id')) return text;
+        const chars = [...text];
+        return chars.slice(0, fallback.start).join('') + chars.slice(fallback.end).join('');
     }
 
     /**
@@ -198,7 +233,7 @@ class BaseMessage extends ModelWithVCard(ModelWithContact(ColorAwareModel(Model)
         // to be manually set via document.cookie, so we're leaving it out here.
         return {
             headers: headers
-                .map((h) => ({ 'name': h.getAttribute('name'), 'value': h.textContent }))
+                .map((h) => ({ name: h.getAttribute('name'), value: h.textContent }))
                 .filter((h) => ['Authorization', 'Expires'].includes(h.name)),
         };
     }

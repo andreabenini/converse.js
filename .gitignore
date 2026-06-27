@@ -1,6 +1,9 @@
 # Distribution directory
 dist
 
+# Local working docs / implementation briefs
+briefs/
+
 # TLS certificates
 certs
 
@@ -73,3 +76,7 @@ node_modules
 .agents
 
 Session.vim
+
+# Vitest browser-mode generated artifacts
+.vitest-attachments/
+**/__screenshots__/

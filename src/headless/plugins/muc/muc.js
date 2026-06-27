@@ -99,8 +99,12 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
         };
     }
 
-    async initialize() {
+    initialize() {
         super.initialize();
+        this.initialized = this.setup();
+    }
+
+    async setup() {
         this.on('change:closed', () => {
             if (!this.get('closed')) {
                 this.initialize();
@@ -108,7 +112,6 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
         });
         if (this.get('closed')) return;
 
-        this.initialized = getOpenPromise();
         this.debouncedRejoin = debounce(this.rejoin, 250);
 
         this.initOccupants();
@@ -140,7 +143,6 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
          * @example _converse.api.listen.on('chatRoomInitialized', model => { ... });
          */
         await api.trigger('chatRoomInitialized', this, { synchronous: true });
-        this.initialized.resolve();
     }
 
     isEntered() {
@@ -450,22 +452,22 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
                 }, {}),
             ),
         );
-        this.features.browserStorage = createStore(id, 'session');
-        this.features.listenTo(_converse, 'beforeLogout', () => this.features.browserStorage.flush());
+        this.features.storage = createStore(id, 'session');
+        this.features.listenTo(_converse, 'beforeLogout', () => this.features.storage.flush());
 
         id = `converse.muc-config-${bare_jid}-${this.get('jid')}`;
         this.config = new Model(/** @type {import('./types').MUCConfigAttributes} */ ({ id }));
-        this.config.browserStorage = createStore(id, 'session');
-        this.config.listenTo(_converse, 'beforeLogout', () => this.config.browserStorage.flush());
+        this.config.storage = createStore(id, 'session');
+        this.config.listenTo(_converse, 'beforeLogout', () => this.config.storage.flush());
     }
 
     initOccupants() {
         this.occupants = new _converse.exports.MUCOccupants();
         const bare_jid = _converse.session.get('bare_jid');
         const id = `converse.occupants-${bare_jid}${this.get('jid')}`;
-        this.occupants.browserStorage = createStore(id, 'session');
+        this.occupants.storage = createStore(id, 'session');
         this.occupants.chatroom = this;
-        this.occupants.listenTo(_converse, 'beforeLogout', () => this.occupants.browserStorage.flush());
+        this.occupants.listenTo(_converse, 'beforeLogout', () => this.occupants.storage.flush());
     }
 
     fetchOccupants() {
@@ -1182,6 +1184,9 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
             await u.getMediaURLsMetadata(text),
         );
 
+        // Add XEP-0461 reply fallback before the hook
+        attrs = this.addReplyFallback(attrs);
+
         // Clear reply state after capturing it
         if (reply_to_id) {
             this.save({ reply_to_id: undefined, reply_to: undefined });
@@ -1213,6 +1218,7 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
      */
     sendChatState() {
         if (
+            this.get('omemo_active') ||
             !api.settings.get('send_chat_state_notifications') ||
             !this.get('chat_state') ||
             !this.isEntered() ||
@@ -1220,10 +1226,12 @@ class MUC extends ModelWithVCard(ModelWithMessages(ColorAwareModel(ChatBoxBase))
         ) {
             return;
         }
+
         const allowed = api.settings.get('send_chat_state_notifications');
         if (Array.isArray(allowed) && !allowed.includes(this.get('chat_state'))) {
             return;
         }
+
         const chat_state = this.get('chat_state');
         if (chat_state === GONE) return; // <gone/> is not applicable within MUC context
 

@@ -1,7 +1,7 @@
 import { Builder } from 'strophe.js';
 import { Collection, Model } from '@converse/skeletor';
 import { getOpenPromise } from '@converse/openpromise';
-import BaseMessage from './message.js';
+import BaseMessage from './message';
 export type MessageAndStanza = {
     message: BaseMessage;
     stanza: Builder;
@@ -10,12 +10,21 @@ export type ReplaceableOpenPromise = ReturnType<typeof getOpenPromise> & {
     replace?: boolean;
 };
 export type ModelAttributes = Record<string, any>;
+export type JIDModelAttributes = ModelAttributes & {
+    jid: string;
+};
 export interface ModelOptions {
     collection?: Collection;
     parse?: boolean;
     unset?: boolean;
     silent?: boolean;
 }
+export type RSMQueryOptions = {
+    after?: string;
+    before?: string;
+    index?: number;
+    max?: number;
+};
 export type RSMResult = {
     count?: string;
     first?: string;
@@ -131,7 +140,7 @@ export type MessageErrorAttributes = {
     error_text: string;
     error_type: string;
 };
-export type MessageStanzaTypes = 'chat' | 'headline' | 'groupchat' | 'error';
+export type MessageStanzaTypes = 'chat' | 'normal' | 'headline' | 'groupchat' | 'error';
 export type MessageAttributes = EncryptionAttrs & MessageErrorAttributes & {
     body: string;
     chat_state: string;
@@ -165,10 +174,14 @@ export type MessageAttributes = EncryptionAttrs & MessageErrorAttributes & {
     plaintext: string;
     receipt_id: string;
     received: string;
-    references: Array<Reference>;
+    references: Array<XEP372Reference>;
     replace_id: string;
     reply_to_id: string;
     reply_to: string;
+    fallback: Record<string, {
+        start: number;
+        end: number;
+    } | null>;
     retracted: string;
     retracted_id: string;
     sender: 'me' | 'them';
@@ -193,5 +206,8 @@ export type StorageKeys = {
     fetched_flag_key: string;
 };
 export type ChatBoxOrMUC = import('../plugins/chat/model.js').default | import('../plugins/muc/muc.js').default;
+export type BaseMessageAttributes = ModelAttributes & Omit<MessageAttributes, 'type'> & {
+    type: MessageStanzaTypes | 'info';
+};
 export {};
 //# sourceMappingURL=types.d.ts.map

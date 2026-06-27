@@ -4,7 +4,7 @@
  */
 import { _converse, api, converse, log, u } from '@converse/headless';
 import { __ } from 'i18n';
-
+import { buildReactionFallbackBody } from './fallback.js';
 const { Strophe, sizzle, stx } = converse.env;
 
 /**
@@ -53,10 +53,16 @@ export function updateMessageReactions(message, emojis) {
 /**
  * Send a XEP-0444 reaction stanza and optimistically update the message.
  *
+ * The message's `reactions` are updated optimistically (so the UI is
+ * responsive); for the OMEMO-encrypted path, if the send fails the optimistic
+ * update is rolled back (`api.omemo.send` has already surfaced the error to the
+ * user). The cleartext path stays fire-and-forget — a bounced reaction stanza is
+ * rolled back later via the `getErrorAttributesForMessage` hook.
+ *
  * @param {BaseMessage} message - The message model to update
  * @param {string} emoji - The selected emoji or shortname
  */
-export function sendReaction(message, emoji) {
+export async function sendReaction(message, emoji) {
     if (!emoji) return;
 
     /** @type {ChatBoxOrMUC} */
@@ -82,7 +88,9 @@ export function sendReaction(message, emoji) {
 
     const my_jid = u.reactions.getOwnReactionJID(chatbox);
     const current_reactions = message.get('reactions') || {};
-    const my_reactions = new Set(current_reactions[my_jid] || []);
+    // Snapshot our current reaction set so we can roll back if the send fails.
+    const previous_emojis = [...(current_reactions[my_jid] || [])];
+    const my_reactions = new Set(previous_emojis);
 
     if (my_reactions.has(emoji_unicode)) {
         my_reactions.delete(emoji_unicode);
@@ -90,22 +98,70 @@ export function sendReaction(message, emoji) {
         my_reactions.add(emoji_unicode);
     }
 
-    api.send(stx`
-        <message to="${to_jid}" type="${type}" id="${u.getUniqueId('reaction')}" xmlns="jabber:client">
-            <reactions xmlns="${Strophe.NS.REACTIONS}" id="${msg_id}">
-                ${Array.from(my_reactions).map((reaction) => stx`<reaction>${reaction}</reaction>`)}
-            </reactions>
-            <store xmlns="${Strophe.NS.HINTS}"/>
-        </message>
-    `);
+    const new_emojis = Array.from(my_reactions);
 
-    updateMessageReactions(message, Array.from(my_reactions));
+    // Optimistic update — keeps the UI responsive while the send is in flight.
+    updateMessageReactions(message, new_emojis);
 
     // When adding a reaction (not removing), bump it to the front of the popular
     // emojis list and schedule a debounced publish to the user's PEP node.
     if (my_reactions.has(emoji_unicode)) {
         _converse.state.popular_emojis?.recordUsage([emoji_unicode]);
     }
+
+    // Reactions are body-coupled metadata: when the chat is OMEMO-encrypted we
+    // must not leak them in cleartext, so route them through OMEMO. Otherwise
+    // send the plain XEP-0444 stanza.
+    if (chatbox.get('omemo_active')) {
+        try {
+            await sendEncryptedReaction(chatbox, message, msg_id, new_emojis);
+        } catch (e) {
+            // api.omemo.send already alerted the user; undo the optimistic update.
+            log.error(e);
+            updateMessageReactions(message, previous_emojis);
+        }
+    } else {
+        api.send(stx`
+            <message to="${to_jid}" type="${type}" id="${u.getUniqueId('reaction')}" xmlns="jabber:client">
+                <reactions xmlns="${Strophe.NS.REACTIONS}" id="${msg_id}">
+                    ${new_emojis.map((reaction) => stx`<reaction>${reaction}</reaction>`)}
+                </reactions>
+                <store xmlns="${Strophe.NS.HINTS}"/>
+            </message>
+        `);
+    }
+}
+
+export { buildReactionFallbackBody };
+
+/**
+ * Send a XEP-0444 reaction encrypted via OMEMO.
+ *
+ * The structured `<reactions>` element travels encrypted inside the omemo:2 SCE
+ * `<content>`; the body — a quote of the reacted-to message plus the emoji(s)
+ * (see {@link buildReactionFallbackBody}) — doubles as the fallback for
+ * legacy-OMEMO recipients, whose payload can't carry structured metadata. A
+ * XEP-0428 `<fallback for="urn:xmpp:reactions:0">` marks the whole body so
+ * XEP-0444-aware clients strip it and render the reaction natively instead.
+ *
+ * @param {ChatBoxOrMUC} chatbox
+ * @param {BaseMessage} message - the message being reacted to (for its text)
+ * @param {string} msg_id - the id of the message being reacted to
+ * @param {string[]} emojis - the user's current reaction set (empty on retraction)
+ * @returns {Promise<void>} rejects if the encrypted send fails
+ */
+function sendEncryptedReaction(chatbox, message, msg_id, emojis) {
+    const extensions = [
+        stx`<reactions xmlns="${Strophe.NS.REACTIONS}" id="${msg_id}">
+            ${emojis.map((reaction) => stx`<reaction>${reaction}</reaction>`)}
+        </reactions>`,
+    ];
+    const body = buildReactionFallbackBody(message.getMessageText(), emojis);
+    // A retraction (empty set) has no body, so there's nothing to mark.
+    if (body) {
+        extensions.push(stx`<fallback xmlns="${Strophe.NS.FALLBACK}" for="${Strophe.NS.REACTIONS}"><body/></fallback>`);
+    }
+    return api.omemo.send(chatbox, body, extensions);
 }
 
 /**

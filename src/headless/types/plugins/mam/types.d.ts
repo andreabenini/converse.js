@@ -1,14 +1,10 @@
+import { RSMQueryOptions } from 'shared/types';
 import { RSM } from '../../shared/rsm';
+import BaseMessage from '../../shared/message';
 export type MAMQueryOptions = {
     end?: string;
     start?: string;
     with?: string;
-};
-type RSMQueryOptions = {
-    after?: string;
-    before?: string;
-    index?: number;
-    max?: number;
 };
 export type FetchArchivedMessagesOptions = {
     mam?: MAMQueryOptions;
@@ -18,10 +14,9 @@ export type ArchiveQueryOptions = FetchArchivedMessagesOptions & {
     is_groupchat?: boolean;
 };
 export type MAMQueryResult = {
-    messages: any[];
+    messages: BaseMessage[];
     rsm?: RSM;
     complete?: boolean;
     error?: Error;
 };
-export {};
 //# sourceMappingURL=types.d.ts.map

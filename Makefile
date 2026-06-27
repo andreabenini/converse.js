@@ -1,7 +1,6 @@
 # You can set these variables from the command line.
 BOOTSTRAP			= ./node_modules/
 BUILDDIR			= ./docs
-KARMA				?= ./node_modules/.bin/karma
 CLEANCSS			?= ./node_modules/clean-css-cli/bin/cleancss
 HTTPSERVE_PORT		?= 8008
 HTTPS_SERVE_PORT	?= 8443
@@ -18,7 +17,12 @@ XGETTEXT			= xgettext
 
 
 # Internal variables.
-VERSION_FORMAT	= [0-9]+\.[0-9]+\.[0-9]+
+# Matches X.Y.Z and pre-releases like X.Y.Z-beta.1 / X.Y.Z-rc.2 / X.Y.Z-alpha.3,
+# so the version-string rewrites stay reversible across successive pre-release cuts.
+VERSION_FORMAT	= [0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?
+# npm dist-tag used by `make publish`. Override for pre-releases, e.g. NPM_TAG=beta,
+# to keep the `latest` tag (what plain `npm install` resolves to) on the stable line.
+NPM_TAG	?= latest
 
 .PHONY: all
 all: node_modules dist media
@@ -64,7 +68,7 @@ certs:
 ########################################################################
 ## Translation machinery
 
-GETTEXT = $(XGETTEXT) --from-code=UTF-8 --language=JavaScript --keyword=__ --keyword=___ --keyword=i18n_ --force-po --output=src/i18n/converse.pot --package-name=Converse.js --copyright-holder="Jan-Carel Brand" --package-version=13.0.0 dist/converse-no-dependencies.js -c
+GETTEXT = $(XGETTEXT) --from-code=UTF-8 --language=JavaScript --keyword=__ --keyword=___ --keyword=i18n_ --force-po --output=src/i18n/converse.pot --package-name=Converse.js --copyright-holder="Jan-Carel Brand" --package-version=14.0.0 dist/converse-no-dependencies.js -c
 
 .PHONY: pot
 pot: dist/converse-no-dependencies.js
@@ -104,8 +108,8 @@ release-checkout:
 .PHONY: publish
 publish:
 	make release-checkout
-	cd release-$(BRANCH) && npm pack && npm publish
-	cd release-$(BRANCH)/src/headless && npm pack && npm publish
+	cd release-$(BRANCH) && npm pack && npm publish --tag $(NPM_TAG)
+	cd release-$(BRANCH)/src/headless && npm pack && npm publish --tag $(NPM_TAG)
 	find ./release-$(BRANCH)/ -name "converse.js-*.tgz" -exec mv {} . \;
 	find ./release-$(BRANCH)/src/headless -name "converse-headless-*.tgz" -exec mv {} . \;
 	rm -rf release-$(BRANCH)
@@ -171,10 +175,10 @@ media:
 dist/converse-no-dependencies.js: src rspack/rspack.common.js rspack/rspack.nodeps.js @converse/headless node_modules
 	npm run nodeps
 
-dist/converse.js:: node_modules
+dist/converse.js:: src rspack/rspack.build.js rspack/rspack.common.js node_modules @converse/headless
 	npm run build
 
-dist/converse.css:: node_modules
+dist/converse.css:: src rspack/rspack.build.js rspack/rspack.common.js node_modules @converse/headless
 	npm run build
 
 dist/website.css:: node_modules src/shared/styles/website.scss

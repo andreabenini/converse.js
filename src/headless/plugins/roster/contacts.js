@@ -22,15 +22,13 @@ class RosterContacts extends Collection {
     initialize() {
         const bare_jid = _converse.session.get('bare_jid');
         const id = `roster.state-${bare_jid}-${this.get('jid')}`;
-        this.state = new Model(
-            /** @type {import('./types').ContactsStateAttrs} */ ({ id, 'collapsed_groups': [] })
-        );
+        this.state = new Model(/** @type {import('./types').ContactsStateAttrs} */ ({ id, 'collapsed_groups': [] }));
         initStorage(this.state, id);
         this.state.fetch();
         api.listen.on(
             'chatBoxClosed',
             /** @param {import('../../shared/chatbox').default} model */
-            (model) => this.removeUnsavedContact(model)
+            (model) => this.removeUnsavedContact(model),
         );
     }
 
@@ -66,7 +64,7 @@ class RosterContacts extends Collection {
             },
             Strophe.NS.ROSTER,
             'iq',
-            'set'
+            'set',
         );
     }
 
@@ -89,7 +87,7 @@ class RosterContacts extends Collection {
             },
             Strophe.NS.ROSTERX,
             'message',
-            null
+            null,
         );
     }
 
@@ -208,38 +206,37 @@ class RosterContacts extends Collection {
                 },
                 ...attributes,
             },
-            { sort: false }
+            { sort: false },
         );
 
-        if (contact && subscribe) contact.subscribe(message);
+        if (contact && subscribe) contact.subscribeToPresence(message);
 
         return contact;
     }
 
     /**
-     * @param {string} bare_jid
-     * @param {Element} presence
+     * @param {import('./types').PresenceAttributes} attrs
      * @param {string} [auth_msg=''] - Optional message to be included in the
      *   authorization of the contacts subscription request.
      * @param {string} [sub_msg=''] - Optional message to be included in our
      *   reciprocal subscription request.
      */
-    async subscribeBack(bare_jid, presence, auth_msg = '', sub_msg = '') {
+    async subscribeBack(attrs, auth_msg = '', sub_msg = '') {
+        const bare_jid = attrs.bare_jid;
         const contact = this.get(bare_jid);
         const { RosterContact } = _converse.exports;
         if (contact instanceof RosterContact) {
-            contact.authorize().subscribe();
+            contact.authorize().subscribeToPresence();
         } else {
             // Can happen when a subscription is retried or roster was deleted
-            const nickname = sizzle(`nick[xmlns="${Strophe.NS.NICK}"]`, presence).pop()?.textContent || undefined;
             const contact = await this.addContact({
                 jid: bare_jid,
-                name: nickname,
+                name: attrs.nickname,
                 groups: [],
                 subscription: 'from',
             });
             if (contact instanceof RosterContact) {
-                contact.authorize(auth_msg).subscribe(sub_msg);
+                contact.authorize(auth_msg).subscribeToPresence(sub_msg);
             }
         }
     }
@@ -361,7 +358,13 @@ class RosterContacts extends Collection {
 
         const ask = item.getAttribute('ask');
         const nickname = item.getAttribute('name');
-        const groups = [...new Set(sizzle('group', item).map((e) => e.textContent?.trim()).filter((n) => n))];
+        const groups = [
+            ...new Set(
+                sizzle('group', item)
+                    .map((e) => e.textContent?.trim())
+                    .filter((n) => n),
+            ),
+        ];
 
         if (contact) {
             // We only find out about requesting contacts via the
@@ -374,17 +377,15 @@ class RosterContacts extends Collection {
     }
 
     /**
-     * @param {Element} presence
+     * @param {import('./types').PresenceAttributes} attrs
      */
-    createRequestingContact(presence) {
-        const jid = Strophe.getBareJidFromJid(presence.getAttribute('from'));
-        const nickname = sizzle(`nick[xmlns="${Strophe.NS.NICK}"]`, presence).pop()?.textContent || null;
+    createRequestingContact(attrs) {
         const user_data = {
-            jid,
+            jid: attrs.bare_jid,
             subscription: 'none',
             ask: null,
             requesting: true,
-            nickname: nickname,
+            nickname: attrs.nickname,
         };
         /**
          * Triggered when someone has requested to subscribe to your presence (i.e. to be your contact).
@@ -396,20 +397,20 @@ class RosterContacts extends Collection {
     }
 
     /**
-     * @param {Element} presence
+     * @param {import('./types').PresenceAttributes} attrs
      */
-    handleIncomingSubscription(presence) {
-        const jid = presence.getAttribute('from'),
-            bare_jid = Strophe.getBareJidFromJid(jid),
-            contact = this.get(bare_jid);
+    handleIncomingSubscription(attrs) {
+        const from = attrs.from;
+        const bare_jid = attrs.bare_jid;
+        const contact = this.get(bare_jid);
 
         if (!api.settings.get('allow_contact_requests')) {
             const { __ } = _converse;
-            rejectPresenceSubscription(jid, __('This client does not allow presence subscriptions'));
+            rejectPresenceSubscription(from, __('This client does not allow presence subscriptions'));
         }
         if (api.settings.get('auto_subscribe')) {
             if (!contact || contact.get('subscription') !== 'to') {
-                this.subscribeBack(bare_jid, presence);
+                this.subscribeBack(attrs);
             } else {
                 contact.authorize();
             }
@@ -421,22 +422,20 @@ class RosterContacts extends Collection {
                     contact.authorize();
                 }
             } else {
-                this.createRequestingContact(presence);
+                this.createRequestingContact(attrs);
             }
         }
     }
 
     /**
-     * @param {Element} stanza
+     * @param {import('./types').PresenceAttributes} attrs
      */
-    handleOwnPresence(stanza) {
-        const jid = stanza.getAttribute('from');
-        const resource = Strophe.getResourceFromJid(jid);
-        const presence_type = stanza.getAttribute('type');
+    handleOwnPresence(attrs) {
+        const { from, resource, show, type: presence_type } = attrs;
         const { profile } = _converse.state;
 
         if (
-            api.connection.get().jid !== jid &&
+            api.connection.get().jid !== from &&
             presence_type !== 'unavailable' &&
             (api.settings.get('synchronize_availability') === true ||
                 api.settings.get('synchronize_availability') === resource)
@@ -444,13 +443,9 @@ class RosterContacts extends Collection {
             // Another resource has changed its status and
             // synchronize_availability option set to update,
             // we'll update ours as well.
-            const show = stanza.querySelector('show')?.textContent;
-            profile.save({ show, presence: 'online' }, { silent: true });
-
-            const status_message = stanza.querySelector('status')?.textContent;
-            if (status_message) profile.save({ status_message });
+            profile.save({ show, presence: 'online', status_message: attrs.status }, { silent: true });
         }
-        if (_converse.session.get('jid') === jid && presence_type === 'unavailable') {
+        if (_converse.session.get('jid') === from && presence_type === 'unavailable') {
             // XXX: We've received an "unavailable" presence from our
             // own resource. Apparently this happens due to a
             // Prosody bug, whereby we send an IQ stanza to remove
@@ -470,25 +465,21 @@ class RosterContacts extends Collection {
     }
 
     /**
-     * @param {Element} presence
+     * @param {import('./types').PresenceAttributes} attrs
      */
-    presenceHandler(presence) {
-        const presence_type = presence.getAttribute('type');
-        if (presence_type === 'error') return true;
+    presenceHandler(attrs) {
+        if (attrs.type === 'error') return true;
+        if (attrs.is_muc) return true;
 
-        const jid = presence.getAttribute('from');
-        const bare_jid = Strophe.getBareJidFromJid(jid);
+        const { bare_jid, type: presence_type } = attrs;
+
         if (this.isSelf(bare_jid)) {
-            return this.handleOwnPresence(presence);
-        } else if (sizzle(`query[xmlns="${Strophe.NS.MUC}"]`, presence).length) {
-            return; // Ignore MUC
+            return this.handleOwnPresence(attrs);
         }
 
         const contact = this.get(bare_jid);
-
-        if (contact) {
-            const status = presence.querySelector('status')?.textContent;
-            if (contact.get('status') !== status) contact.save({ status });
+        if (contact && contact.get('status') !== attrs.status) {
+            contact.save({ status: attrs.status });
         }
 
         if (presence_type === 'subscribed' && contact) {
@@ -498,13 +489,12 @@ class RosterContacts extends Collection {
         } else if (presence_type === 'unsubscribe') {
             return;
         } else if (presence_type === 'subscribe') {
-            this.handleIncomingSubscription(presence);
+            this.handleIncomingSubscription(attrs);
         } else if (presence_type === 'unavailable' && contact) {
-            const resource = Strophe.getResourceFromJid(jid);
-            contact.presence.removeResource(resource);
+            contact.presence.removeResource(attrs);
         } else if (contact) {
-            // presence_type is undefined
-            contact.presence.addResource(presence);
+            // presence_type is undefined, i.e. an "available" presence
+            contact.presence.addResource(attrs);
         }
     }
 }

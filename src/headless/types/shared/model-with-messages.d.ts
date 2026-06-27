@@ -74,6 +74,21 @@ export default function ModelWithMessages<T extends import("./types").ModelExten
          */
         getOutgoingMessageAttributes(_attrs?: import("./types").MessageAttributes): Promise<import("./types").MessageAttributes>;
         /**
+         * Look up the message being replied to (XEP-0461). For groupchat the
+         * `reply_to_id` is a XEP-0359 stanza_id; otherwise it's the origin_id or msgid.
+         * @param {string} reply_to_id
+         * @returns {BaseMessage|undefined}
+         */
+        getReferencedMessage(reply_to_id: string): import("./message").default | undefined;
+        /**
+         * XEP-0461 compatibility fallback. When sending a reply, prepend a
+         * XEP-0393 `>`-quoted copy of the replied-to text to the body, so clients
+         * that don't support structured replies still see the context.
+         * @param {MessageAttributes} attrs
+         * @returns {MessageAttributes}
+         */
+        addReplyFallback(attrs: import("./types").MessageAttributes): import("./types").MessageAttributes;
+        /**
          * Responsible for sending off a text message inside an ongoing chat conversation.
          * @param {Object} [attrs] - A map of attributes to be saved on the message
          * @returns {Promise<BaseMessage>}
@@ -111,7 +126,7 @@ export default function ModelWithMessages<T extends import("./types").ModelExten
          * @param {object} [options]
          */
         setChatState(state: string, options?: object): any;
-        chat_state_timeout: NodeJS.Timeout;
+        chat_state_timeout: number;
         /**
          * @param {BaseMessage} message
          */
@@ -248,24 +263,31 @@ export default function ModelWithMessages<T extends import("./types").ModelExten
          * @returns {boolean}
          */
         isHidden(): boolean;
-        _browserStorage?: import("@converse/skeletor").BrowserStorage;
+        "__#4@#private": any;
+        _storage?: import("@converse/skeletor").PersistentStorage;
         _changing: boolean;
         _pending: boolean | import("@converse/skeletor").ModelOptions;
         _previousAttributes?: import("@converse/skeletor").ModelAttributes;
         _url: string;
         _urlRoot: string;
+        attrs: import("@converse/skeletor").ModelAttributes;
         attributes: import("@converse/skeletor").ModelAttributes;
         changed: Partial<import("@converse/skeletor").ModelAttributes>;
         cid: string;
         collection?: import("@converse/skeletor").Collection;
         id: string | number;
+        hydrated?: Promise<void>;
         validationError: string | number | null;
-        browserStorage: import("@converse/skeletor").BrowserStorage;
+        storage: import("@converse/skeletor").PersistentStorage;
+        browserStorage: import("@converse/skeletor").PersistentStorage;
+        readonly autoSync: boolean;
+        readonly autoSyncDelay: number;
         readonly idAttribute: string;
         readonly cidPrefix: string;
         preinitialize(...args: any[]): void;
         validate(attrs: import("@converse/skeletor").ObjectWithId | Partial<import("@converse/skeletor").ModelAttributes>, options?: import("@converse/skeletor").ModelOptions): string | number | null | void;
         defaults(): Partial<import("@converse/skeletor").ModelAttributes>;
+        readonly computed: import("@converse/skeletor").ComputedProperties<any>;
         toJSON(): import("@converse/skeletor").ModelAttributes;
         sync(method: import("@converse/skeletor").SyncOperation, model: Model<any>, options: import("@converse/skeletor").Options): any;
         get<K extends string | number>(attr: K): import("@converse/skeletor").ModelAttributes[K];
@@ -294,6 +316,8 @@ export default function ModelWithMessages<T extends import("./types").ModelExten
         parse(resp: any, options?: import("@converse/skeletor").ModelOptions): void | Partial<import("@converse/skeletor").ModelAttributes>;
         isNew(): boolean;
         isValid(options?: import("@converse/skeletor").ModelOptions): boolean;
+        subscribe(event: string, callback: import("@converse/skeletor").EventCallback, context?: unknown): () => void;
+        subscribe(callback: (model: any, changed: Partial<import("@converse/skeletor").ModelAttributes>) => void): () => void;
         _validate(attrs: import("@converse/skeletor").ObjectWithId | Partial<import("@converse/skeletor").ModelAttributes>, options?: import("@converse/skeletor").ModelOptions): boolean;
         _events?: import("@converse/skeletor").EventHandlersMap;
         _listeners?: import("@converse/skeletor").EventListenerMap;

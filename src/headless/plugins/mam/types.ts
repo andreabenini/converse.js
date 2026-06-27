@@ -1,4 +1,6 @@
+import { RSMQueryOptions } from 'shared/types';
 import { RSM } from '../../shared/rsm';
+import BaseMessage from '../../shared/message';
 
 export type MAMQueryOptions = {
     end?: string; // A date string in ISO-8601 format, before which messages should be returned.
@@ -9,18 +11,9 @@ export type MAMQueryOptions = {
     // addresses of each message.
 };
 
-// XEP-0059 RSM Attributes that can be used to filter query results
-// Specifying both "after" and "before" is undefined behavior.
-type RSMQueryOptions = {
-    after?: string; // The XEP-0359 stanza ID of a message after which messages should be returned. Implies forward paging.
-    before?: string; // The XEP-0359 stanza ID of a message before which messages should be returned. Implies backward paging.
-    index?: number; // The index of the results page to return.
-    max?: number; // The maximum number of items to return.
-};
-
 export type FetchArchivedMessagesOptions = {
     mam?: MAMQueryOptions;
-    rsm?: RSMQueryOptions
+    rsm?: RSMQueryOptions;
 };
 
 // The options that can be passed in to the api.archive.query method
@@ -29,7 +22,7 @@ export type ArchiveQueryOptions = FetchArchivedMessagesOptions & {
 };
 
 export type MAMQueryResult = {
-    messages: any[];
+    messages: BaseMessage[];
     rsm?: RSM; // You can call `next()` or `previous()` on this,
     // to get the RSM query parameters for the next or previous page in the result set.
     complete?: boolean;

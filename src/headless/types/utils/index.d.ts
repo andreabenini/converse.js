@@ -8,7 +8,7 @@ export function isEmptyMessage(attrs: any): boolean;
  * inserted before the mentioned nicknames.
  * @param {import('../shared/message').default} message
  */
-export function prefixMentions(message: import("../shared/message").default): any;
+export function prefixMentions(message: import("../shared/message").default): string;
 export function getRandomInt(max: any): number;
 /**
  * @param {string} [suffix]
@@ -44,7 +44,8 @@ declare const _default: {
     getLongestSubstring(string: string, candidates: string[]): string;
     isString(s: any): boolean;
     getDefaultStorageType(): import("./types").StorageType;
-    createStore(id: string, type: import("./types").StorageType): import("@converse/skeletor").BrowserStorage;
+    isPersistentStorageAvailable(): boolean;
+    createStore(id: string, type: import("./types").StorageType): import("@converse/skeletor").PersistentStorage;
     initStorage(model: import("./types").StorageModel, id: string, type?: import("./types").StorageType): void;
     isErrorStanza(stanza: Element): boolean;
     isForbiddenError(stanza: Element): boolean;
@@ -69,7 +70,7 @@ declare const _default: {
     isFunction(val: unknown): boolean;
     isUndefined(x: unknown): boolean;
     isErrorObject(o: unknown): boolean;
-    isPersistableModel(model: import("@converse/skeletor").Model): import("@converse/skeletor").BrowserStorage;
+    isPersistableModel(model: import("@converse/skeletor").Model): import("@converse/skeletor").PersistentStorage;
     isEmpty(obj: any | undefined | null): boolean;
     isValidJID(jid?: string | null): boolean;
     isValidMUCJID(jid: string): boolean;

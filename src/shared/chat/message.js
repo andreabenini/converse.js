@@ -116,7 +116,33 @@ export default class Message extends ObservableElement {
     /** @param {MouseEvent} ev */
     onImgClick(ev) {
         ev.preventDefault();
-        api.modal.show('converse-image-modal', { src: /** @type {HTMLImageElement} */(ev.target).src }, ev);
+        const img = /** @type {HTMLImageElement} */ (ev.target);
+        api.modal.show('converse-image-modal', { src: img.src, filename: img.dataset.filename }, ev);
+    }
+
+    /**
+     * @param {import("lit").PropertyValues} changed
+     */
+    firstUpdated(changed) {
+        // Messages whose ephemeral auto-removal is deferred (e.g. an OMEMO
+        // "couldn't be decrypted" notice) should only be considered "seen" once
+        // the message is in view AND the tab is focused, so we're confident the
+        // user actually saw it before it's removed.
+        this.observableRequireFocus = !!this.model?.get('defer_ephemeral_timer');
+        super.firstUpdated(changed);
+    }
+
+    /**
+     * Called (once) when this message has been seen by the user. For ephemeral
+     * messages whose deletion was deferred until then, this is where we start
+     * the auto-destruct countdown.
+     * @param {IntersectionObserverEntry} entry
+     */
+    onVisibilityChanged(entry) {
+        super.onVisibilityChanged(entry);
+        if (this.model?.get('defer_ephemeral_timer')) {
+            this.model.startEphemeralTimer();
+        }
     }
 
     onUnfurlAnimationEnd() {

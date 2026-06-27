@@ -1,7 +1,7 @@
 import { Builder } from 'strophe.js';
 import { Collection, Model } from '@converse/skeletor';
 import { getOpenPromise } from '@converse/openpromise';
-import BaseMessage from './message.js';
+import BaseMessage from './message';
 
 export type MessageAndStanza = {
     message: BaseMessage; // The message object from which the stanza is created and which gets persisted to storage.
@@ -14,12 +14,28 @@ export type ReplaceableOpenPromise = ReturnType<typeof getOpenPromise> & {
 
 export type ModelAttributes = Record<string, any>;
 
+export type JIDModelAttributes = ModelAttributes & {
+    jid: string;
+};
+
 export interface ModelOptions {
     collection?: Collection;
     parse?: boolean;
     unset?: boolean;
     silent?: boolean;
 }
+
+// XEP-0059 Result Set Management
+// ------------------------------
+
+// XEP-0059 RSM Attributes that can be used to filter query results
+// Specifying both "after" and "before" is undefined behavior.
+export type RSMQueryOptions = {
+    after?: string; // The XEP-0359 stanza ID *after* which messages should be returned. Implies forward paging.
+    before?: string; // The XEP-0359 stanza ID *before* which messages should be returned. Implies backward paging.
+    index?: number; // The index of the results page to return.
+    max?: number; // The maximum number of items to return.
+};
 
 export type RSMResult = {
     count?: string;
@@ -193,7 +209,7 @@ export type MessageErrorAttributes = {
     error_type: string; // The type of error received from the server
 };
 
-export type MessageStanzaTypes = 'chat' | 'headline' | 'groupchat' | 'error';
+export type MessageStanzaTypes = 'chat' | 'normal' | 'headline' | 'groupchat' | 'error';
 
 export type MessageAttributes = EncryptionAttrs &
     MessageErrorAttributes & {
@@ -229,10 +245,11 @@ export type MessageAttributes = EncryptionAttrs &
         plaintext: string; // The decrypted text of this message, in case it was encrypted.
         receipt_id: string; // The `id` attribute of a XEP-0184 <receipt> element
         received: string; // An ISO8601 string recording the time that the message was received
-        references: Array<Reference>; // A list of objects representing XEP-0372 references
+        references: Array<XEP372Reference>; // A list of objects representing XEP-0372 references
         replace_id: string; // The `id` attribute of a XEP-0308 <replace> element
         reply_to_id: string; // The `id` attribute of a XEP-0461 <reply> element (message being replied to)
         reply_to: string; // The `to` attribute of a XEP-0461 <reply> element (JID of the original message sender)
+        fallback: Record<string, { start: number; end: number } | null>; // XEP-0428 fallback map keyed by feature namespace; ranged ({start,end}) for XEP-0461 replies, null for whole-body fallbacks (e.g. XEP-0444 reactions)
         retracted: string; // An ISO8601 string recording the time that the message was retracted
         retracted_id: string; // The `id` attribute of a XEP-424 <retracted> element
         sender: 'me' | 'them'; // Whether the message was sent by the current user or someone else
@@ -262,3 +279,8 @@ export type StorageKeys = {
 
 // Common chatbox types
 export type ChatBoxOrMUC = import('../plugins/chat/model.js').default | import('../plugins/muc/muc.js').default;
+
+export type BaseMessageAttributes = ModelAttributes &
+    Omit<MessageAttributes, 'type'> & {
+        type: MessageStanzaTypes | 'info';
+    };

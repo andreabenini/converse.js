@@ -8,7 +8,7 @@
 import { html } from 'lit';
 import { __ } from 'i18n';
 import { until } from 'lit/directives/until.js';
-import { _converse, api, log, u, constants } from '@converse/headless';
+import { _converse, api, converse, log, u, constants } from '@converse/headless';
 import tplAudio from 'shared/texture/templates/audio.js';
 import tplFile from 'templates/file.js';
 import tplImage from 'shared/texture/templates/image.js';
@@ -16,6 +16,7 @@ import tplVideo from 'shared/texture/templates/video.js';
 import { MIMETYPES_MAP } from 'utils/file.js';
 import { getFileName } from 'utils/html.js';
 
+const { Strophe } = converse.env;
 const { CHATROOMS_TYPE } = constants;
 const { hexToArrayBuffer, isAudioURL, isError, isImageURL, isVideoURL } = u;
 
@@ -99,7 +100,8 @@ async function getAndDecryptFile(url_text) {
         log.error(e);
         return null;
     }
-    const [filename, extension] = url.pathname.split('/').pop().split('.');
+    const filename = url.pathname.split('/').pop();
+    const extension = filename.split('.').pop();
     const mimetype = MIMETYPES_MAP[extension];
     try {
         const file = new File([content], filename, { 'type': mimetype });
@@ -123,8 +125,15 @@ function getTemplateForObjectURL(file_url, obj_url, richtext) {
     }
 
     if (isImageURL(file_url)) {
+        // The decrypted image is served from an opaque `blob:` URL which has lost
+        // the original filename, so the browser would otherwise save it as
+        // `index.png` or the blob uuid. Pass the original filename (recovered from
+        // the `aesgcm://` URL) so it's used as the `download` name. See #2632.
+        const filename = getFileName(file_url);
         return tplImage({
             src: obj_url,
+            href: obj_url,
+            filename,
             onClick: richtext.onImgClick,
             onLoad: richtext.onImgLoad,
         });
@@ -157,13 +166,23 @@ function addEncryptedFiles(text, offset, richtext) {
                 objs.push({ url, start, end });
                 return url;
             },
-            parse_options
+            parse_options,
         );
     } catch (error) {
         log.debug(error);
         return;
     }
     objs.forEach((o) => {
+        const type = isImageURL(o.url) ? 'image' : isAudioURL(o.url) ? 'audio' : isVideoURL(o.url) ? 'video' : null;
+        // Generic files are rendered as download links rather than inline media
+        // previews, so they're not subject to the show/hide-media toggle. For
+        // actual media, honour the same render decision used for unencrypted
+        // media, so that hiding media also hides decrypted OMEMO media instead
+        // of always re-rendering it. When hidden, we leave the `aesgcm://` URL
+        // as plain text so the message collapses to its URL. See #2606.
+        if (type && !richtext.shouldRenderMedia(o.url, type)) {
+            return;
+        }
         const promise = getAndDecryptFile(o.url).then((obj_url) => getTemplateForObjectURL(o.url, obj_url, richtext));
 
         const template = html`${until(promise, '')}`;
@@ -183,10 +202,13 @@ export function handleEncryptedFiles(richtext) {
          * @param {string} text
          * @param {number} offset
          */
-        (text, offset) => addEncryptedFiles(text, offset, richtext)
+        (text, offset) => addEncryptedFiles(text, offset, richtext),
     );
 }
 
+/**
+ * @param {import('shared/components/element').CustomElement} el
+ */
 export function onChatComponentInitialized(el) {
     el.listenTo(el.model.messages, 'add', (message) => {
         if (message.get('is_encrypted') && !message.get('is_error')) {
@@ -199,20 +221,46 @@ export function onChatComponentInitialized(el) {
         } else {
             // Manually trigger an update, setting omemo_active to
             // false above will automatically trigger one.
-            el.querySelector('converse-chat-toolbar')?.requestUpdate();
+            //
+            /*** @type {import('shared/components/element').CustomElement} */
+            (el.querySelector('converse-chat-toolbar'))?.requestUpdate();
         }
     });
     el.listenTo(el.model, 'change:omemo_active', () => {
-        el.querySelector('converse-chat-toolbar').requestUpdate();
+        // The toolbar may not be rendered yet (e.g. when the remembered OMEMO
+        // state is restored during chat initialization), so guard the lookup.
+        //
+        /*** @type {import('shared/components/element').CustomElement} */
+        (el.querySelector('converse-chat-toolbar'))?.requestUpdate();
     });
 }
 
 /**
+ * Generate the displayable fingerprints for a contact's devices for a single
+ * OMEMO version.
+ * @param {string} jid
+ * @param {import('@converse/headless/types/plugins/omemo/types').OMEMOVersion} [version]
+ */
+async function generateFingerprintsForVersion(jid, version) {
+    const devices = await u.omemo.getDevicesForContact(jid, version);
+    return Promise.all(
+        devices.map(
+            /** @param {import('@converse/headless/types/plugins/omemo/device').default} d */
+            (d) => u.omemo.generateFingerprint(d),
+        ),
+    );
+}
+
+/**
+ * Generate the displayable fingerprints for a contact's devices across both
+ * OMEMO versions.
  * @param {string} jid
  */
 export async function generateFingerprints(jid) {
-    const devices = await u.omemo.getDevicesForContact(jid);
-    return Promise.all(devices.map((d) => u.omemo.generateFingerprint(d)));
+    await Promise.all([
+        generateFingerprintsForVersion(jid, Strophe.NS.OMEMO).catch((e) => log.error(e)),
+        generateFingerprintsForVersion(jid, Strophe.NS.OMEMO2).catch((e) => log.error(e)),
+    ]);
 }
 
 /**
@@ -238,20 +286,25 @@ function toggleOMEMO(ev) {
             messages = [
                 __(
                     'Cannot use end-to-end encryption in this groupchat, ' +
-                        'either the groupchat has some anonymity or not all participants support OMEMO.'
+                        'either the groupchat has some anonymity or not all participants support OMEMO.',
                 ),
             ];
         } else {
             messages = [
                 __(
                     "Cannot use end-to-end encryption because %1$s uses a client that doesn't support OMEMO.",
-                    toolbar_el.model.contact.getDisplayName()
+                    toolbar_el.model.contact.getDisplayName(),
                 ),
             ];
         }
         return api.alert('error', __('Error'), messages);
     }
-    toolbar_el.model.save({ 'omemo_active': !toolbar_el.model.get('omemo_active') });
+    const active = !toolbar_el.model.get('omemo_active');
+    toolbar_el.model.save({ 'omemo_active': active });
+
+    // Remember this choice so it's restored the next time the chat is opened,
+    // even after it's been closed or after re-login.
+    u.omemo.setOMEMOActiveState(toolbar_el.model.get('jid'), active);
 }
 
 /**
@@ -259,6 +312,13 @@ function toggleOMEMO(ev) {
  * @param {Array<import('lit').TemplateResult>} buttons
  */
 export function getOMEMOToolbarButton(toolbar_el, buttons) {
+    // OMEMO requires persistent storage of the key material, which is
+    // unavailable on an untrusted device. Don't show the lock at all in that
+    // case, since it can never be activated. See #2336.
+    if (!_converse.state.config.get('trusted')) {
+        return buttons;
+    }
+
     const model = toolbar_el.model;
     const is_muc = model.get('type') === CHATROOMS_TYPE;
     let title;
@@ -269,7 +329,7 @@ export function getOMEMOToolbarButton(toolbar_el, buttons) {
     } else if (is_muc) {
         title = __(
             'This groupchat needs to be members-only and non-anonymous in ' +
-                'order to support OMEMO encrypted messages'
+                'order to support OMEMO encrypted messages',
         );
     } else {
         title = __('OMEMO encryption is not supported');

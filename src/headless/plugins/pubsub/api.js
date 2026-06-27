@@ -5,11 +5,12 @@
 import converse from '../../shared/api/public.js';
 import _converse from '../../shared/_converse.js';
 import api from '../../shared/api/index.js';
-import log from "@converse/log";
+import log from '@converse/log';
 import { parseErrorStanza } from '../../shared/parsers.js';
+import { RSM } from '../../shared/rsm.js';
 import { parseStanzaForPubSubConfig } from './parsers.js';
 
-const { Strophe, stx } = converse.env;
+const { Strophe, stx, Stanza } = converse.env;
 
 export default {
     /**
@@ -81,9 +82,11 @@ export default {
                         <configure node="${node}">
                             <x xmlns="${Strophe.NS.XFORM}" type="submit">
                                 <field var="FORM_TYPE" type="hidden">
-                                    <value>${Strophe.NS.PUBSUB}#nodeconfig</value>
+                                    <value>${Strophe.NS.PUBSUB}#node_config</value>
                                 </field>
-                                ${Object.entries(new_config).map(([k, v]) => stx`<field var="pubsub#${k}"><value>${v}</value></field>`)}
+                                ${Object.entries(new_config).map(
+                                    ([k, v]) => stx`<field var="pubsub#${k}"><value>${v}</value></field>`,
+                                )}
                             </x>
                         </configure>
                     </pubsub>
@@ -133,7 +136,9 @@ export default {
                         <field var="FORM_TYPE" type="hidden">
                             <value>${Strophe.NS.PUBSUB}#publish-options</value>
                         </field>
-                        ${Object.entries(options).map(([k, v]) => stx`<field var="pubsub#${k}"><value>${v}</value></field>`)}
+                        ${Object.entries(options).map(
+                            ([k, v]) => stx`<field var="pubsub#${k}"><value>${v}</value></field>`,
+                        )}
                     </x></publish-options>`
                             : ''
                     }
@@ -161,7 +166,7 @@ export default {
                     // (although Prosody returns it on the bare jid)
                     (await api.disco.supports(
                         Strophe.NS.PUBSUB + '#publish-options',
-                        Strophe.getDomainFromJid(entity_jid)
+                        Strophe.getDomainFromJid(entity_jid),
                     )));
 
             if (!supports_publish_options && strict_options) {
@@ -176,7 +181,8 @@ export default {
                 const e = await parseErrorStanza(iq);
                 if (
                     e.name === 'conflict' &&
-                    /** @type {import('shared/errors').StanzaError} */(e).extra[Strophe.NS.PUBSUB_ERROR] === 'precondition-not-met'
+                    /** @type {import('shared/errors').StanzaError} */ (e).extra[Strophe.NS.PUBSUB_ERROR] ===
+                        'precondition-not-met'
                 ) {
                     // Manually configure the node if we can't set it via publish-options
                     await api.pubsub.config.set(entity_jid, node, options);
@@ -197,6 +203,217 @@ export default {
                     throw iq;
                 }
             }
+        },
+
+        /**
+         * Retracts (deletes) an item from a PubSub node (XEP-0060 § 7.2).
+         * @method _converse.api.pubsub.retract
+         * @param {string} jid - The JID of the pubsub service where the node
+         *      resides. Pass a falsy value to retract from your own PEP service.
+         * @param {string} node - The node to retract the item from
+         * @param {string} id - The id of the item to retract
+         * @param {object} [options]
+         * @param {boolean} [options.notify=true] - Whether to ask the server to
+         *      notify subscribers of the retraction.
+         * @returns {Promise<void>}
+         */
+        async retract(jid, node, id, options = {}) {
+            if (!node) throw new Error('api.pubsub.retract: node value required');
+            if (!id) throw new Error('api.pubsub.retract: id value required');
+
+            const { notify = true } = options;
+            const bare_jid = _converse.session.get('bare_jid');
+            const entity_jid = jid || bare_jid;
+
+            const stanza = stx`
+                <iq xmlns="jabber:client" from="${bare_jid}" type="set" to="${entity_jid}">
+                    <pubsub xmlns="${Strophe.NS.PUBSUB}">
+                        <retract node="${node}" notify="${notify ? 'true' : 'false'}">
+                            <item id="${id}"/>
+                        </retract>
+                    </pubsub>
+                </iq>`;
+
+            try {
+                await api.sendIQ(stanza);
+            } catch (error) {
+                throw await parseErrorStanza(error);
+            }
+        },
+
+        /**
+         * Creates a PubSub node at a given service
+         * @param {string} jid - The PubSub service JID
+         * @param {string} node - The node to create
+         * @param {PubSubConfigOptions} config The configuration options
+         * @returns {Promise<void>}
+         */
+        async create(jid, node, config) {
+            if (!node) throw new Error('api.pubsub.create: node value required');
+
+            const own_jid = _converse.state.session.get('jid');
+            const iq = stx`
+                <iq xmlns="jabber:client"
+                    type="set"
+                    from="${own_jid}"
+                    to="${jid}">
+                    <pubsub xmlns="http://jabber.org/protocol/pubsub">
+                        <create node="${node}"/>
+                        <configure>
+                            <x xmlns="${Strophe.NS.XFORM}" type="submit">
+                                <field var="FORM_TYPE" type="hidden">
+                                    <value>${Strophe.NS.PUBSUB}#node_config</value>
+                                </field>
+                                ${Object.entries(config).map(
+                                    ([k, v]) => stx`<field var="pubsub#${k}"><value>${v}</value></field>`,
+                                )}
+                            </x>
+                        </configure>
+                    </pubsub>
+                </iq>`;
+
+            try {
+                await api.sendIQ(iq);
+            } catch (error) {
+                throw await parseErrorStanza(error);
+            }
+        },
+
+        /**
+         * Subscribes the local user to a PubSub node.
+         * @method _converse.api.pubsub.subscribe
+         * @param {string} jid - PubSub service JID.
+         * @param {string} node - The node to subscribe to
+         * @returns {Promise<void>}
+         */
+        async subscribe(jid, node) {
+            if (!node) throw new Error('api.pubsub.subscribe: node value required');
+
+            const service = jid || (await api.disco.entities.find('http://jabber.org/protocol/pubsub'));
+            const own_jid = _converse.session.get('jid');
+            const iq = stx`
+                <iq type="set" from="${own_jid}" to="${service}" xmlns="jabber:client">
+                  <pubsub xmlns="${Strophe.NS.PUBSUB}">
+                    <subscribe node="${node}" jid="${own_jid}"/>
+                  </pubsub>
+                </iq>`;
+
+            try {
+                await api.sendIQ(iq);
+            } catch (error) {
+                throw await parseErrorStanza(error);
+            }
+        },
+
+        /**
+         * Unsubscribes the local user from a PubSub node.
+         * @method _converse.api.pubsub.unsubscribe
+         * @param {string} jid - The PubSub service JID
+         * @param {string} node - The node to unsubscribe from
+         * @returns {Promise<void>}
+         */
+        async unsubscribe(jid, node) {
+            if (!node) throw new Error('api.pubsub.unsubscribe: node value required');
+
+            const own_jid = _converse.session.get('jid');
+            const iq = stx`
+                <iq type="set" from="${own_jid}" to="${jid}" xmlns="jabber:client">
+                  <pubsub xmlns="${Strophe.NS.PUBSUB}">
+                    <unsubscribe node="${node}" jid="${own_jid}"/>
+                  </pubsub>
+                </iq>`;
+
+            try {
+                await api.sendIQ(iq);
+            } catch (error) {
+                throw await parseErrorStanza(error);
+            }
+        },
+
+        /**
+         * Retrieves the subscriptions for the local user.
+         * @method _converse.api.pubsub.subscriptions
+         * @param {string} [jid] - The PubSub service JID.
+         * @param {string} [node] - The node to retrieve subscriptions from.
+         * @returns {Promise<import('./types').PubSubSubscription[]>}
+         */
+        async subscriptions(jid, node) {
+            const service = jid || (await api.disco.entities.find(Strophe.NS.PUBSUB));
+            const own_jid = _converse.session.get('jid');
+            const iq = stx`
+                <iq xmlns="jabber:client"
+                    type="get"
+                    from="${own_jid}"
+                    to="${service}">
+                  <pubsub xmlns="${Strophe.NS.PUBSUB}">
+                    <subscriptions${node ? ` node="${node}"` : ''}/>
+                  </pubsub>
+                </iq>`;
+            const response = await api.sendIQ(iq);
+            const subs_el = response.querySelector('pubsub subscriptions');
+            if (!subs_el) return [];
+
+            const subs = Array.from(subs_el.querySelectorAll('subscription')).map((el) => ({
+                node: el.getAttribute('node'),
+                jid: el.getAttribute('jid'),
+                subscription: el.getAttribute('subscription'),
+                subid: el.hasAttribute('subid') ? el.getAttribute('subid') : undefined,
+            }));
+            return subs;
+        },
+
+        items: {
+            /**
+             * Retrieves items from a PubSub node (XEP-0060 § 6.5 "Retrieve Items").
+             *
+             * Supports requesting the most recent N items (`max_items`), specific
+             * item ids (`item_ids`), and paging through large result sets with
+             * XEP-0059 Result Set Management (`rsm`).
+             *
+             * @method _converse.api.pubsub.items.get
+             * @param {string|null} jid - The JID of the pubsub service where the node
+             *      resides. Pass a falsy value to query your own PEP service (bare JID).
+             * @param {string} node - The node to retrieve items from
+             * @param {import('./types').PubSubItemsOptions} [options]
+             * @returns {Promise<import('./types').PubSubItemsResult>}
+             */
+            async get(jid, node, options = {}) {
+                if (!node) throw new Error('api.pubsub.items.get: node value required');
+
+                const bare_jid = _converse.session.get('bare_jid');
+                const full_jid = _converse.session.get('jid');
+                const entity_jid = jid || bare_jid;
+
+                const { max_items, item_ids, rsm: rsm_options } = options;
+                const rsm = rsm_options ? new RSM(rsm_options) : null;
+
+                const stanza = stx`
+                    <iq xmlns="jabber:client"
+                        type="get"
+                        from="${full_jid}"
+                        to="${entity_jid}">
+                    <pubsub xmlns="${Strophe.NS.PUBSUB}">
+                        <items node="${node}"${max_items ? Stanza.unsafeXML(` max_items="${max_items}"`) : ''}>
+                            ${item_ids?.map((id) => stx`<item id="${id}"/>`) ?? ''}
+                        </items>
+                        ${rsm ? Stanza.fromString(rsm.toString()) : ''}
+                    </pubsub>
+                    </iq>`;
+
+                let response;
+                try {
+                    response = await api.sendIQ(stanza);
+                } catch (error) {
+                    throw await parseErrorStanza(error);
+                }
+
+                const items = Array.from(response.querySelectorAll('pubsub > items > item'));
+                const set = response.querySelector('pubsub > set');
+                return {
+                    items,
+                    rsm: set ? new RSM({ ...(rsm_options ?? {}), xml: set }) : undefined,
+                };
+            },
         },
     },
 };

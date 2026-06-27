@@ -73,7 +73,6 @@ describe('The OMEMO module', function () {
                         type="chat"
                         xmlns="jabber:client">
                 <body>This is an OMEMO encrypted message which your client doesn’t seem to support. Find more information on https://conversations.im/omemo</body>
-                <active xmlns="http://jabber.org/protocol/chatstates"/>
                 <request xmlns="urn:xmpp:receipts"/>
                 <origin-id id="${sent_stanza.getAttribute('id')}" xmlns="urn:xmpp:sid:0"/>
                 <encrypted xmlns="eu.siacs.conversations.axolotl">
@@ -349,7 +348,7 @@ describe('The OMEMO module', function () {
             // XXX: Normally the key will be encrypted via libsignal.
             // However, we're mocking libsignal in the tests, so we include
             // it as plaintext in the message.
-            let stanza = stx`<message from="${contact_jid}"
+            const stanza = stx`<message from="${contact_jid}"
                 to="${_converse.api.connection.get().jid}"
                 xmlns="jabber:client"
                 type="chat"
@@ -385,7 +384,7 @@ describe('The OMEMO module', function () {
             _converse.api.connection.get().IQ_stanzas = [];
             _converse.api.connection.get()._dataRecv(mock.createRequest(_converse, stanza));
             await u.waitUntil(() => _converse.state.omemo_store);
-            let iq_stanza = await u.waitUntil(() => mock.bundleHasBeenPublished(_converse), 1000);
+            const iq_stanza = await u.waitUntil(() => mock.bundleHasBeenPublished(_converse), 1000);
             expect(iq_stanza).toEqualStanza(
                 stx`<iq to="${_converse.bare_jid}" from="${_converse.bare_jid}" id="${iq_stanza.getAttribute('id')}" type="set" xmlns="jabber:client">
                 <pubsub xmlns="http://jabber.org/protocol/pubsub">
@@ -393,8 +392,8 @@ describe('The OMEMO module', function () {
                         <item>
                             <bundle xmlns="eu.siacs.conversations.axolotl">
                                 <signedPreKeyPublic signedPreKeyId="0">${btoa('1234')}</signedPreKeyPublic>
-                                    <signedPreKeySignature>${btoa('11112222333344445555')}</signedPreKeySignature>
-                                    <identityKey>${btoa('1234')}</identityKey>
+                                <signedPreKeySignature>${btoa('11112222333344445555')}</signedPreKeySignature>
+                                <identityKey>${btoa('1234')}</identityKey>
                                 <prekeys>
                                     <preKeyPublic preKeyId="0">${btoa('1234')}</preKeyPublic>
                                     <preKeyPublic preKeyId="1">${btoa('1234')}</preKeyPublic>
@@ -425,6 +424,81 @@ describe('The OMEMO module', function () {
             expect(_converse.state.omemo_store.generateMissingPreKeys).toHaveBeenCalled();
 
             _converse.NUM_PREKEYS = 100;
+        }),
+    );
+
+    it(
+        'publishes our device and bundle on the first login of a brand-new account',
+        mock.initConverse(converse, [], {}, async function (_converse) {
+            // Regression test for #2985: on a brand-new account (no device list
+            // on the server yet) the device list and bundle must be published
+            // on the *first* login, and our own device must appear exactly once
+            // (no phantom duplicate "other" devices).
+            await mock.waitForRoster(_converse, 'current', 0);
+            await mock.waitUntilDiscoConfirmed(
+                _converse,
+                _converse.bare_jid,
+                [{ 'category': 'pubsub', 'type': 'pep' }],
+                ['http://jabber.org/protocol/pubsub#publish-options'],
+            );
+
+            // The server has no device list for this fresh account, so respond
+            // to the own device-list fetch with an empty list.
+            let iq_stanza = await u.waitUntil(() => mock.deviceListFetched(_converse, _converse.bare_jid, []));
+            expect(iq_stanza.querySelector('items').getAttribute('node')).toBe(
+                'eu.siacs.conversations.axolotl.devicelist',
+            );
+
+            await u.waitUntil(() => _converse.state.omemo_store);
+
+            // Our own device must be generated and added exactly once.
+            const devicelist = _converse.state.devicelists.get(_converse.bare_jid);
+            await u.waitUntil(() => devicelist.devices.length === 1);
+            expect(devicelist.devices.at(0).get('id')).toBe('123456789');
+
+            // The device list must be published to the server on this first login...
+            iq_stanza = await u.waitUntil(() => mock.ownDeviceHasBeenPublished(_converse));
+            const published_ids = Array.from(iq_stanza.querySelectorAll('publish list device')).map((d) =>
+                d.getAttribute('id'),
+            );
+            expect(published_ids).toEqual(['123456789']);
+            _converse.api.connection
+                .get()
+                ._dataRecv(
+                    mock.createRequest(
+                        _converse,
+                        stx`<iq xmlns="jabber:client" from="${_converse.bare_jid}" id="${iq_stanza.getAttribute('id')}" to="${_converse.bare_jid}" type="result"/>`,
+                    ),
+                );
+
+            // ...as must the bundle.
+            iq_stanza = await u.waitUntil(() => mock.bundleHasBeenPublished(_converse));
+            _converse.api.connection
+                .get()
+                ._dataRecv(
+                    mock.createRequest(
+                        _converse,
+                        stx`<iq xmlns="jabber:client" from="${_converse.bare_jid}" id="${iq_stanza.getAttribute('id')}" to="${_converse.bare_jid}" type="result"/>`,
+                    ),
+                );
+
+            await _converse.api.waitUntil('OMEMOInitialized');
+
+            // After initialization there must still be exactly one own device
+            // (the user has no other devices connected), and it must have a bundle.
+            expect(devicelist.devices.length).toBe(1);
+            expect(devicelist.devices.at(0).get('id')).toBe('123456789');
+            expect(devicelist.devices.at(0).get('bundle')).toBeTruthy();
+
+            // Simulate a reload/re-login: a fresh store must reuse the persisted
+            // device_id rather than generate a new one. Regenerating would leave
+            // the original device in the published list and add a second, which
+            // is the "phantom 2 other devices" symptom reported in #2985.
+            const id = `converse.omemosession-${_converse.bare_jid}`;
+            const reloaded_store = new _converse.exports.OMEMOStore({ id });
+            u.initStorage(reloaded_store, id);
+            await new Promise((resolve) => reloaded_store.fetch({ success: resolve, error: resolve }));
+            expect(reloaded_store.get('device_id')).toBe('123456789');
         }),
     );
 
@@ -503,7 +577,9 @@ describe('The OMEMO module', function () {
 
             // A PEP message is received with a device list.
             _converse.api.connection.get()._dataRecv(
-                mock.createRequest(_converse, stx`
+                mock.createRequest(
+                    _converse,
+                    stx`
             <message xmlns="jabber:client"
                     from="${contact_jid}"
                     to="${_converse.bare_jid}"
@@ -519,7 +595,8 @@ describe('The OMEMO module', function () {
                         </item>
                     </items>
                 </event>
-            </message>`),
+            </message>`,
+                ),
             );
 
             // Since we haven't yet fetched any devices for this user, the
@@ -705,7 +782,9 @@ describe('The OMEMO module', function () {
             </iq>`);
 
             _converse.api.connection.get()._dataRecv(
-                mock.createRequest(_converse, stx`
+                mock.createRequest(
+                    _converse,
+                    stx`
             <iq from="${contact_jid}"
                 id="${iq_stanza.getAttribute('id')}"
                 to="${_converse.bare_jid}"
@@ -720,7 +799,8 @@ describe('The OMEMO module', function () {
                         </item>
                     </items>
                 </pubsub>
-            </iq>`),
+            </iq>`,
+                ),
             );
 
             await await u.waitUntil(() => _converse.state.omemo_store);
@@ -748,7 +828,9 @@ describe('The OMEMO module', function () {
             await _converse.api.waitUntil('OMEMOInitialized');
 
             _converse.api.connection.get()._dataRecv(
-                mock.createRequest(_converse, stx`
+                mock.createRequest(
+                    _converse,
+                    stx`
             <message from="${contact_jid}"
                     to="${_converse.bare_jid}"
                     type="headline"
@@ -770,7 +852,8 @@ describe('The OMEMO module', function () {
                         </item>
                     </items>
                 </event>
-            </message>`),
+            </message>`,
+                ),
             );
 
             // Since we haven't yet fetched any devices for this user, the
@@ -832,7 +915,9 @@ describe('The OMEMO module', function () {
             expect(device.get('bundle').prekeys[2].id).toBe(2003);
 
             _converse.api.connection.get()._dataRecv(
-                mock.createRequest(_converse, stx`
+                mock.createRequest(
+                    _converse,
+                    stx`
                     <message from="${_converse.bare_jid}"
                              to="${_converse.bare_jid}"
                              type="headline"
@@ -854,7 +939,8 @@ describe('The OMEMO module', function () {
                                 </item>
                             </items>
                         </event>
-                    </message>`),
+                    </message>`,
+                ),
             );
 
             expect(_converse.state.devicelists.length).toBe(2);
@@ -1061,7 +1147,8 @@ describe('The OMEMO module', function () {
             );
 
             _converse.api.connection.get()._dataRecv(
-                mock.createRequest(_converse, 
+                mock.createRequest(
+                    _converse,
                     stx`<iq from="${contact_jid}"
                     id="${iq_stanza.getAttribute('id')}"
                     to="${_converse.bare_jid}"
@@ -1132,6 +1219,62 @@ describe('The OMEMO module', function () {
     );
 
     it(
+        "doesn't add the OMEMO toolbar button on an untrusted device",
+        mock.initConverse(converse, ['chatBoxesFetched'], {}, async function (_converse) {
+            await mock.waitForRoster(_converse, 'current', 1);
+            const contact_jid = mock.cur_names[0].replace(/ /g, '.').toLowerCase() + '@montague.lit';
+
+            // Simulate being logged in on an untrusted (e.g. public) device.
+            // OMEMO requires persistent storage of the key material, so the lock
+            // must never be offered, otherwise it can be toggled into a state
+            // that can never actually encrypt. See #2336.
+            _converse.state.config.save({ trusted: false });
+
+            await mock.openChatBoxFor(_converse, contact_jid);
+            const view = _converse.chatboxviews.get(contact_jid);
+            const toolbar = await u.waitUntil(() => view.querySelector('.chat-toolbar'));
+            // Wait until the toolbar has actually rendered its buttons.
+            await u.waitUntil(() => toolbar.querySelector('button'));
+
+            expect(toolbar.querySelector('.toggle-omemo')).toBe(null);
+            expect(view.model.get('omemo_supported')).toBe(false);
+        }),
+    );
+
+    it(
+        'remembers the encryption state after the chat is closed and reopened',
+        mock.initConverse(converse, ['chatBoxesFetched'], {}, async function (_converse) {
+            await mock.waitForRoster(_converse, 'current', 1);
+            const contact_jid = mock.cur_names[0].replace(/ /g, '.').toLowerCase() + '@montague.lit';
+            await mock.initializedOMEMO(_converse);
+            await mock.openChatBoxFor(_converse, contact_jid);
+            await u.waitUntil(() => mock.deviceListFetched(_converse, contact_jid, ['555']));
+
+            const view = _converse.chatboxviews.get(contact_jid);
+            await u.waitUntil(() => view.model.get('omemo_supported'));
+
+            // Enable encryption via the toolbar toggle.
+            const toolbar = await u.waitUntil(() => view.querySelector('.chat-toolbar'));
+            const toggle = await u.waitUntil(() => toolbar.querySelector('.toggle-omemo'));
+            toggle.click();
+            expect(view.model.get('omemo_active')).toBe(true);
+
+            // Close the chat (as the user "leaving" it would). This removes the
+            // chatbox, and its `omemo_active` flag, from browserStorage.
+            view.model.close();
+            await u.waitUntil(() => !_converse.chatboxes.get(contact_jid));
+
+            // Reopen the chat with the same contact: the previously enabled
+            // encryption state should be remembered. See #1472.
+            await mock.openChatBoxFor(_converse, contact_jid);
+            const reopened = _converse.chatboxviews.get(contact_jid);
+            await u.waitUntil(() => reopened.model.get('omemo_supported'));
+            await u.waitUntil(() => reopened.model.get('omemo_active') === true);
+            expect(reopened.model.get('omemo_active')).toBe(true);
+        }),
+    );
+
+    it(
         'shows OMEMO device fingerprints in the user details modal',
         mock.initConverse(converse, ['chatBoxesFetched'], {}, async function (_converse) {
             await mock.waitUntilBlocklistInitialized(_converse);
@@ -1165,7 +1308,8 @@ describe('The OMEMO module', function () {
             </iq>`);
 
             _converse.api.connection.get()._dataRecv(
-                mock.createRequest(_converse, 
+                mock.createRequest(
+                    _converse,
                     stx`<iq from="${contact_jid}"
                     id="${iq_stanza.getAttribute('id')}"
                     to="${_converse.bare_jid}"
@@ -1199,7 +1343,8 @@ describe('The OMEMO module', function () {
             </iq>`);
 
             _converse.api.connection.get()._dataRecv(
-                mock.createRequest(_converse, 
+                mock.createRequest(
+                    _converse,
                     stx`<iq from="${contact_jid}"
                 id="${iq_stanza.getAttribute('id')}"
                 to="${_converse.bare_jid}"

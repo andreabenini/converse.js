@@ -93,7 +93,6 @@ describe('An OMEMO encrypted message', function () {
                 to="mercutio@montague.lit" type="chat"
                 xmlns="jabber:client">
                     <body>${fallback_text}</body>
-                    <active xmlns="http://jabber.org/protocol/chatstates"/>
                     <request xmlns="urn:xmpp:receipts"/>
                     <replace id="${first_msg.get('msgid')}" xmlns="urn:xmpp:message-correct:0"/>
                     <origin-id id="${msg.querySelector('origin-id').getAttribute('id')}" xmlns="urn:xmpp:sid:0"/>
@@ -241,7 +240,7 @@ describe('An OMEMO encrypted MUC message', function () {
             let stanza = stx`
             <presence to='romeo@montague.lit/orchard' from='lounge@montague.lit/newguy' xmlns="jabber:client">
                 <x xmlns='${Strophe.NS.MUC_USER}'>
-                    <item affiliation='none' jid='newguy@montague.lit/_converse.js-290929789' role='participant'/>
+                    <item affiliation='member' jid='newguy@montague.lit/_converse.js-290929789' role='participant'/>
                 </x>
             </presence>`;
             _converse.api.connection.get()._dataRecv(mock.createRequest(_converse, stanza));
@@ -328,7 +327,6 @@ describe('An OMEMO encrypted MUC message', function () {
                      type="groupchat"
                      xmlns="jabber:client">
                 <body>This is an OMEMO encrypted message which your client doesn’t seem to support. Find more information on https://conversations.im/omemo</body>
-                <active xmlns="http://jabber.org/protocol/chatstates"/>
                 <origin-id id="${sent_stanza.getAttribute('id')}" xmlns="urn:xmpp:sid:0"/>
                 <encrypted xmlns="eu.siacs.conversations.axolotl">
                     <header sid="123456789">
@@ -383,7 +381,6 @@ describe('An OMEMO encrypted MUC message', function () {
             expect(msg).toEqualStanza(stx`
             <message from="${own_jid}" id="${msg.getAttribute('id')}" to="${muc_jid}" type="groupchat" xmlns="jabber:client">
                 <body>${fallback_text}</body>
-                <active xmlns="http://jabber.org/protocol/chatstates"/>
                 <replace id="${first_msg.get('msgid')}" xmlns="urn:xmpp:message-correct:0"/>
                 <origin-id id="${msg.querySelector('origin-id').getAttribute('id')}" xmlns="urn:xmpp:sid:0"/>
                 <encrypted xmlns="eu.siacs.conversations.axolotl">

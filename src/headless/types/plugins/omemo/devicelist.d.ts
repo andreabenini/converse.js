@@ -1,21 +1,34 @@
 export default DeviceList;
-declare class DeviceList extends Model<import("@converse/skeletor").ModelAttributes> {
-    constructor(attributes?: Partial<import("@converse/skeletor").ModelAttributes>, options?: import("@converse/skeletor").ModelOptions);
-    initialize(): Promise<void>;
-    initialized: Promise<any> & {
-        isResolved: boolean;
-        isPending: boolean;
-        isRejected: boolean;
-        resolve: (value: any) => void;
-        reject: (reason?: any) => void;
-    };
+/**
+ * @extends {OMEMOVersionAwareModel<import('../../shared/types').JIDModelAttributes>}
+ */
+declare class DeviceList extends OMEMOVersionAwareModel<import("../../shared/types").JIDModelAttributes> {
+    constructor(attributes?: Partial<import("../../shared/types").JIDModelAttributes>, options?: import("@converse/skeletor").ModelOptions);
+    initialize(): void;
+    initialized: Promise<any>;
     initDevices(): Promise<any>;
     devices: any;
     /**
      * @param {import('./devices').default} collection
      */
-    onDevicesFound(collection: import("./devices").default): Promise<void>;
-    fetchDevices(): Promise<any>;
+    /**
+     * Whether the most recent server fetch for this device list failed
+     * (timeout or error stanza), as opposed to authoritatively returning no
+     * devices (an empty list or item-not-found). Callers use this to decide
+     * whether an empty device list is worth re-fetching: a genuine "no devices"
+     * answer is not (a PEP push will inform us if that changes, since we
+     * advertise `+notify`), but a transient failure is.
+     * @returns {boolean}
+     */
+    get lastFetchFailed(): boolean;
+    onDevicesFound(collection: any): Promise<void>;
+    /**
+     * @param {boolean} [refresh=false] - Discard any previously memoized
+     *      result and fetch the devices anew. Used to recover from a state
+     *      where an earlier fetch failed or the contact had not yet published
+     *      their device list.
+     */
+    fetchDevices(refresh?: boolean): Promise<any>;
     _devices_promise: Promise<any>;
     /**
      * @returns {Promise<string>}
@@ -39,6 +52,7 @@ declare class DeviceList extends Model<import("@converse/skeletor").ModelAttribu
      * @param {string[]} device_ids
      */
     removeOwnDevices(device_ids: string[]): Promise<any>;
+    #private;
 }
-import { Model } from '@converse/skeletor';
+import { OMEMOVersionAwareModel } from './profiles.js';
 //# sourceMappingURL=devicelist.d.ts.map

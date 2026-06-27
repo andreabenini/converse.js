@@ -54,6 +54,7 @@ export default function DragResizable<T extends import("shared/components/types"
         once(name: string | import("@converse/skeletor").EventCallbackMap, callback?: import("@converse/skeletor").EventCallback | import("@converse/skeletor").EventContext, context?: import("@converse/skeletor").EventContext): any;
         listenToOnce(obj: any, name: string | import("@converse/skeletor").EventCallbackMap, callback?: import("@converse/skeletor").EventCallback): any;
         trigger(name: string, ...args: any[]): any;
+        subscribe(event: string, callback: import("@converse/skeletor").EventCallback, context?: import("@converse/skeletor").EventContext): () => void;
         readonly renderOptions: import("lit-html").RenderOptions;
         __childPart: any;
         update(changedProperties: import("lit").PropertyValues): void;
@@ -123,8 +124,8 @@ export default function DragResizable<T extends import("shared/components/types"
         innerHTML: string;
         readonly localName: string;
         readonly namespaceURI: string | null;
-        onfullscreenchange: (this: Element, ev: Event) => any;
-        onfullscreenerror: (this: Element, ev: Event) => any;
+        onfullscreenchange: ((this: Element, ev: Event) => any) | null;
+        onfullscreenerror: ((this: Element, ev: Event) => any) | null;
         outerHTML: string;
         readonly ownerDocument: Document;
         readonly part: DOMTokenList;
@@ -138,10 +139,10 @@ export default function DragResizable<T extends import("shared/components/types"
         readonly tagName: string;
         attachShadow(init: ShadowRootInit): ShadowRoot;
         checkVisibility(options?: CheckVisibilityOptions): boolean;
-        closest<K extends keyof HTMLElementTagNameMap>(selector: K): HTMLElementTagNameMap[K];
-        closest<K extends keyof SVGElementTagNameMap>(selector: K): SVGElementTagNameMap[K];
-        closest<K extends keyof MathMLElementTagNameMap>(selector: K): MathMLElementTagNameMap[K];
-        closest<E extends Element = Element>(selectors: string): E;
+        closest<K extends keyof HTMLElementTagNameMap>(selector: K): HTMLElementTagNameMap[K] | null;
+        closest<K extends keyof SVGElementTagNameMap>(selector: K): SVGElementTagNameMap[K] | null;
+        closest<K extends keyof MathMLElementTagNameMap>(selector: K): MathMLElementTagNameMap[K] | null;
+        closest<E extends Element = Element>(selectors: string): E | null;
         computedStyleMap(): StylePropertyMapReadOnly;
         getAttribute(qualifiedName: string): string | null;
         getAttributeNS(namespace: string | null, localName: string): string | null;

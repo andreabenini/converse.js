@@ -1,4 +1,4 @@
-import { BrowserStorage } from '@converse/skeletor';
+import { PersistentStorage } from '@converse/skeletor';
 import _converse from '../shared/_converse.js';
 import { settings_api } from '../shared/settings/api.js';
 import { getUnloadEvent } from './session.js';
@@ -25,9 +25,33 @@ function storeUsesIndexedDB(type) {
 }
 
 /**
+ * @returns {boolean}
+ */
+export function isPersistentStorageAvailable() {
+    const store = settings.get('persistent_store');
+    if (store === 'sessionStorage') {
+        try {
+            return typeof globalThis.sessionStorage !== 'undefined';
+        } catch {
+            return false;
+        }
+    } else if (store === 'BrowserExtLocal' || store === 'BrowserExtSync') {
+        return true;
+    }
+
+    const driver =
+        store === 'localStorage'
+            ? PersistentStorage.localForage.LOCALSTORAGE
+            : store === 'IndexedDB'
+              ? PersistentStorage.localForage.INDEXEDDB
+              : undefined;
+    return driver ? PersistentStorage.localForage.supports(driver) : true;
+}
+
+/**
  * @param {string} id
  * @param {import('./types').StorageType} type
- * @returns {BrowserStorage}
+ * @returns {PersistentStorage}
  */
 export function createStore(id, type) {
     const name = type || getDefaultStorageType();
@@ -35,7 +59,7 @@ export function createStore(id, type) {
     if (typeof s === 'undefined') {
         throw new TypeError(`createStore: Could not find store for ${id}`);
     }
-    return new BrowserStorage(id, s, storeUsesIndexedDB(type));
+    return new PersistentStorage(id, s, storeUsesIndexedDB(type));
 }
 
 /**
@@ -45,9 +69,9 @@ export function createStore(id, type) {
  */
 export function initStorage(model, id, type) {
     type = type || getDefaultStorageType();
-    model.browserStorage = createStore(id, type);
+    model.storage = createStore(id, type);
     if (storeUsesIndexedDB(type)) {
-        const flush = () => model.browserStorage.flush();
+        const flush = () => model.storage.flush();
         const unloadevent = getUnloadEvent();
         window.addEventListener(unloadevent, flush);
         model.on('destroy', () => window.removeEventListener(unloadevent, flush));

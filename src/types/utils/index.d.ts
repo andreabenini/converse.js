@@ -27,7 +27,8 @@ declare const _default: {
     getLongestSubstring(string: string, candidates: string[]): string;
     isString(s: any): boolean;
     getDefaultStorageType(): import("headless/types/utils/types.js").StorageType;
-    createStore(id: string, type: import("headless/types/utils/types.js").StorageType): import("@converse/skeletor").BrowserStorage;
+    isPersistentStorageAvailable(): boolean;
+    createStore(id: string, type: import("headless/types/utils/types.js").StorageType): import("@converse/skeletor").PersistentStorage;
     initStorage(model: import("headless/types/utils/types.js").StorageModel, id: string, type?: import("headless/types/utils/types.js").StorageType): void;
     isErrorStanza(stanza: Element): boolean;
     isForbiddenError(stanza: Element): boolean;
@@ -52,7 +53,7 @@ declare const _default: {
     isFunction(val: unknown): boolean;
     isUndefined(x: unknown): boolean;
     isErrorObject(o: unknown): boolean;
-    isPersistableModel(model: import("@converse/skeletor").Model): import("@converse/skeletor").BrowserStorage;
+    isPersistableModel(model: import("@converse/skeletor").Model): import("@converse/skeletor").PersistentStorage;
     isEmpty(obj: any | undefined | null): boolean;
     isValidJID(jid?: string | null): boolean;
     isValidMUCJID(jid: string): boolean;
@@ -139,7 +140,8 @@ declare const _default: {
         getLongestSubstring(string: string, candidates: string[]): string;
         isString(s: any): boolean;
         getDefaultStorageType(): import("headless/types/utils/types.js").StorageType;
-        createStore(id: string, type: import("headless/types/utils/types.js").StorageType): import("@converse/skeletor").BrowserStorage;
+        isPersistentStorageAvailable(): boolean;
+        createStore(id: string, type: import("headless/types/utils/types.js").StorageType): import("@converse/skeletor").PersistentStorage;
         initStorage(model: import("headless/types/utils/types.js").StorageModel, id: string, type?: import("headless/types/utils/types.js").StorageType): void;
         isErrorStanza(stanza: Element): boolean;
         isForbiddenError(stanza: Element): boolean;
@@ -164,7 +166,7 @@ declare const _default: {
         isFunction(val: unknown): boolean;
         isUndefined(x: unknown): boolean;
         isErrorObject(o: unknown): boolean;
-        isPersistableModel(model: import("@converse/skeletor").Model): import("@converse/skeletor").BrowserStorage;
+        isPersistableModel(model: import("@converse/skeletor").Model): import("@converse/skeletor").PersistentStorage;
         isEmpty(obj: any | undefined | null): boolean;
         isValidJID(jid?: string | null): boolean;
         isValidMUCJID(jid: string): boolean;

@@ -1,3 +1,4 @@
+import { RSMQueryOptions } from 'shared/types';
 export type PubSubConfigOptions = {
     access_model?: 'authorize' | 'open' | 'presence' | 'roster' | 'whitelist';
     dataform_xslt?: string;
@@ -20,5 +21,20 @@ export type PubSubConfigOptions = {
     subscribe?: boolean;
     title?: string;
     type?: string;
+};
+export type PubSubSubscription = {
+    node: string;
+    jid: string;
+    subscription: 'subscribed' | 'unconfigured';
+    subid?: string;
+};
+export type PubSubItemsOptions = {
+    max_items?: number;
+    item_ids?: string[];
+    rsm?: RSMQueryOptions;
+};
+export type PubSubItemsResult = {
+    items: Element[];
+    rsm?: import('../../shared/rsm.js').RSM;
 };
 //# sourceMappingURL=types.d.ts.map

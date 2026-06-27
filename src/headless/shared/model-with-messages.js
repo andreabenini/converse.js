@@ -16,6 +16,11 @@ import { parseMessage } from '../plugins/chat/parsers.js';
 
 const { Strophe, stx, u } = converse.env;
 
+// How many code points of the replied-to message to quote in the XEP-0461
+// compatibility fallback. Matches the preview length shown by the reply-context
+// UI (shared/chat/reply-context.js), so we never quote more than we'd display.
+const REPLY_FALLBACK_QUOTE_LENGTH = 80;
+
 /**
  * Adds a messages collection to a model and various methods related to sending
  * and receiving chat messages.
@@ -273,6 +278,71 @@ export default function ModelWithMessages(BaseModel) {
          */
         async getOutgoingMessageAttributes(_attrs) {
             throw new errors.MethodNotImplementedError('getOutgoingMessageAttributes is not implemented');
+        }
+
+        /**
+         * Look up the message being replied to (XEP-0461). For groupchat the
+         * `reply_to_id` is a XEP-0359 stanza_id; otherwise it's the origin_id or msgid.
+         * @param {string} reply_to_id
+         * @returns {BaseMessage|undefined}
+         */
+        getReferencedMessage(reply_to_id) {
+            if (!reply_to_id) return undefined;
+
+            if (this.get('message_type') === 'groupchat') {
+                const muc_jid = this.get('jid');
+                return this.messages.models.find((m) => m.get(`stanza_id ${muc_jid}`) === reply_to_id);
+            }
+            return this.messages.models.find(
+                (m) => m.get('origin_id') === reply_to_id || m.get('msgid') === reply_to_id,
+            );
+        }
+
+        /**
+         * XEP-0461 compatibility fallback. When sending a reply, prepend a
+         * XEP-0393 `>`-quoted copy of the replied-to text to the body, so clients
+         * that don't support structured replies still see the context.
+         * @param {MessageAttributes} attrs
+         * @returns {MessageAttributes}
+         */
+        addReplyFallback(attrs) {
+            if (!attrs.reply_to_id || !attrs.body) return attrs;
+            const replied = this.getReferencedMessage(attrs.reply_to_id);
+            const quoted = replied?.getMessageText();
+            if (!quoted) return attrs;
+
+            // Truncate the quoted original (by code points, XEP-0426) so replying
+            // to a long message doesn't prepend the whole thing to the body. Only
+            // the quote is truncated — never the user's own reply text.
+            const chars = [...quoted];
+            const truncated =
+                chars.length > REPLY_FALLBACK_QUOTE_LENGTH
+                    ? chars.slice(0, REPLY_FALLBACK_QUOTE_LENGTH).join('') + '…'
+                    : quoted;
+
+            const quote =
+                `> ${replied.getDisplayName()}:\n` +
+                truncated
+                    .split('\n')
+                    .map((line) => `> ${line}`)
+                    .join('\n') +
+                '\n';
+            attrs.body = quote + attrs.body;
+            attrs.message = attrs.body;
+
+            // References use UTF-16 offsets (match.index); shift by the same unit.
+            if (attrs.references?.length) {
+                const shift = quote.length;
+                attrs.references = attrs.references.map((r) => ({
+                    ...r,
+                    begin: r.begin + shift,
+                    end: r.end + shift,
+                }));
+            }
+
+            // XEP-0426/0428 count fallback offsets in Unicode code points.
+            attrs.fallback = { [Strophe.NS.REPLY]: { start: 0, end: [...quote].length } };
+            return attrs;
         }
 
         /**
@@ -746,10 +816,12 @@ export default function ModelWithMessages(BaseModel) {
                     from: attrs.from,
                     msgid: attrs.msgid,
                 };
-                // XXX: Need to take XEP-428 <fallback> into consideration
-                if (!attrs.is_encrypted && attrs.body) {
-                    // We can't match the message if it's a reflected
-                    // encrypted message (e.g. via MAM or in a MUC)
+                if (!attrs.is_encrypted && !attrs.fallback && attrs.body) {
+                    // Skip body matching for encrypted messages (body is ciphertext /
+                    // EME fallback, not the plaintext) and for messages with a XEP-0428
+                    // <fallback> body marker (body includes display-only content such as
+                    // quoted text or reaction emoji — msgid + from is sufficient for
+                    // identity in those cases).
                     query['body'] = attrs.body;
                 }
                 return query;
@@ -965,6 +1037,7 @@ export default function ModelWithMessages(BaseModel) {
                 spoiler_hint,
                 type,
             } = message.attributes;
+            const reply_fallback = message.get('fallback')?.[Strophe.NS.REPLY];
 
             const stanza = stx`
                 <message xmlns="jabber:client"
@@ -973,7 +1046,7 @@ export default function ModelWithMessages(BaseModel) {
                         type="${this.get('message_type')}"
                         id="${(edited && u.getUniqueId()) || msgid}">
                     ${body ? stx`<body>${body}</body>` : ''}
-                    <active xmlns="${Strophe.NS.CHATSTATES}"/>
+                    ${!is_encrypted ? stx`<active xmlns="${Strophe.NS.CHATSTATES}"/>` : ''}
                     ${type === 'chat' ? stx`<request xmlns="${Strophe.NS.RECEIPTS}"></request>` : ''}
                     ${!is_encrypted && oob_url ? stx`<x xmlns="${Strophe.NS.OUTOFBAND}"><url>${oob_url}</url></x>` : ''}
                     ${!is_encrypted && is_spoiler ? stx`<spoiler xmlns="${Strophe.NS.SPOILER}">${spoiler_hint ?? ''}</spoiler>` : ''}
@@ -988,7 +1061,14 @@ export default function ModelWithMessages(BaseModel) {
                               )
                             : ''
                     }
-                    ${reply_to_id ? stx`<reply xmlns="${Strophe.NS.REPLY}" id="${reply_to_id}" to="${reply_to || ''}"></reply>` : ''}
+                    ${!is_encrypted && reply_to_id ? stx`<reply xmlns="${Strophe.NS.REPLY}" id="${reply_to_id}" to="${reply_to || ''}"></reply>` : ''}
+                    ${
+                        !is_encrypted && reply_to_id && reply_fallback
+                            ? stx`<fallback xmlns="${Strophe.NS.FALLBACK}" for="${Strophe.NS.REPLY}">
+                                    <body start="${reply_fallback.start}" end="${reply_fallback.end}"/>
+                                </fallback>`
+                            : ''
+                    }
                     ${edited ? stx`<replace xmlns="${Strophe.NS.MESSAGE_CORRECT}" id="${msgid}"></replace>` : ''}
                     ${origin_id ? stx`<origin-id xmlns="${Strophe.NS.SID}" id="${origin_id}"></origin-id>` : ''}
                 </message>`;
