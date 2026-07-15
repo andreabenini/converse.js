@@ -1582,7 +1582,7 @@ Users will however still have the ability to render individual images via the me
 
 From [XEP-0424: Message Retraction](https://xmpp.org/extensions/xep-0424.html):
 
-::  
+::
 Due to the federated and extensible nature of XMPP it's not possible to remove a message with full certainty and a retraction can only be considered an unenforceable request for such removal. Clients which don't support message retraction are not obligated to enforce the request and people could have seen or copied the message contents already.
 
 By default Converse shows a warning to users when they retract a message, to inform them that they don't have a guarantee that the message will be removed everywhere.
@@ -1687,14 +1687,6 @@ Lets you set a color theme for Converse.
 
 Whether nicknames should be colorized, in compliance with [XEP-0392: Consistent Color Generation](https://xmpp.org/extensions/xep-0392.html).
 
-### time_format
-
-- Default: `HH:mm`
-
-Examples: `HH:mm`, `hh:mm`, `hh:mm a`.
-
-This option makes the time format for the time shown, for each message, configurable. Converse uses [DayJS](https://github.com/iamkun/dayjs) for showing time. This option allows the configuration of the format in which `DayJS` will display the time for the messages. For detailed description of time-format options available for `DayJS` you can check the [default formatting options](https://github.com/iamkun/dayjs/blob/dev/docs/en/API-reference.md#displaying) and the [advanced options](https://github.com/iamkun/dayjs/blob/master/docs/en/Plugin.md#advancedformat).
-
 ### use_system_emojis
 
 - Default: `true`
@@ -1712,14 +1704,17 @@ See also [emoji_image_path](#emoji_image_path).
 ```javascript
 {
     call: false,
-    spoiler: false,
+    clear: true,
     emoji: true,
+    fileupload: true,
+    location: true,
+    spoiler: false,
 }
 ```
 
 Allows you to show or hide buttons on the chatboxes' toolbars.
 
-- _call_:  
+- _call_:
   Provides a button with a picture of a telephone on it. When the call button is pressed, it will emit an event that can be used by a third-party library to initiate a call.
 
     ```javascript
@@ -1730,10 +1725,16 @@ Allows you to show or hide buttons on the chatboxes' toolbars.
     });
     ```
 
-- _emoji_:  
+- _emoji_:
   Enables rendering of emoji and provides a toolbar button for choosing them.
 
-- _spoiler_:  
+- _fileupload_:
+  Shows the button (a paperclip) for sharing files via [XEP-0363](https://xmpp.org/extensions/xep-0363.html) HTTP File Upload. The button only appears if the server actually advertises HTTP Upload support; setting this to `false` hides it even when supported. For backwards compatibility an absent `fileupload` key is treated as `true`.
+
+- _location_:
+  Shows a button for sharing your geo-location.
+
+- _spoiler_:
   Shows a button for showing[XEP-0382](https://xmpp.org/extensions/xep-0382.html) spoiler messages.
 
 ### websocket_url

@@ -3,6 +3,32 @@
 ## 15.0.0 (Unreleased)
 
 - #194: Full support for XEP-0115: Entity capabilities
+- Full XEP-0172 User Nickname support. Converse now publishes its own nickname to PEP and
+  consumes a contact's nickname from a PEP event, a presence hint, or by retrieving their nick node, so
+  a contact's display name updates live without an avatar change to trigger a vcard refetch. It also
+  advertises `nick+notify` and attaches the nickname to outgoing subscription requests.
+- fix(vcard): Don't eagerly refetch cached vcards when a session resumes.
+- fix(vcard): Don't fetch a MUC's own vCard in response to an occupant presence.
+- refactor(smacks): XEP-0198 Stream Management is now implemented natively by Strophe.js (see its
+  `enableStreamManagement` connection option). The `converse-smacks` plugin is reduced to mapping
+  the existing `enable_smacks` and `smacks_max_unacked_stanzas` settings onto that option, and two
+  events: the existing `streamResumptionFailed` and the new `streamResumed`.
+- feat(toolbar): Allow hiding the file upload button via the `fileupload` key of `visible_toolbar_buttons`
+- feat(settings): `api.settings.extend` accepts a `deep_merge` option so an object setting fills in
+  defaults instead of being replaced wholesale.
+
+### Breaking changes:
+
+The time_format setting has been removed. Message times are now shown relative to the present
+instead of as a configurable clock.
+
+Stream Management state is no longer kept in `_converse.session`. Query the connection instead
+(e.g. `api.connection.get().isStreamManagementEnabled()`, `.hasResumed()`, `.sm.state`).
+
+Resource binding (and the `beforeResourceBinding` event) is now skipped when a stream
+is resumed via XEP-0198. Plugins that use `beforeResourceBinding` to register stanza handlers
+must also listen to the new `streamResumed` event, which fires while `<resumed/>` is processed,
+before the server's replay of queued stanzas is handled.
 
 ## 14.0.0 (2026-06-26)
 

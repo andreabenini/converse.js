@@ -46,16 +46,16 @@ converse.plugins.add('converse-chatview', {
             'show_retraction_warning': true,
             'show_send_button': true,
             'show_toolbar': true,
-            'time_format': 'HH:mm',
             'use_system_emojis': true,
             'visible_toolbar_buttons': {
                 'call': false,
                 'clear': true,
                 'emoji': true,
+                'fileupload': true,
                 'location': true,
                 'spoiler': false
             }
-        });
+        }, { deep_merge: ['visible_toolbar_buttons'] });
 
         const exports = {
             ChatBoxView: ChatView,

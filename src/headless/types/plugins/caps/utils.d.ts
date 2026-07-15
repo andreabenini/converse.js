@@ -31,17 +31,23 @@ export function getCapsCacheStorageKey(): string;
  */
 export function getCapsAttrs(stanza: Element): import("./types").CapsAttributes | null;
 /**
- * Returns the caps (hash, node, ver) most recently advertised by the given
- * full JID in its presence, or `undefined` if none is known.
+ * Returns the caps (hash, node, ver) the given full JID advertised in its
+ * presence, or `undefined` if none is known.
+ *
+ * XEP-0115 caps ride on presence, and we only receive presence from contacts
+ * we're subscribed to (i.e. in our roster). The caps a resource advertised are
+ * therefore stored on that contact's roster Resource (see roster `addResource`),
+ * which both survives a reload and is the single source of truth.
  * @param {string} jid - The full JID of the entity
  * @returns {import('./types').CapsAttributes|undefined}
  */
 export function getEntityCaps(jid: string): import("./types").CapsAttributes | undefined;
 /**
  * Handler for the `parsePresence` hook which enriches the parsed presence
- * attributes with the sender's advertised XEP-0115 entity capabilities, and
- * keeps an in-memory map of full JID -> caps so that we can later look up the
- * advertised `ver` when disco information for that JID is needed.
+ * attributes with the sender's advertised XEP-0115 entity capabilities, so the
+ * roster handler can persist them on the sender's Resource (see roster
+ * `addResource`), where disco later looks them up. An unavailable presence
+ * carries no caps and drops the resource (and its caps) on the roster side.
  * @param {Element} stanza
  * @param {import('../roster/types').PresenceAttributes} attrs
  * @returns {import('../roster/types').PresenceAttributes}
@@ -86,14 +92,15 @@ export function detectCapsOptimizationSupport(): Promise<void>;
 /**
  * Adds a XEP-0115 capabilities (`<c/>`) element to the given presence stanza.
  *
- * When `optimize` is true (broadcast presence) and our server supports Caps
- * Optimization (XEP-0115 § 8.4), the `<c/>` is omitted on presences whose
+ * Optimization (XEP-0115 § 8.4) only applies to broadcast presence (presence
+ * with no `to`). When `optimize` is true, our server supports Caps Optimization
+ * and this is a broadcast presence, the `<c/>` is omitted on presences whose
  * verification string we've already advertised this session: the server re-adds
  * the annotation for new subscribers and forwards any `ver` change, so
  * re-sending an unchanged `<c/>` on every presence is wasteful. The first
  * presence (and any subsequent `ver` change) is always annotated. Directed
- * presence (e.g. MUC) is never optimized, as server-side broadcast stripping
- * doesn't apply to it.
+ * presence (e.g. a MUC join or a presence probe) is never optimized, as
+ * server-side broadcast stripping doesn't apply to it.
  * @param {Strophe.Builder} stanza
  * @param {boolean} [optimize=false]
  * @returns {Promise<Strophe.Builder>}
