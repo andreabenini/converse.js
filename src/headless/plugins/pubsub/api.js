@@ -293,6 +293,12 @@ export default {
 
         /**
          * Subscribes the local user to a PubSub node.
+         *
+         * Subscribes with the *bare* JID, so the subscription is durable and
+         * resource-independent: notifications are delivered to whichever
+         * resource is online, and the subscription survives reconnects (a
+         * full-JID subscription is bound to a resource that changes on every
+         * reconnect, silently stranding delivery on the old resource).
          * @method _converse.api.pubsub.subscribe
          * @param {string} jid - PubSub service JID.
          * @param {string} node - The node to subscribe to
@@ -302,11 +308,12 @@ export default {
             if (!node) throw new Error('api.pubsub.subscribe: node value required');
 
             const service = jid || (await api.disco.entities.find('http://jabber.org/protocol/pubsub'));
-            const own_jid = _converse.session.get('jid');
+            const from = _converse.session.get('jid');
+            const bare_jid = _converse.session.get('bare_jid');
             const iq = stx`
-                <iq type="set" from="${own_jid}" to="${service}" xmlns="jabber:client">
+                <iq type="set" from="${from}" to="${service}" xmlns="jabber:client">
                   <pubsub xmlns="${Strophe.NS.PUBSUB}">
-                    <subscribe node="${node}" jid="${own_jid}"/>
+                    <subscribe node="${node}" jid="${bare_jid}"/>
                   </pubsub>
                 </iq>`;
 
@@ -318,7 +325,8 @@ export default {
         },
 
         /**
-         * Unsubscribes the local user from a PubSub node.
+         * Unsubscribes the local user from a PubSub node. Unsubscribes the bare
+         * JID, matching the durable subscription created by {@link subscribe}.
          * @method _converse.api.pubsub.unsubscribe
          * @param {string} jid - The PubSub service JID
          * @param {string} node - The node to unsubscribe from
@@ -327,11 +335,12 @@ export default {
         async unsubscribe(jid, node) {
             if (!node) throw new Error('api.pubsub.unsubscribe: node value required');
 
-            const own_jid = _converse.session.get('jid');
+            const from = _converse.session.get('jid');
+            const bare_jid = _converse.session.get('bare_jid');
             const iq = stx`
-                <iq type="set" from="${own_jid}" to="${jid}" xmlns="jabber:client">
+                <iq type="set" from="${from}" to="${jid}" xmlns="jabber:client">
                   <pubsub xmlns="${Strophe.NS.PUBSUB}">
-                    <unsubscribe node="${node}" jid="${own_jid}"/>
+                    <unsubscribe node="${node}" jid="${bare_jid}"/>
                   </pubsub>
                 </iq>`;
 
@@ -396,7 +405,7 @@ export default {
                 const full_jid = _converse.session.get('jid');
                 const entity_jid = jid || bare_jid;
 
-                const { max_items, item_ids, rsm: rsm_options } = options;
+                const { max_items, item_ids, rsm: rsm_options, timeout } = options;
                 const rsm = rsm_options ? new RSM(rsm_options) : null;
 
                 const stanza = stx`
@@ -414,7 +423,7 @@ export default {
 
                 let response;
                 try {
-                    response = await api.sendIQ(stanza);
+                    response = await api.sendIQ(stanza, timeout);
                 } catch (error) {
                     throw await parseErrorStanza(error);
                 }
@@ -425,6 +434,54 @@ export default {
                     items,
                     rsm: set ? new RSM({ ...(rsm_options ?? {}), xml: set }) : undefined,
                 };
+            },
+
+            /**
+             * Resolve the payloads of a batch of PubSub event items, retrieving any
+             * that arrived as a bare `<item id/>` header.
+             *
+             * A node whose `pubsub#deliver_payloads` is `false` is
+             * "notification-only". It notifies subscribers with headers and expects
+             * them to retrieve the content themselves (XEP-0060 § 4.3 Event Types).
+             *
+             * Best-effort: an id the service doesn't return is logged and left out,
+             * rather than silently thinning the batch. The order of the rest is
+             * preserved.
+             *
+             * @method _converse.api.pubsub.items.resolve
+             * @param {string|null} jid - The JID of the pubsub service where the node
+             *      resides. Pass a falsy value for your own PEP service (bare JID).
+             * @param {string} node - The node the items were published to
+             * @param {Element[]} items - The `<item>` elements from the event
+             * @returns {Promise<Element[]>}
+             */
+            async resolve(jid, node, items) {
+                const item_ids = items
+                    .filter((el) => !el.firstElementChild)
+                    .map((el) => el.getAttribute('id'))
+                    .filter(Boolean);
+
+                if (!item_ids.length) return items;
+
+                const by_id = new Map();
+                try {
+                    const { items: fetched } = await api.pubsub.items.get(jid, node, { item_ids });
+
+                    // Keyed by id rather than taken in order, so a server that
+                    // ignores the requested ids and returns the whole node still
+                    // yields the right items.
+                    fetched.forEach(/** @param {Element} el */ (el) => by_id.set(el.getAttribute('id'), el));
+
+                    const missing = item_ids.filter((id) => !by_id.has(id));
+                    if (missing.length) {
+                        log.warn(`pubsub.items.resolve: no items ${missing} in ${node} at ${jid}`);
+                    }
+                } catch (e) {
+                    log.warn(`pubsub.items.resolve: could not fetch items ${item_ids} from ${node} at ${jid}: ${e}`);
+                }
+                return items
+                    .map((el) => (el.firstElementChild ? el : by_id.get(el.getAttribute('id'))))
+                    .filter(Boolean);
             },
         },
     },

@@ -1,11 +1,15 @@
-declare const Connection_base: typeof import("strophe.js/dist/types/connection.js").default;
+declare const Connection_base: typeof import("../../../../node_modules/strophe.js/dist/types/connection.js").default;
 /**
  * The Connection class manages the connection to the XMPP server. It's
  * agnostic concerning the underlying protocol (i.e. websocket, long-polling
  * via BOSH or websocket inside a shared worker).
  */
 export class Connection extends Connection_base {
-    constructor(service: any, options: any);
+    /**
+     * @param {string} service - The BOSH or WebSocket service URL.
+     * @param {import('strophe.js').ConnectionOptions} options
+     */
+    constructor(service: string, options: import("strophe.js").ConnectionOptions);
     send_initial_presence: boolean;
     debouncedReconnect: import("lodash").DebouncedFunc<() => Promise<any>>;
     /** @param {Element} body */
@@ -106,16 +110,11 @@ export class Connection extends Connection_base {
  * The MockConnection class is used during testing, to mock an XMPP connection.
  */
 export class MockConnection extends Connection {
-    /**
-     * @param {string} service - The BOSH or WebSocket service URL.
-     * @param {import('strophe.js').ConnectionOptions} options - The configuration options
-     */
-    constructor(service: string, options: import("strophe.js").ConnectionOptions);
     sent_stanzas: any[];
     IQ_stanzas: any[];
     IQ_ids: any[];
     mock: boolean;
-    get _sasl_mechanism(): import("strophe.js/dist/types/sasl-sha256.js").default;
+    get _sasl_mechanism(): import("../../../../node_modules/strophe.js/dist/types/sasl-sha256.js").default;
     _processRequest(): void;
     sendIQ(iq: any, callback: any, errback: any): string;
     send(stanza: any): void;

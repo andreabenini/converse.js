@@ -28,13 +28,13 @@ declare const _default: {
     isString(s: any): boolean;
     getDefaultStorageType(): import("headless/types/utils/types.js").StorageType;
     isPersistentStorageAvailable(): boolean;
-    createStore(id: string, type: import("headless/types/utils/types.js").StorageType): import("@converse/skeletor").PersistentStorage;
+    createStore(id: string, type?: import("headless/types/utils/types.js").StorageType): import("@converse/skeletor").PersistentStorage;
     initStorage(model: import("headless/types/utils/types.js").StorageModel, id: string, type?: import("headless/types/utils/types.js").StorageType): void;
     isErrorStanza(stanza: Element): boolean;
     isForbiddenError(stanza: Element): boolean;
     isServiceUnavailableError(stanza: Element): boolean;
     getAttributes(stanza: Element): object;
-    toStanza: typeof import("@converse/headless").Stanza.toElement;
+    toStanza: typeof import("strophe.js").Stanza.toElement;
     isUniView(): boolean;
     isTestEnv(): boolean;
     getUnloadEvent(): "pagehide" | "beforeunload" | "unload";
@@ -60,6 +60,8 @@ declare const _default: {
     isSameBareJID(jid1: string, jid2: string): boolean;
     isSameDomain(jid1: string, jid2: string): boolean;
     getJIDFromURI(jid: string): string;
+    getNodeFromURI(uri?: string): string | undefined;
+    getItemFromURI(uri?: string): string | undefined;
     isOwnJID(jid: string, include_resource?: boolean): boolean;
     maybeAppendDomain(jid: string): string;
     initPlugins(_converse: ConversePrivateGlobal): void;
@@ -75,7 +77,7 @@ declare const _default: {
     safeSave(model: import("@converse/skeletor").Model, attributes: any, options: any): void;
     isElement(el: unknown): boolean;
     isEqualNode(actual: Element, expected: Element): boolean;
-    isTagEqual(stanza: Element | typeof import("@converse/headless").Builder, name: string): boolean;
+    isTagEqual(stanza: Element | typeof import("strophe.js").Builder, name: string): boolean;
     stringToElement(s: string): Element;
     queryChildren(el: HTMLElement, selector: string): ChildNode[];
     siblingIndex(el: Element): number;
@@ -97,6 +99,7 @@ declare const _default: {
     shouldRenderMediaFromURL(url_text: string, type: "audio" | "image" | "video"): any;
     filterQueryParamsFromURL(url: string): string;
     getRelativeTime(time: string | number | Date): string;
+    byTimeDesc(a: import("@converse/skeletor").Model, b: import("@converse/skeletor").Model): any;
     getNameAndValue(field: HTMLInputElement | HTMLSelectElement): {
         [key: string]: string | number | string[];
     } | null;
@@ -109,9 +112,10 @@ declare const _default: {
     getHyperlinkTemplate(url: string): TemplateResult | string;
     slideOut(el: HTMLElement, duration?: number): Promise<any>;
     slideIn(el: HTMLElement, duration?: number): Promise<any>;
-    xFormField2TemplateResult(xfield: import("headless/shared/types.js").XFormField, options?: import("./types.js").XFormFieldOptions): TemplateResult;
+    xFormField2TemplateResult(xfield: import("headless/types/shared/types.js").XFormField, options?: import("./types.js").XFormFieldOptions): TemplateResult;
     getOuterWidth(el: HTMLElement, include_margin?: boolean): number;
     getRootElement(): HTMLElement;
+    isEditableTarget(target: EventTarget | null): boolean;
     default: {
         getRandomInt: typeof import("headless/types/utils/index.js").getRandomInt;
         getUniqueId: typeof import("headless/types/utils/index.js").getUniqueId;
@@ -142,13 +146,13 @@ declare const _default: {
         isString(s: any): boolean;
         getDefaultStorageType(): import("headless/types/utils/types.js").StorageType;
         isPersistentStorageAvailable(): boolean;
-        createStore(id: string, type: import("headless/types/utils/types.js").StorageType): import("@converse/skeletor").PersistentStorage;
+        createStore(id: string, type?: import("headless/types/utils/types.js").StorageType): import("@converse/skeletor").PersistentStorage;
         initStorage(model: import("headless/types/utils/types.js").StorageModel, id: string, type?: import("headless/types/utils/types.js").StorageType): void;
         isErrorStanza(stanza: Element): boolean;
         isForbiddenError(stanza: Element): boolean;
         isServiceUnavailableError(stanza: Element): boolean;
         getAttributes(stanza: Element): object;
-        toStanza: typeof import("@converse/headless").Stanza.toElement;
+        toStanza: typeof import("strophe.js").Stanza.toElement;
         isUniView(): boolean;
         isTestEnv(): boolean;
         getUnloadEvent(): "pagehide" | "beforeunload" | "unload";
@@ -174,6 +178,8 @@ declare const _default: {
         isSameBareJID(jid1: string, jid2: string): boolean;
         isSameDomain(jid1: string, jid2: string): boolean;
         getJIDFromURI(jid: string): string;
+        getNodeFromURI(uri?: string): string | undefined;
+        getItemFromURI(uri?: string): string | undefined;
         isOwnJID(jid: string, include_resource?: boolean): boolean;
         maybeAppendDomain(jid: string): string;
         initPlugins(_converse: ConversePrivateGlobal): void;
@@ -189,7 +195,7 @@ declare const _default: {
         safeSave(model: import("@converse/skeletor").Model, attributes: any, options: any): void;
         isElement(el: unknown): boolean;
         isEqualNode(actual: Element, expected: Element): boolean;
-        isTagEqual(stanza: Element | typeof import("@converse/headless").Builder, name: string): boolean;
+        isTagEqual(stanza: Element | typeof import("strophe.js").Builder, name: string): boolean;
         stringToElement(s: string): Element;
         queryChildren(el: HTMLElement, selector: string): ChildNode[];
         siblingIndex(el: Element): number;

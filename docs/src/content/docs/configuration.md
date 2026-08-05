@@ -239,6 +239,18 @@ The data that is cached (or cleared) includes your sent and received messages, w
 
 Clearing the cache makes Converse much slower when the user logs in again, because all data needs to be fetch anew.
 
+### apps
+
+- Default: `['chat', 'social']`
+
+The list of apps to make available in the app switcher. Converse ships two apps: the `chat` app (one-on-one chats and multi-user chatrooms) and the `social` app, an [XEP-0277: Microblogging over XMPP](https://xmpp.org/extensions/xep-0277.html) feed.
+
+Only apps named in this list are registered, so this is the setting to use when a deployment wants to offer some apps but not others. To offer chat on its own, set it to `['chat']`. The omitted app's code still ships in the build, it simply no longer appears in the switcher.
+
+The app switcher is only shown in the `fullscreen` [view_mode](#view_mode). In the `overlayed` and `embedded` view modes Converse always shows the primary (chat) app, so this setting has no visible effect in those modes.
+
+This setting controls only what the switcher offers. To stop an app's plugin from initializing at all (including its background work), blacklist the plugin via [blacklisted_plugins](#blacklisted_plugins) (for the social app that is `converse-app-social`), or leave it out of a custom build.
+
 ### archived_messages_page_size
 
 - Default: `50`
@@ -250,12 +262,6 @@ This feature applies to [XEP-0313: Message Archive Management (MAM)](https://xmp
 It allows you to specify the maximum amount of archived messages to be returned per query. When you open a chatbox or room, archived messages will be displayed (if available) and the amount returned will be no more than the page size.
 
 You will be able to query for even older messages by scrolling upwards in the chatbox or room (the so-called infinite scrolling pattern).
-
-### auto_fill_history_gaps
-
-- Default: `true`
-
-Determines whether Converse automatically fills gaps in the chat history. If set to false, a placeholder appears which can be clicked to fetch the missing messages.
 
 ### auto_focus
 
@@ -383,41 +389,66 @@ From Converse 3.0 onwards most of the API is available only to plugins and all p
 
 The usecase for blacklisting is generally to disable removed core plugins (which are automatically whitelisted) to prevent other (potentially malicious) plugins from registering themselves under those names.
 
-The core, and by default whitelisted, plugins are:
+The core plugins are whitelisted automatically. They fall into two families: the headless plugins (protocol and state, always present) and the view plugins (the user interface, present in the standard browser build). This is why many features have a pair, for example `converse-muc` and `converse-muc-views`.
 
-    converse-bosh
+Headless core plugins:
+
+    converse-adhoc
+    converse-blocklist
     converse-bookmarks
+    converse-bosh
+    converse-caps
+    converse-chat
     converse-chatboxes
+    converse-disco
+    converse-emoji
+    converse-headlines
+    converse-mam
+    converse-microblog
+    converse-muc
+    converse-omemo
+    converse-ping
+    converse-pubsub
+    converse-reactions
+    converse-roster
+    converse-smacks
+    converse-status
+    converse-vcard
+    converse-version
+
+View plugins (standard browser build):
+
+    converse-adhoc-views
+    converse-app-chat
+    converse-app-social
+    converse-bookmark-views
     converse-chatview
     converse-controlbox
-    converse-core
-    converse-disco
+    converse-disco-views
     converse-dragresize
     converse-fullscreen
-    converse-headline
-    converse-mam
+    converse-headlines-view
+    converse-mam-views
     converse-minimize
-    converse-muc
-    converse-muc-embedded
+    converse-modal
+    converse-muc-views
     converse-notification
-    converse-ping
+    converse-omemo-views
     converse-profile
+    converse-push
+    converse-reaction-views
     converse-register
     converse-roomslist
+    converse-rootview
     converse-rosterview
     converse-singleton
-    converse-smacks
-    converse-spoilers
-    converse-vcard
 
 Example:
 
 ```javascript
-require(['converse-core', 'converse-muc-embedded'], function (converse) {
-    converse.initialize({
-        // other settings removed for brevity
-        blacklisted_plugins: ['converse-dragresize', 'converse-minimize'],
-    });
+converse.initialize({
+    // other settings removed for brevity
+    blacklisted_plugins: ['converse-dragresize', 'converse-minimize'],
 });
 ```
 
@@ -683,6 +714,12 @@ Determines support for [roster versioning](https://xmpp.org/rfcs/rfc6121.html#ro
 Determines whether [XEP-0198 Stream Management](https://xmpp.org/extensions/xep-0198.html) support is turned on or not.
 
 Recommended to set to `true` if a websocket connection is used. Please see the `websocket-url` configuration setting.
+
+### enable_url_routing
+
+- Default: `false`
+
+Determines whether Converse reflects in-app navigation in the browser's URL, using hash fragments (for example `#converse/social/tag/xmpp`). When enabled, the browser's back and forward buttons move through the views you have visited, and a link to a particular view (such as an author's profile or an individual post) can be shared and reopened after a reload.
 
 ### fetch_url_headers
 
@@ -1624,6 +1661,17 @@ Alternatively you could use it with [view_mode](#view_mode) set to `overlayed` t
 - Default: `5`
 
 This setting relates to [XEP-0198](https://xmpp.org/extensions/xep-0198.html) and determines the number of stanzas to be sent before Converse will ask the server for acknowledgement of those stanzas.
+
+### social_max_comment_threads
+
+- Default: `200`
+- Type: Integer
+
+The maximum number of comment threads the Social app ([XEP-0277](https://xmpp.org/extensions/xep-0277.html) microblogging) keeps cached at once.
+
+When you open a post's comments, that thread is persisted so it reopens instantly and is available offline. Since a thread is materialised for every post whose comments you view, the number of cached threads is what grows over time. Once the cache exceeds this size, threads are evicted (they're cheap to re-fetch) — empty threads, which cache no comments, are evicted before threads that hold comments, and within each the least-recently-viewed goes first. Threads for your own posts are never evicted, since they're subscribed for live updates.
+
+Set to a falsy value (`0`, `null`) to disable eviction and keep an unbounded number of threads.
 
 ### sounds_path
 

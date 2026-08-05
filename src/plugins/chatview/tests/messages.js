@@ -500,8 +500,10 @@ describe('A Chat Message', function () {
             expect(msg_obj.get('is_delayed')).toEqual(true);
             await u.waitUntil(() => chatbox.vcard.get('fullname') === 'Juliet Capulet');
             expect(view.querySelector('.chat-msg .chat-msg__text').textContent).toEqual(message);
-            // A message older than 24h shows the calendar date rather than a relative time.
-            expect(view.querySelector('.chat-msg__time').textContent).toMatch(/\d{4}/);
+            // A message from the day before shows "Yesterday" and the time.
+            expect(view.querySelector('.chat-msg__time').textContent).toBe(
+                `Yesterday at ${dayjs(one_day_ago).format('LT')}`,
+            );
             await u.waitUntil(
                 () => view.querySelector('span.chat-msg__author').textContent.trim() === 'Juliet Capulet',
             );
@@ -1323,16 +1325,8 @@ describe('A Chat Message', function () {
                     await mock.openChatBoxFor(_converse, contact_jid);
                     const view = _converse.chatboxviews.get(contact_jid);
 
-                    const textarea = await u.waitUntil(() => view.querySelector('.chat-textarea'));
-                    textarea.value = 'hello world';
-                    const enter_event = {
-                        'target': textarea,
-                        'preventDefault': function preventDefault() {},
-                        'stopPropagation': function stopPropagation() {},
-                        key: 'Enter',
-                    };
-                    const message_form = view.querySelector('converse-message-form');
-                    message_form.onKeyDown(enter_event);
+                    await mock.setComposerText(view, 'hello world');
+                    await mock.pressComposerKey(view, 'Enter');
                     await new Promise((resolve) => view.model.messages.once('rendered', resolve));
 
                     const msg = stx`
@@ -1375,16 +1369,8 @@ describe('A Chat Message', function () {
                     await mock.openChatBoxFor(_converse, contact_jid);
                     const view = _converse.chatboxviews.get(contact_jid);
 
-                    const textarea = await u.waitUntil(() => view.querySelector('.chat-textarea'));
-                    textarea.value = 'hello world';
-                    const enter_event = {
-                        'target': textarea,
-                        'preventDefault': function preventDefault() {},
-                        'stopPropagation': function stopPropagation() {},
-                        key: 'Enter',
-                    };
-                    const message_form = view.querySelector('converse-message-form');
-                    message_form.onKeyDown(enter_event);
+                    await mock.setComposerText(view, 'hello world');
+                    await mock.pressComposerKey(view, 'Enter');
                     await new Promise((resolve) => view.model.messages.once('rendered', resolve));
 
                     // Normally "modify" errors need to have their id set to the

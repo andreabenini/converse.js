@@ -130,6 +130,14 @@
     </implements>
     <implements>
       <xmpp:SupportedXep>
+        <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0147.html"/>
+        <xmpp:version>1.2</xmpp:version>
+        <xmpp:status>partial</xmpp:status>
+        <xmpp:note>Clicking an xmpp: URI dispatches the feasible query actions: message, join, roster (add a contact), subscribe/unsubscribe and remove. vCard, ad-hoc command, disco, register and file-transfer query types are not handled.</xmpp:note>
+      </xmpp:SupportedXep>
+    </implements>
+    <implements>
+      <xmpp:SupportedXep>
         <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0153.html"/>
         <xmpp:since>11.0.0</xmpp:since>
         <xmpp:status>complete</xmpp:status>
@@ -213,6 +221,13 @@
     </implements>
     <implements>
       <xmpp:SupportedXep>
+        <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0277.html"/>
+        <xmpp:status>partial</xmpp:status>
+        <xmpp:note>Authoring geolocation is not implemented.</xmpp:note>
+      </xmpp:SupportedXep>
+    </implements>
+    <implements>
+      <xmpp:SupportedXep>
         <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0280.html"/>
         <xmpp:since>0.8.0</xmpp:since>
         <xmpp:status>complete</xmpp:status>
@@ -249,6 +264,13 @@
         <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0319.html"/>
         <xmpp:since>4.0.5</xmpp:since>
         <xmpp:status>complete</xmpp:status>
+      </xmpp:SupportedXep>
+    </implements>
+    <implements>
+      <xmpp:SupportedXep>
+        <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0330.html"/>
+        <xmpp:status>partial</xmpp:status>
+        <xmpp:note>The follow-list backing the "Social" app: publishing and retracting entries on the user's own subscription node as they follow and unfollow, reading a contact's list of followed feeds, and live multi-device synchronisation of the user's own list (a follow or unfollow on one device propagates to the others via a +notify subscription). The followers side is not exposed.</xmpp:note>
       </xmpp:SupportedXep>
     </implements>
     <implements>
@@ -397,6 +419,13 @@
       <xmpp:SupportedXep>
         <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0461.html"/>
         <xmpp:status>complete</xmpp:status>
+      </xmpp:SupportedXep>
+    </implements>
+    <implements>
+      <xmpp:SupportedXep>
+        <xmpp:xep rdf:resource="https://xmpp.org/extensions/xep-0472.html"/>
+        <xmpp:status>partial</xmpp:status>
+        <xmpp:note>Microblog profile of the Pubsub Social Feed: the social-feed discovery feature and Base-profile node config used by the "Social" app. Gallery-profile nodes are rendered (consume-only, as an image grid); creating/hosting gallery nodes is not implemented.</xmpp:note>
       </xmpp:SupportedXep>
     </implements>
   </Project>

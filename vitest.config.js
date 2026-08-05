@@ -14,6 +14,8 @@ const commonExclude = [
     '**/node_modules/**',
     '**/tests/mock.js', // shared test helpers
     '**/omemo-views/tests/utils.js', // omemo-views test helper (no describe/it)
+    '**/microblog/tests/utils.js', // microblog test helper (no describe/it)
+    '**/apps/social/tests/utils.js', // app-social test helper (no describe/it)
     '**/__screenshots__/**', // vitest browser-mode failure screenshots
     '**/.vitest-attachments/**',
 ];
@@ -40,6 +42,10 @@ export default defineConfig({
                 find: /(?:\.\.\/)+dist\/converse-headless\.js$/,
                 replacement: abs('src/headless/dist/converse-headless.js'),
             },
+            // Source modules import siblings by the bare `shared/...` specifier that the
+            // bundler resolves via tsconfig's baseUrl. Specs that exercise a source module
+            // directly (rather than the prebuilt bundle) need the same mapping.
+            { find: /^shared\//, replacement: abs('src/shared/') },
         ],
     },
     optimizeDeps: {
@@ -50,12 +56,7 @@ export default defineConfig({
     test: {
         globals: true,
         restoreMocks: true, // match Jasmine's per-spec spyOn restoration
-        // Converse leaves async work (lit renders, localforage reads) in flight
-        // when a test ends; the next test's initConverse tears down #conversejs and
-        // clears storage, so that trailing work errors against a gone root/store.
-        // Karma+Jasmine silently tolerated these unhandled rejections; match that
-        // so the runner swap doesn't change pass/fail semantics.
-        dangerouslyIgnoreUnhandledErrors: true,
+        dangerouslyIgnoreUnhandledErrors: false,
         testTimeout: 7000,
         setupFiles,
         sequence: { shuffle: false },
