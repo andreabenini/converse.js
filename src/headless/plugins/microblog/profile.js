@@ -2,7 +2,7 @@
  * @copyright The Converse.js contributors
  * @license Mozilla Public License (MPLv2)
  */
-import sizzle from 'sizzle';
+import sizzle from '#sizzle';
 import { Model } from '@converse/skeletor';
 import { Strophe } from 'strophe.js';
 import log from '@converse/log';
@@ -110,6 +110,25 @@ class MicroblogProfile extends ModelWithVCard(ModelWithContact(ColorAwareModel(M
      */
     getDisplayName() {
         return this.get('nickname') || this.vcard?.getDisplayName?.() || this.get('jid');
+    }
+
+    /**
+     * The author's full name (the vCard's `FN`), if they publish one. Kept apart
+     * from {@link getNickname} so a profile can show both.
+     * @returns {string|undefined}
+     */
+    getFullname() {
+        return this.vcard?.get('fullname') || undefined;
+    }
+
+    /**
+     * The author's nickname: the roster's, which the user chose for them, else
+     * the one the author publishes themselves (XEP-0172, or the vCard's
+     * `NICKNAME`).
+     * @returns {string|undefined}
+     */
+    getNickname() {
+        return this.get('nickname') || this.vcard?.getNickname?.() || undefined;
     }
 
     /**

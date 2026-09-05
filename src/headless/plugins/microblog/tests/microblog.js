@@ -2666,6 +2666,37 @@ describe('The microblog plugin', function () {
     );
 
     it(
+        'names our own post from our vCard when the entry carries no author name',
+        mock.initConverse(converse, [], {}, async function (_converse) {
+            await mock.waitForRoster(_converse, 'current', 0);
+            const { api } = _converse;
+            const bare_jid = _converse.session.get('bare_jid');
+            await api.waitUntil('pubsubFeedsInitialized');
+
+            // Our own post as another client (or a bridge) published it: no Atom
+            // <author>, so the name has to come from our vCard. Our own profile
+            // stands in as the post's contact, but it only carries a nickname
+            // when the `nickname` setting is set, which it isn't here.
+            const feed = await api.microblog.feeds.get(bare_jid, MICROBLOG_NODE, true);
+            await feed.addItems([
+                stx`
+                <item id="own-1" publisher="${bare_jid}">
+                  <entry xmlns="${ATOM}">
+                    <title type="text">Hello world</title>
+                    <id>tag:montague.lit,2024:posts-own-1</id>
+                    <published>2024-01-01T18:30:02Z</published>
+                  </entry>
+                </item>`.tree(),
+            ]);
+
+            const post = feed.messages.get('own-1');
+            expect(post.get('author_name')).toBeUndefined();
+            expect(post.get('is_mine')).toBe(true);
+            await u.waitUntil(() => post.getDisplayName() === 'Romeo');
+        }),
+    );
+
+    it(
         'exposes an author profile model resolved from the vCard cache',
         mock.initConverse(converse, [], {}, async function (_converse) {
             await mock.waitForRoster(_converse, 'current', 0);
@@ -2679,8 +2710,19 @@ describe('The microblog plugin', function () {
             // and colours by the same JID as the avatar.
             expect(profile.getVCardJID()).toBe(jid);
             expect(profile.getIdentifier()).toBe(jid);
-            // With no vCard/contact name known yet, it falls back to the bare JID.
+            // With no vCard/contact name known yet, it falls back to the bare JID,
+            // and neither name a profile header shows is known.
             expect(profile.getDisplayName()).toBe(jid);
+            expect(profile.getFullname()).toBeUndefined();
+            expect(profile.getNickname()).toBeUndefined();
+
+            // Once the vCard resolves, the two are readable apart: a header shows
+            // the full name, the nickname and the address as separate lines.
+            const vcard = await profile.getVCard();
+            vcard.save({ fullname: 'Mercutio Montague', nickname: 'Merc' });
+            expect(profile.getFullname()).toBe('Mercutio Montague');
+            expect(profile.getNickname()).toBe('Merc');
+            expect(profile.getDisplayName()).toBe('Merc');
             // Cached: the same author (bare or full JID) yields the same instance.
             expect(api.microblog.profile.get(jid)).toBe(profile);
             expect(api.microblog.profile.get(`${jid}/phone`)).toBe(profile);

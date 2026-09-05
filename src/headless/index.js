@@ -37,6 +37,7 @@ export { MUCMessage, MUCMessages, MUC, MUCOccupant, MUCOccupants } from './plugi
 
 import './plugins/ping/index.js'; // XEP-0199 XMPP Ping
 import './plugins/pubsub/index.js'; // XEP-0060 Pubsub
+import './plugins/time/index.js'; // XEP-0202 Entity Time
 export {
     MicroblogProfile,
     PubSubFeed,
@@ -68,6 +69,6 @@ Object.assign(_converse.constants, constants);
 import * as errors from './shared/errors.js';
 export { api, converse, _converse, i18n, log, u, constants, parsers, errors };
 
-window['converse'] = converse;
+globalThis['converse'] = converse;
 
 export default converse;

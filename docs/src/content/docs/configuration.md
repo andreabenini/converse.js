@@ -108,7 +108,7 @@ When a BOSH session is initially created, you'll receive three tokens. A JID (ja
 
 Converse needs these tokens in order to attach to that same session.
 
-In addition to setting [authentication](#authentication) to `prebind`, you'll also need to set the [prebind_url](#prebind_url) and [bosh-service-url](#bosh-service-url).
+In addition to setting [authentication](#authentication) to `prebind`, you'll also need to set the [prebind_url](#prebind_url) and [bosh_service_url](#bosh_service_url).
 
 Here's an example of Converse being initialized with these options:
 
@@ -515,7 +515,7 @@ A list of JIDs to be ignored when showing desktop notifications of changed chat 
 
 Some user's clients routinely connect and disconnect (likely on mobile) and each time a chat state notification is received (`online` when connecting and then `offline` when disconnecting).
 
-When desktop notifications are turned on (see [show-desktop-notifications](#show-desktop-notifications)), then you'll receive notification messages each time this happens.
+When desktop notifications are turned on (see [show_desktop_notifications](#show_desktop_notifications)), then you'll receive notification messages each time this happens.
 
 Receiving constant notifications that a user's client is connecting and disconnecting is annoying, so this option allows you to ignore those JIDs.
 
@@ -720,6 +720,35 @@ Recommended to set to `true` if a websocket connection is used. Please see the `
 - Default: `false`
 
 Determines whether Converse reflects in-app navigation in the browser's URL, using hash fragments (for example `#converse/social/tag/xmpp`). When enabled, the browser's back and forward buttons move through the views you have visited, and a link to a particular view (such as an author's profile or an individual post) can be shared and reopened after a reload.
+
+### entity_time_min_diff_hours
+
+- Default: `0`
+
+The minimum timezone difference (in hours) between you and a contact before Converse says anything about their local time.
+
+- `0`: say something for any different timezone, including the half-hour and quarter-hour ones (India is 30 minutes off from Pakistan, Nepal 15 minutes off from India)
+- `3`: only if the contact is 3 or more hours ahead or behind
+
+A contact in your own timezone never triggers the warning, whatever this is set to, since your own clock already tells you what time it is for them. Their profile is the exception: a value you went looking for is shown whatever the difference.
+
+See also `show_entity_time`.
+
+### entity_time_warning_end
+
+- Default: `7`
+
+The hour (0-23) at which the "off-hours" warning period ends. Defaults to 7 (7 AM).
+
+See also `show_entity_time`.
+
+### entity_time_warning_start
+
+- Default: `22`
+
+The hour (0-23) at which the "off-hours" warning period starts. Defaults to 22 (10 PM).
+
+See also `show_entity_time`.
 
 ### fetch_url_headers
 
@@ -1412,6 +1441,24 @@ converse.initialize({
 });
 ```
 
+### register_protocol_handler
+
+- Default: `false`
+
+Determines whether Converse asks the browser, once you have logged in, to handle `xmpp:` links ([XEP-0147](https://xmpp.org/extensions/xep-0147.html)) so that clicking one in another application opens it in Converse.
+
+Off by default, because registering claims a browser-wide URI scheme and prompts the user, which is rarely what you want from a Converse embedded in a larger page.
+
+The browser only accepts the request from a page served over HTTPS, and Firefox additionally requires that it happen during a user gesture. If you need to prompt from a button rather than on login, leave this setting off and call `_converse.api.protocolHandler.register()` from your click handler instead:
+
+```javascript
+document.querySelector('#enable-xmpp-links').addEventListener('click', () => {
+    _converse.api.protocolHandler.register();
+});
+```
+
+When Converse is installed as a progressive web app, the handler is declared in `manifest.json` and this setting is not involved.
+
 ### registration_domain
 
 - Default: `''`
@@ -1547,6 +1594,30 @@ Determines which (if any) of the [XEP-0333](https://xmpp.org/extensions/xep-0333
 
 It's still up to Converse to decide when to send out the relevant markers, the purpose of this setting is merely to turn on or off the sending of the individual markers.
 
+### send_entity_time
+
+- Default: `'presence'`
+
+Determines who Converse answers [XEP-0202](https://xmpp.org/extensions/xep-0202.html) entity time queries from, telling them your current UTC offset.
+
+| Value                     | Who gets an answer                                                                 |
+| ------------------------- | ---------------------------------------------------------------------------------- |
+| `'presence'`              | Only entities subscribed to your presence, plus your own other resources (default) |
+| `'public'`                | Anyone who asks                                                                     |
+| any falsy value           | Nobody                                                                              |
+
+Entities that don't qualify get a `service-unavailable` error, which is indistinguishable from the error sent by a client that doesn't implement the XEP at all.
+
+XEP-0202 notes that your numeric offset says something about where in the world you are, but is silent on who should be allowed to ask. The default therefore follows the rule [XEP-0012](https://xmpp.org/extensions/xep-0012.html) imposes on the comparable Last Activity data: only the people who can already see your presence. Set it to `'public'` if you'd rather answer everyone, which is what most other XMPP clients do.
+
+Any truthy value that isn't `'public'` is treated as `'presence'`, so a mistyped setting shares less rather than more.
+
+When sharing is turned off entirely, Converse also stops advertising `urn:xmpp:time` in its service discovery features. Both sharing modes do advertise it, since under `'presence'` the protocol is genuinely supported and it's the answer that's restricted.
+
+Changing this during a session takes effect immediately for the queries Converse answers. The advertised service discovery features are settled when the session starts, so those only catch up after reconnecting.
+
+Note that this setting controls _outgoing_ timezone information only. To stop Converse from querying your contacts, use `show_entity_time`.
+
 ### show_background
 
 - Default: `true`
@@ -1582,6 +1653,21 @@ By default this box is hidden and can be toggled by clicking on any element in t
 If this options is set to true, the controlbox will by default be shown upon page load.
 
 However, be aware that even if this value is set to `false`, if the controlbox is open, and the page is reloaded, then it will stay open on the new page as well.
+
+### show_entity_time
+
+- Default: `true`
+
+Determines whether Converse queries your contacts for their local time, per [XEP-0202](https://xmpp.org/extensions/xep-0202.html). This is useful for distributed teams, to avoid messaging colleagues at inappropriate times.
+
+When it's on, Converse shows:
+
+- their local time in their profile
+- a warning above the composer, once you start writing to them, if it's "off-hours" for them (nighttime in their timezone) and their clock differs from yours
+
+A contact in your own timezone never triggers the warning, since your own clock already tells you what time it is for them.
+
+Related settings: `entity_time_warning_start`, `entity_time_warning_end`, `entity_time_min_diff_hours`. To stop Converse from answering time queries about you, use `send_entity_time`.
 
 ### show_desktop_notifications
 

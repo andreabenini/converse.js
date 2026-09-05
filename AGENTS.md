@@ -69,42 +69,18 @@ Without this repo, sponsor logos in `index.html` and the fullscreen footer will 
 
 ## Essential Commands
 
-### Development
+`npm run` lists every script; most names are self-describing (`dev`, `build`, `watch`,
+`nodeps`, `cdn`, and their `:headless` / `:main` variants). Recorded here are only the
+details you cannot read off `package.json`:
 
-```bash
-# Development build (unminified, with debugger statements)
-npm run dev                   # Build everything in dev mode
-npm run dev:headless          # Build only headless package
-
-# Watch mode (auto-rebuild on changes)
-npm run watch                 # Watch both headless and main
-npm run watch:headless        # Watch only headless
-npm run watch:main            # Watch only main package
-
-# Dev server with live reload
-npm run devserver             # Starts on http://localhost:8080
-
-# Serve static files
-npm run serve                 # Serves on http://localhost:8000 (default)
-npm run serve -- -p 8008      # Serve on custom port
-npm run serve-tls             # HTTPS server (requires certs/)
-```
-
-### Building
-
-```bash
-# Production build (minified)
-npm run build                 # Full build: headless + ESM + CJS + CSS
-npm run build:headless        # Build headless package only
-npm run build:esm             # Build ESM bundle
-npm run build:cjs             # Build CommonJS bundle
-npm run build:website-css     # Build website CSS
-npm run build:website-min-css # Build and minify website CSS
-
-# Special builds
-npm run nodeps                # Build without dependencies
-npm run cdn                   # Build for CDN deployment
-```
+- `npm run dev` builds unminified and keeps `debugger` statements. `npm run build` is the
+  minified full build (website CSS, then headless, then main).
+- A `:headless` suffix acts on the `@converse/headless` package only, `:main` on the root
+  package.
+- `npm run devserver` serves with live reload on http://localhost:8008.
+- `npm run serve` serves static files on http://localhost:8080, searching upwards for a
+  free port if that one is taken. Pass a port with `npm run serve -- -p 8000`.
+- `npm run serve-tls` is the HTTPS equivalent and needs a certificate and key in `certs/`.
 
 ### Testing
 
@@ -529,6 +505,8 @@ Read: RELEASE.md
 - **Dev server**: `npm run docs:dev`
 - **Output**: `docs/dist/`
 - **Online**: https://conversejs.org/docs/
+- **Self-contained**: the docs have their own `package.json`; building them does not
+  require the root `npm install`
 
 Generate docs:
 
@@ -537,3 +515,13 @@ make doc           # Build HTML documentation
 npm run docs:dev   # Start dev server with live reload
 npm run docs:build # Build for production
 ```
+
+### Internal links
+
+The site is built with `base: '/docs/'`, which Starlight applies only to the links it
+generates itself (sidebar, frontmatter, pagination). Hand-written Markdown links must
+carry it: `/docs/configuration/`, not `/configuration/`. Heading anchors keep
+underscores, so `### bosh_service_url` is `#bosh_service_url`.
+
+`starlight-links-validator` fails the build on a missing page or a missing anchor, but
+only on a build: `npm run docs:dev` does not report. The CI `docs` job runs it.

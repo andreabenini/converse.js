@@ -69,7 +69,7 @@ export default defineConfig({
                 test: {
                     name: 'main',
                     include: ['src/**/tests/**/*.js', 'src/**/tests/*.js'],
-                    exclude: ['src/headless/**', ...commonExclude],
+                    exclude: ['src/headless/**', '**/*.node.js', ...commonExclude],
                     browser: makeBrowser(),
                 },
             },
@@ -80,8 +80,33 @@ export default defineConfig({
                 test: {
                     name: 'headless',
                     include: ['**/tests/**/*.js', '**/tests/*.js'],
-                    exclude: [...commonExclude],
+                    // The shims are Node-only; they're covered by the
+                    // `headless-node` project below, as are the `.node.js`
+                    // specs, which import those shims directly.
+                    exclude: ['shims/**', '**/*.node.js', ...commonExclude],
                     browser: makeBrowser(),
+                },
+            },
+            {
+                // Runs under Node rather than a browser, covering the shims that
+                // stand in for the browser DOM there. Deliberately does not
+                // extend the root config: those setup files inject stylesheets
+                // and a Jasmine compatibility layer that only make sense in a
+                // page, and the aliases point at the browser bundles.
+                root: abs('src/headless'),
+                test: {
+                    name: 'headless-node',
+                    environment: 'node',
+                    // The shims, plus the DOM-free utils that only they make
+                    // usable off-browser. Both also run in the `headless`
+                    // project, which is the point: they're isomorphic.
+                    //
+                    // Plugin specs suffixed `.node.js` opt in here too. They
+                    // import plugin modules directly rather than the browser
+                    // bundle, and exist to pin that a plugin's logic carries no
+                    // hidden dependency on the DOM.
+                    include: ['shims/tests/**/*.js', 'utils/tests/**/*.js', 'plugins/**/tests/*.node.js'],
+                    exclude: [...commonExclude],
                 },
             },
         ],

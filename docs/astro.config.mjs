@@ -1,12 +1,24 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import starlightLinksValidator from 'starlight-links-validator';
 
 // https://astro.build/config
 export default defineConfig({
     base: '/docs/',
+    // Keep the docs build self-contained: without this, Vite searches
+    // upwards and picks up the main app's postcss.config.js, which pulls
+    // autoprefixer out of the root node_modules.
+    vite: { css: { postcss: {} } },
     integrations: [
         starlight({
+            plugins: [
+                starlightLinksValidator({
+                    // The dev docs legitimately point readers at their own
+                    // local dev server (http://localhost:8000/dev.html etc).
+                    errorOnLocalLinks: false,
+                }),
+            ],
             title: 'Converse',
             logo: {
                 src: './src/assets/logo.svg',
