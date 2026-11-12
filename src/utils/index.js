@@ -6,7 +6,7 @@ import * as html from './html.js';
 import * as time from './time.js';
 import * as url from './url.js';
 
-export default Object.assign(u, {
+Object.assign(u, {
     ...color,
     ...file,
     ...form,

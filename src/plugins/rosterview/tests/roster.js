@@ -185,12 +185,14 @@ describe('The Contacts Roster', function () {
         'also contains contacts with subscription of none',
         mock.initConverse(converse, [], {}, async function (_converse) {
             const { IQ_stanzas } = _converse.api.connection.get();
-            let stanza = await u.waitUntil(() =>
+            const stanza = await u.waitUntil(() =>
                 IQ_stanzas.filter((iq) => sizzle('iq query[xmlns="jabber:iq:roster"]', iq).length).pop(),
             );
 
             _converse.api.connection.get()._dataRecv(
-                mock.createRequest(_converse, stx`
+                mock.createRequest(
+                    _converse,
+                    stx`
             <iq to="${_converse.api.connection.get().jid}" type="result" id="${stanza.getAttribute('id')}" xmlns="jabber:client">
                 <query xmlns="jabber:iq:roster">
                     <item jid="juliet@example.net" name="Juliet" subscription="both">
@@ -204,7 +206,8 @@ describe('The Contacts Roster', function () {
                     </item>
                 </query>
             </iq>
-        `),
+        `,
+                ),
             );
 
             while (IQ_stanzas.length) IQ_stanzas.pop();
@@ -228,7 +231,9 @@ describe('The Contacts Roster', function () {
             );
 
             _converse.api.connection.get()._dataRecv(
-                mock.createRequest(_converse, stx`
+                mock.createRequest(
+                    _converse,
+                    stx`
             <iq to="${_converse.api.connection.get().jid}" type="result" id="${stanza.getAttribute('id')}" xmlns="jabber:client">
                 <query xmlns="jabber:iq:roster">
                     <item jid="juliet@example.net" name="Juliet" subscription="both">
@@ -239,7 +244,8 @@ describe('The Contacts Roster', function () {
                     </item>
                 </query>
             </iq>
-        `),
+        `,
+                ),
             );
 
             while (IQ_stanzas.length) IQ_stanzas.pop();
@@ -259,7 +265,9 @@ describe('The Contacts Roster', function () {
             );
 
             _converse.api.connection.get()._dataRecv(
-                mock.createRequest(_converse, stx`
+                mock.createRequest(
+                    _converse,
+                    stx`
             <iq to="${_converse.api.connection.get().jid}" type="result" id="${stanza.getAttribute('id')}" xmlns="jabber:client">
                 <query xmlns="jabber:iq:roster">
                     <item jid="juliet@example.net" name="Juliet" subscription="both">
@@ -270,7 +278,8 @@ describe('The Contacts Roster', function () {
                     </item>
                 </query>
             </iq>
-        `),
+        `,
+                ),
             );
 
             await u.waitUntil(() => _converse.roster.pluck('jid').includes('lord.capulet@example.net'));
@@ -347,6 +356,36 @@ describe('The Contacts Roster', function () {
 
                 el.click();
                 await u.waitUntil(() => view.querySelector('.roster-contacts converse-list-filter'));
+            }),
+        );
+
+        it(
+            'shows its type icons and its input on one line',
+            mock.initConverse(converse, [], {}, async function (_converse) {
+                await mock.openControlBox(_converse);
+                await mock.waitForRoster(_converse, 'current');
+                const rosterview = document.querySelector('converse-roster');
+                (await u.waitUntil(() => rosterview.querySelector('.toggle-filter'))).click();
+
+                const form = await u.waitUntil(() => rosterview.querySelector('.items-filter-form'));
+                const icons = form.querySelector('.filter-by');
+                const input = form.querySelector('.items-filter');
+                const row = (/** @type {Element} */ el) => {
+                    const { top, bottom } = el.getBoundingClientRect();
+                    return (top + bottom) / 2;
+                };
+                // The input sits beside the icons and takes up the rest of the line.
+                expect(Math.abs(row(icons) - row(input))).toBeLessThan(5);
+                expect(input.getBoundingClientRect().left).toBeGreaterThanOrEqual(icons.getBoundingClientRect().right);
+                expect(input.getBoundingClientRect().width).toBeGreaterThan(form.clientWidth / 2);
+
+                // In status mode the select takes the input's place, without an empty gap before it.
+                /** @type {HTMLElement} */ (form.querySelector('converse-icon[data-type="state"]')).click();
+                const select = form.querySelector('select.state-type');
+                await u.waitUntil(() => u.isVisible(select));
+                expect(u.isVisible(form.querySelector('.btn-group'))).toBe(false);
+                expect(Math.abs(row(icons) - row(select))).toBeLessThan(5);
+                expect(select.getBoundingClientRect().left - icons.getBoundingClientRect().right).toBeLessThan(10);
             }),
         );
 
@@ -823,9 +862,7 @@ describe('The Contacts Roster', function () {
                             .map((e) => e.querySelector('li')).length,
                     1000,
                 );
-                await mock.checkHeaderToggling(_converse,
-                    rosterview.querySelector('[data-group="Pending contacts"]'),
-                );
+                await mock.checkHeaderToggling(_converse, rosterview.querySelector('[data-group="Pending contacts"]'));
             }),
         );
 
@@ -1008,7 +1045,8 @@ describe('The Contacts Roster', function () {
                         _converse.api.connection
                             .get()
                             ._dataRecv(
-                                mock.createRequest(_converse, 
+                                mock.createRequest(
+                                    _converse,
                                     stx`<iq id="${stanza.getAttribute('id')}" type="result" xmlns="jabber:client"></iq>`,
                                 ),
                             );

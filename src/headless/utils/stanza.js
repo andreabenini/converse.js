@@ -1,7 +1,6 @@
-import sizzle from "#sizzle";
-import { Strophe } from 'strophe.js';
+import sizzle from '#sizzle';
+import { Strophe, toStanza } from 'strophe.js';
 import { isElement } from './html.js';
-import { toStanza } from 'strophe.js';
 
 export { toStanza };
 
@@ -9,7 +8,7 @@ export { toStanza };
  * @param {Element} stanza
  * @returns {boolean}
  */
-export function isErrorStanza (stanza) {
+export function isErrorStanza(stanza) {
     if (!isElement(stanza)) {
         return false;
     }
@@ -20,7 +19,7 @@ export function isErrorStanza (stanza) {
  * @param {Element} stanza
  * @returns {boolean}
  */
-export function isForbiddenError (stanza) {
+export function isForbiddenError(stanza) {
     if (!isElement(stanza)) {
         return false;
     }
@@ -31,7 +30,7 @@ export function isForbiddenError (stanza) {
  * @param {Element} stanza
  * @returns {boolean}
  */
-export function isServiceUnavailableError (stanza) {
+export function isServiceUnavailableError(stanza) {
     if (!isElement(stanza)) {
         return false;
     }
@@ -43,7 +42,7 @@ export function isServiceUnavailableError (stanza) {
  * @param {Element} stanza
  * @returns {object}
  */
-export function getAttributes (stanza) {
+export function getAttributes(stanza) {
     return stanza.getAttributeNames().reduce((acc, name) => {
         acc[name] = Strophe.xmlunescape(stanza.getAttribute(name));
         return acc;

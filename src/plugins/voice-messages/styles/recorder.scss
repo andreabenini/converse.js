@@ -1,0 +1,98 @@
+@import 'shared/styles/_mixins.scss';
+
+// The frame and the close button come from the composer panel. This is only
+// what the recorder puts inside it.
+converse-audio-recorder {
+    // The controls take the conversation's colour, like the toolbar below them.
+    // A groupchat sets --composer-panel-accent; a one-to-one chat doesn't.
+    --recorder-accent: var(--composer-panel-accent, var(--chat-color));
+    --btn-quiet-tint: var(--recorder-accent);
+
+    display: block;
+
+    .recorder-status,
+    .recorder-busy {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-width: 0;
+    }
+
+    .recording-duration {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+    }
+
+    .recording-remaining {
+        color: var(--warning-color);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .recording-indicator,
+    .paused-indicator {
+        flex: 0 0 auto;
+        width: 0.75rem;
+        height: 0.75rem;
+    }
+
+    .recording-indicator {
+        border-radius: 50%;
+        background-color: var(--danger-color);
+        animation: voice-recorder-pulse 1.5s ease-in-out infinite;
+    }
+
+    .paused-indicator {
+        border-radius: 2px;
+        background-color: var(--warning-color);
+    }
+
+    // Scoped to the panel's actions so the accent variables outrank the generic
+    // `.conversejs .btn` rules.
+    .composer-panel__actions {
+        .btn {
+            min-width: 2.5rem;
+            min-height: 2.5rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-pause,
+        .btn-resume {
+            @include btn-quiet;
+            color: var(--recorder-accent);
+        }
+
+        // Filled with the accent, like the toolbar's send button
+        .btn-stop,
+        .btn-retry {
+            --converse-btn-color: var(--background-color);
+            --converse-btn-bg: var(--recorder-accent);
+            --converse-btn-border-color: var(--recorder-accent);
+            --converse-btn-hover-color: var(--background-color);
+            --converse-btn-hover-bg: #{btn-fill-shade(var(--recorder-accent), 18%)};
+            --converse-btn-hover-border-color: #{btn-fill-shade(var(--recorder-accent), 18%)};
+            --converse-btn-active-color: var(--background-color);
+            --converse-btn-active-bg: #{btn-fill-shade(var(--recorder-accent), 30%)};
+            --converse-btn-active-border-color: #{btn-fill-shade(var(--recorder-accent), 30%)};
+        }
+    }
+
+    .error-message {
+        margin: 0;
+        color: var(--danger-color);
+        text-align: start;
+    }
+}
+
+@keyframes voice-recorder-pulse {
+    50% {
+        opacity: 0.4;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    converse-audio-recorder .recording-indicator {
+        animation: none;
+    }
+}

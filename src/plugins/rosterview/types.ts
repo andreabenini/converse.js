@@ -1,6 +1,5 @@
-import RosterContact from "@converse/headless/types/plugins/roster/contact"
-import Profile from "@converse/headless/types/plugins/status/profile"
+import type { Profile, RosterContact } from '@converse/headless';
 
 export type ContactsMap = {
-    [Key: string]: (Profile|RosterContact)[]
-}
+    [Key: string]: (Profile | RosterContact)[];
+};

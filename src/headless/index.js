@@ -27,6 +27,7 @@ import './plugins/chatboxes/index.js';
 import './plugins/disco/index.js'; // XEP-0030 Service discovery
 import './plugins/adhoc/index.js'; // XEP-0050 Ad Hoc Commands
 import './plugins/headlines/index.js'; // Support for headline messages
+export { Call, Calls } from './plugins/jingle/index.js'; // XEP-0166 Jingle (RTP sessions)
 export { Device, Devices, DeviceList, DeviceLists } from './plugins/omemo/index.js'; // Support for headline messages
 
 // XEP-0313 Message Archive Management
@@ -62,12 +63,40 @@ export { VCard, VCards } from './plugins/vcard/index.js'; // XEP-0054 VCard-temp
 
 import * as omemo_constants from './plugins/omemo/constants.js';
 import * as muc_constants from './plugins/muc/constants.js';
-const constants = Object.assign({}, shared_constants, muc_constants, omemo_constants);
+import * as jingle_constants from './plugins/jingle/constants.js';
+/** @type {typeof shared_constants & typeof muc_constants & typeof omemo_constants & typeof jingle_constants} */
+const constants = Object.assign({}, shared_constants, muc_constants, omemo_constants, jingle_constants);
 
 Object.assign(_converse.constants, constants);
 
 import * as errors from './shared/errors.js';
 export { api, converse, _converse, i18n, log, u, constants, parsers, errors };
+
+// Types for plugins and the UI. The package publishes a single bundled
+// declaration file, so these have to be reachable from the entry point.
+/**
+ * @typedef {import('./shared/_converse.js').ConversePrivateGlobal} ConversePrivateGlobal
+ * @typedef {import('./shared/chatbox.js').default} ChatBoxBase
+ * @typedef {import('./shared/types').ChatBoxOrMUC} ChatBoxOrMUC
+ * @typedef {import('./shared/types').MessageAttributes} MessageAttributes
+ * @typedef {import('./shared/types').MessageEventData} MessageEventData
+ * @typedef {import('./shared/types').XFormField} XFormField
+ * @typedef {import('./utils/types').MediaURLMetadata} MediaURLMetadata
+ * @typedef {import('./plugins/adhoc/types').AdHocCommand} AdHocCommand
+ * @typedef {import('./plugins/adhoc/types').AdHocCommandAction} AdHocCommandAction
+ * @typedef {import('./plugins/adhoc/types').AdHocCommandNoteType} AdHocCommandNoteType
+ * @typedef {import('./plugins/adhoc/types').AdHocCommandResult} AdHocCommandResult
+ * @typedef {import('./plugins/disco/entity.js').default} DiscoEntity
+ * @typedef {import('./plugins/headlines/feed.js').default} HeadlinesFeed
+ * @typedef {import('./plugins/muc/types').ChannelSearchItem} ChannelSearchItem
+ * @typedef {import('./plugins/muc/types').MEPMessageAttributes} MEPMessageAttributes
+ * @typedef {import('./plugins/muc/types').MUCMessageAttributes} MUCMessageAttributes
+ * @typedef {import('./plugins/muc/types').MUCMessageEventData} MUCMessageEventData
+ * @typedef {import('./plugins/omemo/types').OMEMOVersion} OMEMOVersion
+ * @typedef {import('./plugins/time/types').ContactTime} ContactTime
+ * @typedef {import('./plugins/vcard/types').VCardData} VCardData
+ * @typedef {import('./plugins/version/types').SoftwareVersion} SoftwareVersion
+ */
 
 globalThis['converse'] = converse;
 

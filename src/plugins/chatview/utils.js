@@ -1,23 +1,17 @@
 import { __ } from 'i18n';
 import { _converse, api } from '@converse/headless';
 
-export function clearHistory (jid) {
-    if (location.hash === `converse/chat?jid=${jid}`) {
-        history.pushState(null, '', window.location.pathname);
-    }
-}
-
-export async function clearMessages (chat) {
+export async function clearMessages(chat) {
     const result = await api.confirm(
         __('Confirm'),
-        __('Are you sure you want to clear the messages from this conversation?')
+        __('Are you sure you want to clear the messages from this conversation?'),
     );
     if (result) {
         await chat.clearMessages();
     }
 }
 
-export async function parseMessageForCommands (chat, text) {
+export async function parseMessageForCommands(chat, text) {
     const match = text.replace(/^\s*/, '').match(/^\/(.*)\s*$/);
     if (match) {
         let handled = false;
@@ -54,20 +48,4 @@ export async function parseMessageForCommands (chat, text) {
         }
     }
     return false;
-}
-
-export function resetElementHeight (ev) {
-    if (window.CSS?.supports('field-sizing', 'content')) {
-        return;
-    }
-
-    if (ev.target.value) {
-        const height = ev.target.scrollHeight + 'px';
-        if (ev.target.style.height != height) {
-            ev.target.style.height = 'auto';
-            ev.target.style.height = height;
-        }
-    } else {
-        ev.target.style = '';
-    }
 }

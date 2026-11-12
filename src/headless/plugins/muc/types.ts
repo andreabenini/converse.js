@@ -1,6 +1,6 @@
 import { ModelAttributes } from '@converse/skeletor';
 import { CHAT_STATES } from '../../shared/constants';
-import { MessageAttributes } from '../../shared/types';
+import { MessageAttributes, Reference } from '../../shared/types';
 import MUC from './muc';
 
 export type MUCStatusCode =
@@ -39,7 +39,7 @@ export type DefaultMUCAttributes = {
     name: string;
     num_unread: number;
     num_unread_general: number;
-    roomconfig: Object;
+    roomconfig: object;
     time_opened: number;
     time_sent: string;
     type: 'chatroom';
@@ -47,8 +47,8 @@ export type DefaultMUCAttributes = {
 
 // An object containing the parsed {@link MUCMessageAttributes} and current {@link MUC}.
 export type MUCMessageEventData = {
-    stanza: Element;
-    attrs: MUCMessageAttributes;
+    stanza?: Element; // Absent for XEP-0316 MEP notifications
+    attrs: MUCMessageAttributes | MEPMessageAttributes;
     chatbox: MUC;
 };
 
@@ -59,18 +59,33 @@ export type MUCAttributes = DefaultMUCAttributes & {
 };
 
 type ExtraMUCAttributes = {
-    activities: Array<Object>; // A list of objects representing XEP-0316 MEP notification data
+    activities: Array<object>; // A list of objects representing XEP-0316 MEP notification data
     from_muc: string; // The JID of the MUC from which this message was sent
-    from_real_jid: string; // The real JID of the sender, if available
+    from_real_jid: string; // The real JID of the sender, if the server stated it (see getRealJID in parsers.js)
     moderated: string; // The type of XEP-0425 moderation (if any) that was applied
     moderated_by: string; // The JID of the user that moderated this message
     moderated_id: string; // The  XEP-0359 Stanza ID of the message that this one moderates
+    moderation_incomplete: boolean; // Set when some versions of a corrected message we moderated could not be retracted
     moderation_reason: string; // The reason provided why this message moderates another
     occupant_id: string; // The XEP-0421 occupant ID
     codes: MUCStatusCode[];
+    is_forwarded: boolean; // Whether the message contains a XEP-0297 forwarded message
 };
 
 export type MUCMessageAttributes = MessageAttributes & ExtraMUCAttributes;
+
+// A XEP-0316 MEP notification, parsed from an <activity> element
+export type MEPActivityAttributes = {
+    from: string; // The JID of the MUC which sent the notification
+    msgid: string; // The id of the message stanza
+    message: string; // The text of the activity
+    reason?: string; // The reason given for the activity
+    references: Reference[]; // XEP-0372 references, e.g. mentions, in the text
+    type: 'mep';
+};
+
+// The attributes of a MUC message, merged with those of one of its XEP-0316 MEP activities
+export type MEPMessageAttributes = Omit<MUCMessageAttributes, 'type'> & MEPActivityAttributes;
 
 export type MUCAffiliation = 'owner' | 'admin' | 'member' | 'outcast' | 'none';
 export type MUCRole = 'moderator' | 'participant' | 'visitor' | 'none';
@@ -126,4 +141,43 @@ export type OccupantData = {
     jid?: string;
     nick?: string;
     occupant_id?: string; // The XEP-0421 unique occupant id
+    affiliation?: MUCAffiliation | null; // Undefined when the source (e.g. a message) doesn't state one
+};
+
+// XEP-0433 Extended Channel Search
+
+export type ChannelSearchProtocol = 'xep-0433' | 'muclumbus';
+
+export type ChannelSearchSortKey = 'nusers' | 'address';
+
+// Why we're not querying a search service. The `code` of a ChannelSearchRefusedError.
+export type ChannelSearchRefusal = 'rate-limited' | 'unresponsive' | 'unsupported';
+
+export type ChannelSearchBackOff = {
+    reason: 'rate-limited' | 'unresponsive';
+    attempts: number; // How often in a row the service rate-limited us or didn't respond
+    until: number; // When (in ms since the epoch) we may query the service again
+};
+
+export type ChannelSearchOptions = {
+    max?: number; // How many results to ask for in one page
+    after?: string; // The `last` cursor of the previous page, to fetch the next one
+    sort?: ChannelSearchSortKey; // Busiest channels first, or alphabetical by address
+    service?: string; // JID of the search service, defaults to the muc_search_service setting
+};
+
+export type ChannelSearchItem = {
+    jid: string; // The channel's address
+    name?: string;
+    description?: string;
+    language?: string; // The channel's primary language, as an xml:lang code
+    nusers?: number; // Number of occupants, possibly stale
+    is_open?: boolean; // Whether the channel can be joined without extra credentials
+    anonymity_mode?: string;
+    service_type?: string; // e.g. "xep-0045"
+};
+
+export type ChannelSearchResult = {
+    items: ChannelSearchItem[];
+    last?: string; // Pass as `after` to fetch the next page. An empty page means there are no more.
 };

@@ -185,10 +185,11 @@ export default {
             try {
                 await api.sendIQ(stanza);
             } catch (iq) {
+                // `iq` is `null` if the publish timed out
                 const e = await parseErrorStanza(iq);
                 if (
-                    e.name === 'conflict' &&
-                    /** @type {import('shared/errors').StanzaError} */ (e).extra[Strophe.NS.PUBSUB_ERROR] ===
+                    e?.name === 'conflict' &&
+                    /** @type {import('../../shared/errors.js').StanzaError} */ (e).extra[Strophe.NS.PUBSUB_ERROR] ===
                         'precondition-not-met'
                 ) {
                     try {

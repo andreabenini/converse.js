@@ -17,7 +17,7 @@ export function isMobileViewport() {
 }
 
 /**
- * @param {import('@converse/headless/types/shared/chatbox').default} model
+ * @param {import('@converse/headless').ChatBoxBase} model
  */
 export function getChatStyle(model) {
     if (isMobileViewport()) return '';
@@ -161,14 +161,7 @@ export function getHats(message) {
 }
 
 export function getTonedEmojis() {
-    if (!converse.emojis.toned) {
-        converse.emojis.toned = u.unique(
-            Object.values(converse.emojis.json.people)
-                .filter((person) => person.sn.includes('_tone'))
-                .map((person) => person.sn.replace(/_tone[1-5]/, '')),
-        );
-    }
-    return converse.emojis.toned;
+    return converse.emojis.toned ?? [];
 }
 
 /**

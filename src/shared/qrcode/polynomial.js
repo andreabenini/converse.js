@@ -5,7 +5,7 @@ class QRPolynomial {
      */
     constructor(num, shift) {
         if (num.length == undefined) {
-            throw new Error(num.length + "/" + shift);
+            throw new Error(num.length + '/' + shift);
         }
         let offset = 0;
         while (offset < num.length && num[offset] == 0) {
@@ -17,7 +17,7 @@ class QRPolynomial {
         }
     }
 
-        /**
+    /**
      * @param {number} index
      * @returns {number}
      */
@@ -25,19 +25,19 @@ class QRPolynomial {
         return this.num[index];
     }
 
-        /**
+    /**
      * @returns {number}
      */
     getLength() {
         return this.num.length;
     }
 
-        /**
+    /**
      * @param {QRPolynomial} e
      * @returns {QRPolynomial}
      */
     multiply(e) {
-        let num = new Array(this.getLength() + e.getLength() - 1);
+        const num = new Array(this.getLength() + e.getLength() - 1);
         for (let i = 0; i < this.getLength(); i++) {
             for (let j = 0; j < e.getLength(); j++) {
                 num[i + j] ^= QRMath.gexp(QRMath.glog(this.get(i)) + QRMath.glog(e.get(j)));
@@ -46,7 +46,7 @@ class QRPolynomial {
         return new QRPolynomial(num, 0);
     }
 
-        /**
+    /**
      * @param {QRPolynomial} e
      * @returns {QRPolynomial}
      */
@@ -54,8 +54,8 @@ class QRPolynomial {
         if (this.getLength() - e.getLength() < 0) {
             return this;
         }
-        let ratio = QRMath.glog(this.get(0)) - QRMath.glog(e.get(0));
-        let num = new Array(this.getLength());
+        const ratio = QRMath.glog(this.get(0)) - QRMath.glog(e.get(0));
+        const num = new Array(this.getLength());
         for (let i = 0; i < this.getLength(); i++) {
             num[i] = this.get(i);
         }
@@ -68,7 +68,6 @@ class QRPolynomial {
 
 export default QRPolynomial;
 
-
 export const QRMath = {
     /**
      * @param {number} n
@@ -76,7 +75,7 @@ export const QRMath = {
      */
     glog: function (n) {
         if (n < 1) {
-            throw new Error("glog(" + n + ")");
+            throw new Error('glog(' + n + ')');
         }
         return QRMath.LOG_TABLE[n];
     },

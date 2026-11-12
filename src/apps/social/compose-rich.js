@@ -190,7 +190,11 @@ export default class SocialComposeRich extends CustomElement {
 
         api.emojis.initialize();
         const host = /** @type {HTMLElement} */ (this.querySelector('.social-rich__editable'));
-        this._init = import('./lexical-editor.js').then((m) => {
+        const init = import('./lexical-editor.js').then((m) => {
+            // Torn down while Lexical loaded. Attaching now would leave an editor that
+            // nothing destroys, sharing its host with the one the next call attaches.
+            if (this._init !== init) return this.ensureEditor();
+
             const handle = m.createSocialEditor(host, { onChange: () => this.onChange() });
             this._handle = handle;
             if (this.post) {
@@ -200,7 +204,8 @@ export default class SocialComposeRich extends CustomElement {
             handle.focus();
             return handle;
         });
-        return this._init;
+        this._init = init;
+        return init;
     }
 
     /** Reflect emptiness (placeholder + Post enabled) only when it actually flips. */
@@ -302,6 +307,20 @@ export default class SocialComposeRich extends CustomElement {
         ev.preventDefault();
         // Stop Lexical's own paste handler (registered on the same element) from also
         // acting on the event.
+        ev.stopImmediatePropagation();
+        this.onAttach(files);
+    }
+
+    /**
+     * Upload files dropped onto the editor, as {@link onPaste} does for pasted ones.
+     * Dragged text carries no files, so it falls through to Lexical unchanged.
+     * @param {DragEvent} ev
+     */
+    onDrop(ev) {
+        const files = ev.dataTransfer?.files;
+        if (!files?.length) return;
+
+        ev.preventDefault();
         ev.stopImmediatePropagation();
         this.onAttach(files);
     }

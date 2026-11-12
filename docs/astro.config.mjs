@@ -40,6 +40,13 @@ export default defineConfig({
                 { label: 'Session Management', slug: 'session' },
                 { label: 'Configuration', slug: 'configuration' },
                 {
+                    label: 'Daemon and CLI',
+                    items: [
+                        { label: 'Setting up the daemon', slug: 'daemon/setup' },
+                        { label: 'Command line reference', slug: 'daemon/cli' },
+                    ],
+                },
+                {
                     label: 'Development',
                     items: [
                         { label: 'Development Documentation', slug: 'development/overview' },
@@ -51,8 +58,10 @@ export default defineConfig({
                     ],
                 },
                 { label: 'Theming', slug: 'theming' },
+                { label: 'Accessibility', slug: 'accessibility' },
                 { label: 'Security', slug: 'security' },
                 { label: 'Translations', slug: 'translations' },
+                { label: 'Voice Messages', slug: 'voice-messages' },
                 { label: 'Troubleshooting', slug: 'troubleshooting' },
                 { label: 'Writing Documentation', slug: 'documentation' },
             ],

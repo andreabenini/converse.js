@@ -1,7 +1,5 @@
 /**
- * @typedef {import('@converse/headless/types/plugins/muc/types').MUCMessageAttributes} MUCMessageAttributes
- * @typedef {module:headless-plugins-muc-muc.MUCMessageData} MUCMessageData
- * @typedef {module:headless-plugins-chat-utils.MessageData} MessageData
+ * @typedef {import('@converse/headless').MUCMessageAttributes} MUCMessageAttributes
  * @typedef {import('@converse/headless').RosterContact} RosterContact
  * @typedef {import('@converse/headless').PubSubMessage} PubSubMessage
  * @typedef {{ feedJid: string, node: string, itemId: string }} PostRef
@@ -21,11 +19,11 @@ converse.env.Favico = Favico;
 let favicon;
 
 /**
- * @param {string} from - The JID of the sender
+ * @param {import('@converse/headless').ChatBoxBase} [chatbox] - The chat the message was received in
  * @returns {boolean}
  */
-export function isMessageToHiddenChat(from) {
-    return isTestEnv() || (_converse.state.chatboxes.get(from)?.isHidden() ?? false) || document.hidden;
+export function isMessageToHiddenChat(chatbox) {
+    return (chatbox?.isHidden() ?? false) || document.hidden;
 }
 
 export function areDesktopNotificationsEnabled() {
@@ -79,13 +77,16 @@ function isReferenced(references, muc_jid, nick) {
  */
 export async function shouldNotifyOfGroupMessage(attrs) {
     if (!attrs?.body && !attrs?.message) {
-        // attrs.message is used by 'info' messages
+        // attrs.message is used by XEP-0316 MEP messages
         return false;
     }
     const jid = attrs.from;
     const muc_jid = attrs.from_muc;
     const notify_all = api.settings.get('notify_all_room_messages');
     const room = _converse.state.chatboxes.get(muc_jid);
+    if (!room) {
+        return false;
+    }
     const resource = Strophe.getResourceFromJid(jid);
     const sender = (resource && Strophe.unescapeNode(resource)) || '';
     let is_mentioned = false;
@@ -118,7 +119,11 @@ export async function shouldNotifyOfGroupMessage(attrs) {
     return false;
 }
 
-async function shouldNotifyOfInfoMessage(attrs) {
+/**
+ * Is this a XEP-0316 MEP notification for which we should notify the user?
+ * @param {import('@converse/headless').MEPMessageAttributes} attrs
+ */
+async function shouldNotifyOfMEPMessage(attrs) {
     if (!attrs.from_muc) {
         return false;
     }
@@ -137,31 +142,45 @@ async function shouldNotifyOfInfoMessage(attrs) {
 }
 
 /**
- * @async
- * @method shouldNotifyOfMessage
- * @param {MessageData|MUCMessageData} data
+ * Is this message worth drawing the user's attention to? This doesn't
+ * consider whether the user is already looking at the chat it was received in.
+ * @param {import('./types').MessageNotificationData} data
+ * @returns {Promise<boolean>}
  */
-function shouldNotifyOfMessage(data) {
+export async function isNotableMessage(data) {
     const { attrs } = data;
-    if (!attrs || attrs.is_forwarded) {
+    if (!attrs || attrs.is_error || ('is_forwarded' in attrs && attrs.is_forwarded)) {
         return false;
     }
-    if (attrs['type'] === 'groupchat') {
-        return shouldNotifyOfGroupMessage(attrs);
-    } else if (attrs['type'] === 'info') {
-        return shouldNotifyOfInfoMessage(attrs);
+    if (attrs.type === 'groupchat') {
+        return await shouldNotifyOfGroupMessage(/** @type {MUCMessageAttributes} */ (attrs));
+    } else if (attrs.type === 'mep') {
+        return await shouldNotifyOfMEPMessage(attrs);
+    } else if ('activities' in attrs && attrs.activities?.length) {
+        // MEP activities are emitted separately with type "mep" and their own notification policy.
+        return false;
     } else if (attrs.is_headline) {
-        // We want to show notifications for headline messages.
-        return isMessageToHiddenChat(attrs);
+        return !isEmptyMessage(attrs);
     }
+    const is_me = Strophe.getBareJidFromJid(attrs.from) === _converse.session.get('bare_jid');
+    return !isEmptyMessage(attrs) && !is_me;
+}
 
-    const bare_jid = _converse.session.get('bare_jid');
-    const is_me = Strophe.getBareJidFromJid(attrs.from) === bare_jid;
-    return (
-        !isEmptyMessage(attrs) &&
-        !is_me &&
-        (api.settings.get('show_desktop_notifications') === 'all' || isMessageToHiddenChat(attrs))
-    );
+/**
+ * Is this message notable, and is the user not already looking at the chat
+ * it was received in?
+ * @param {import('./types').MessageNotificationData} data
+ * @returns {Promise<boolean>}
+ */
+async function shouldNotifyOfMessage(data) {
+    if (!(await isNotableMessage(data))) {
+        return false;
+    }
+    const { attrs, chatbox } = data;
+    if (!attrs.is_headline && api.settings.get('show_desktop_notifications') === 'all') {
+        return true;
+    }
+    return isMessageToHiddenChat(chatbox);
 }
 
 export function showFeedbackNotification(data) {
@@ -209,7 +228,7 @@ function showChatStateNotification(contact) {
 
 /**
  * Shows an HTML5 Notification with the passed in message
- * @param {MessageData|MUCMessageData} data
+ * @param {import('./types').MessageNotificationData} data
  */
 function showMessageNotification(data) {
     const { attrs } = data;
@@ -223,7 +242,7 @@ function showMessageNotification(data) {
     let title, roster_item;
     const full_from_jid = attrs.from;
     const from_jid = Strophe.getBareJidFromJid(full_from_jid);
-    if (attrs.type == 'info') {
+    if (attrs.type === 'mep') {
         title = attrs.message;
     } else if (attrs.type === 'headline') {
         if (!from_jid.includes('@') || api.settings.get('allow_non_roster_messaging')) {
@@ -254,7 +273,7 @@ function showMessageNotification(data) {
     }
 
     let body;
-    if (attrs.type == 'info') {
+    if (attrs.type === 'mep') {
         body = attrs.reason;
     } else {
         body = attrs.is_encrypted ? attrs.plaintext : attrs.body;
@@ -302,6 +321,7 @@ export function playSoundNotification() {
 /**
  * Event handler for the on('message') event. Will call methods
  * to play sounds and show HTML5 notifications.
+ * @param {import('./types').MessageNotificationData} data
  */
 export async function handleMessageNotification(data) {
     if (!(await shouldNotifyOfMessage(data))) {
@@ -311,7 +331,7 @@ export async function handleMessageNotification(data) {
      * Triggered when a notification (sound or HTML5 notification) for a new
      * message has will be made.
      * @event _converse#messageNotification
-     * @type {MessageData|MUCMessageData}
+     * @type {import('./types').MessageNotificationData}
      * @example _converse.api.listen.on('messageNotification', data => { ... });
      */
     api.trigger('messageNotification', data);

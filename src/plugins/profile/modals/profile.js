@@ -9,10 +9,11 @@ import tplLogoutButton from '../templates/logout_button.js';
 import tplProfileModal from '../templates/profile_modal.js';
 
 import './styles/profile.scss';
+import '../styles/chat-status-form.scss';
 
 export default class ProfileModal extends BaseModal {
     /**
-     * @typedef {import('@converse/headless/types/plugins/vcard/types').VCardData} VCardData
+     * @typedef {import('@converse/headless').VCardData} VCardData
      * @typedef {import("@converse/headless").Profile} Profile
      * @typedef {import("lit").TemplateResult} TemplateResult
      */
@@ -36,7 +37,7 @@ export default class ProfileModal extends BaseModal {
         /**
          * The software version of the user's server, as advertised via
          * XEP-0092, or `null` if it hasn't been determined.
-         * @type {import('@converse/headless/types/plugins/version/types').SoftwareVersion|null}
+         * @type {import('@converse/headless').SoftwareVersion|null}
          */
         this._server_version = null;
     }
@@ -50,7 +51,7 @@ export default class ProfileModal extends BaseModal {
             () => {
                 /** @type {HTMLInputElement} */ (this.querySelector('input[name="status_message"]'))?.focus();
             },
-            false
+            false,
         );
 
         /**
@@ -114,7 +115,7 @@ export default class ProfileModal extends BaseModal {
                 [
                     __('Sorry, an error happened while trying to save your profile data.'),
                     __("You can check your browser's developer console for any error output."),
-                ].join(' ')
+                ].join(' '),
             );
             return false;
         }

@@ -8,7 +8,7 @@ import { toggleGroup } from '../utils.js';
 const { isUniView } = u;
 
 /**
- * @param {import('@converse/headless/types/plugins/roster/contact').default} contact
+ * @param {import('@converse/headless').RosterContact} contact
  */
 function renderContact(contact) {
     const jid = contact.get('jid');
@@ -66,9 +66,15 @@ export default (o) => {
                 class="fa ${collapsed.includes(o.name) ? 'fa-caret-right' : 'fa-caret-down'}"
             ></converse-icon>
             ${o.name}&nbsp;
-            ${o.contacts[0].get('requesting')
-                ? html` <converse-icon color="var(--chat-color)" size="1.2em" class="fa fa-bell-alt"></converse-icon>`
-                : ``}
+            ${
+                o.contacts[0].get('requesting')
+                    ? html` <converse-icon
+                          color="var(--chat-color)"
+                          size="1.2em"
+                          class="fa fa-bell-alt"
+                      ></converse-icon>`
+                    : ``
+            }
         </a>
         <ul
             class="items-list roster-group-contacts ${collapsed.includes(o.name) ? 'collapsed' : ''}"

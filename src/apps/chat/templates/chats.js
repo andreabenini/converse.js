@@ -6,7 +6,7 @@ import { isMobileViewport } from 'shared/chat/utils.js';
 const { CONTROLBOX_TYPE, CHATROOMS_TYPE, HEADLINES_TYPE, CONNECTION_STATUS } = constants;
 
 /**
- * @param {import('@converse/headless/types/shared/chatbox').default} c
+ * @param {import('@converse/headless').ChatBoxBase} c
  */
 function shouldShowChat(c) {
     const is_minimized = api.settings.get('view_mode') === 'overlayed' && c.get('hidden');
@@ -25,9 +25,11 @@ export default () => {
         CONNECTION_STATUS[connection_status],
     );
     return html`
-        ${!logged_out && is_overlayed
-            ? html`<converse-minimized-chats class="col-auto"></converse-minimized-chats>`
-            : ''}
+        ${
+            !logged_out && is_overlayed
+                ? html`<converse-minimized-chats class="col-auto"></converse-minimized-chats>`
+                : ''
+        }
         ${repeat(
             chatboxes.filter(shouldShowChat),
             (m) => m.get('jid'),

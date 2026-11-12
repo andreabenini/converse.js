@@ -2,22 +2,21 @@ import tplMessageLimit from './templates/message-limit.js';
 import { CustomElement } from 'shared/components/element.js';
 import { api } from '@converse/headless';
 
-export default class MessageLimitIndicator extends CustomElement {
-
-    static get properties () {
+class MessageLimitIndicator extends CustomElement {
+    static get properties() {
         return {
             model: { type: Object },
-            _draft_length: { state: true }
-        }
+            _draft_length: { state: true },
+        };
     }
 
-    constructor () {
+    constructor() {
         super();
         this.model = null;
         this._draft_length = 0;
     }
 
-    connectedCallback () {
+    connectedCallback() {
         super.connectedCallback();
         this._draft_length = this.model.get('draft')?.length ?? 0;
 
@@ -35,7 +34,7 @@ export default class MessageLimitIndicator extends CustomElement {
         });
     }
 
-    render () {
+    render() {
         const limit = api.settings.get('message_limit');
         if (!limit) return '';
         return tplMessageLimit(limit - this._draft_length);

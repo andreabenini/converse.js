@@ -6,7 +6,7 @@ const { HEADLINES_TYPE } = constants;
 
 /**
  * @param {import('../feed-list').HeadlinesFeedsList} el
- * @param {import('@converse/headless/types/plugins/headlines/feed').default} feed
+ * @param {import('@converse/headless').HeadlinesFeed} feed
  */
 function tplHeadlinesFeedsListItem(el, feed) {
     const open_title = __('Click to open this server message');
@@ -32,7 +32,7 @@ export default (el) => {
     const heading_headline = __('Announcements');
     return html`<div class="controlbox-section" id="headline">
             <div class="d-flex controlbox-padded ${feeds.length ? '' : 'hidden'}">
-                <span class="w-100 controlbox-heading controlbox-heading--headline" role="heading" aria-level="3"
+                <span class="controlbox-heading controlbox-heading--headline" role="heading" aria-level="3"
                     >${heading_headline}</span
                 >
             </div>

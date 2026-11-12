@@ -14,31 +14,8 @@ import log from '@converse/log';
 import { isArchived, isHeadline, isMUCPrivateMessage, isServerMessage } from '../../shared/parsers.js';
 import { parseMessage } from './parsers.js';
 import { PRIVATE_CHAT_TYPE } from '../../shared/constants.js';
-import { getRouteHash } from '../../utils/environment.js';
 
 const { Strophe, u } = converse.env;
-
-/**
- * @param {Event} [event]
- */
-export function routeToChat(event) {
-    // In fullscreen with URL routing on, the Chat app's own router owns the
-    // `#converse/chat...` space (it also accepts this legacy `?jid=` form and
-    // canonicalizes it), so bow out to avoid double-opening.
-    if (api.settings.get('enable_url_routing') && api.settings.get('view_mode') === 'fullscreen') {
-        return;
-    }
-    const hash = getRouteHash();
-    if (!hash.startsWith('#converse/chat?jid=')) {
-        return;
-    }
-    event?.preventDefault();
-    const jid = hash.split('=').pop();
-    if (!u.isValidJID(jid)) {
-        return log.warn(`Invalid JID "${jid}" provided in URL fragment`);
-    }
-    api.chats.open(jid);
-}
 
 /**
  * Given a stanza, determine whether it's a new
@@ -163,19 +140,11 @@ export async function handleMessageStanza(stanza) {
     const has_body = !!(body || plaintext);
     const chatbox = await api.chats.get(contact_jid, {}, has_body);
     await chatbox?.queueMessage(attrs);
-    /**
-     * @typedef {Object} MessageData
-     * An object containing the original message stanza, as well as the
-     * parsed attributes.
-     * @property {Element} stanza
-     * @property {MessageAttributes} stanza
-     * @property {ChatBox} chatbox
-     */
-    const data = { stanza, attrs, chatbox };
+    const data = /** @type {import('../../shared/types').MessageEventData} */ ({ stanza, attrs, chatbox });
     /**
      * Triggered when a message stanza is been received and processed.
      * @event _converse#message
-     * @type {MessageData} data
+     * @type {import('../../shared/types').MessageEventData} data
      */
     api.trigger('message', data);
 }

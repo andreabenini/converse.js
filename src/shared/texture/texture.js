@@ -6,6 +6,7 @@ import tplAudio from './templates/audio.js';
 import tplGif from './templates/gif.js';
 import tplImage from './templates/image.js';
 import tplVideo from './templates/video.js';
+import tplWebP from './templates/webp.js';
 import tplSpotify from './templates/spotify.js';
 import { getEmojiMarkup } from '../chat/utils.js';
 import { getHyperlinkTemplate } from '../../utils/html.js';
@@ -44,7 +45,7 @@ const { addMediaURLsOffset, getMediaURLsMetadata } = u;
  */
 export class Texture extends String {
     /**
-     * @typedef {import('@converse/headless/types/utils/types').MediaURLMetadata} MediaURLMetadata
+     * @typedef {import('@converse/headless').MediaURLMetadata} MediaURLMetadata
      */
 
     /**
@@ -124,7 +125,10 @@ export class Texture extends String {
         const { url } = url_obj;
         const filtered_url = filterQueryParamsFromURL(url);
         let template;
-        if (url_obj.is_gif && this.shouldRenderMedia(url, 'image')) {
+        // WebP comes first, since a `.gif` URL may be served as WebP (going by its headers).
+        if (url_obj.is_webp && this.shouldRenderMedia(url, 'image')) {
+            template = tplWebP(filtered_url, this.hide_media_urls, this.onImgClick, this.onImgLoad);
+        } else if (url_obj.is_gif && this.shouldRenderMedia(url, 'image')) {
             template = tplGif(filtered_url, this.hide_media_urls);
         } else if (url_obj.is_image && this.shouldRenderMedia(url, 'image')) {
             template = tplImage({
@@ -250,14 +254,14 @@ export class Texture extends String {
 
         let i = 0;
         while (i < this.length) {
-            if (mention_ranges.filter((r) => r.includes(i)).length) {
-                // eslint-disable-line no-loop-func
+            const pos = i;
+            if (mention_ranges.some((r) => r.includes(pos))) {
                 // Don't treat potential directives if they fall within a
                 // declared XEP-0372 reference
                 i++;
                 continue;
             }
-            if (url_ranges.some(([start, end]) => i >= start && i < end)) {
+            if (url_ranges.some(([start, end]) => pos >= start && pos < end)) {
                 // Don't treat potential directives if they fall within a URL
                 i++;
                 continue;
@@ -434,7 +438,7 @@ class StylingDirective extends Directive {
 
 const renderStyling = directive(StylingDirective);
 
-// prettier-ignore
+// oxfmt-ignore
 /* eslint-disable max-len */
 const styling_templates = {
     // m is the chatbox model

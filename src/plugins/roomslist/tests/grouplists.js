@@ -6,7 +6,8 @@ const { u } = converse.env;
 describe('The list of MUC domains', function () {
     it(
         'is shown in controlbox',
-        mock.initConverse(converse, 
+        mock.initConverse(
+            converse,
             ['chatBoxesFetched'],
             {
                 muc_grouped_by_domain: true,
@@ -97,7 +98,8 @@ describe('The list of MUC domains', function () {
 describe('A MUC domain group', function () {
     it(
         'is collapsible',
-        mock.initConverse(converse, 
+        mock.initConverse(
+            converse,
             ['chatBoxesFetched'],
             {
                 muc_grouped_by_domain: true,
@@ -108,7 +110,7 @@ describe('A MUC domain group', function () {
                 await mock.waitForRoster(_converse, 'current', 0);
                 await mock.openControlBox(_converse);
                 const controlbox = _converse.chatboxviews.get('controlbox');
-                const list = controlbox.querySelector('.list-container--openrooms');
+                const list = controlbox.querySelector('converse-rooms-list .list-container--openrooms');
                 const nick = 'JC';
                 const muc_jid = 'room@conference.shakespeare.lit';
                 _converse.api.rooms.open(muc_jid, { nick });

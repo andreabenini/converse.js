@@ -1,10 +1,10 @@
-import log from '@converse/log';
-import { api, u } from '@converse/headless';
+import { api, log, u } from '@converse/headless';
 import { applyDragResistance, getResizingDirection } from './utils.js';
 
 /**
  * @template {import('shared/components/types').CustomElementExtender} T
  * @param {T} BaseCustomElement
+ * @returns {T & import('./types').DragResizableConstructor}
  */
 export default function DragResizable(BaseCustomElement) {
     return class DragResizableElement extends BaseCustomElement {

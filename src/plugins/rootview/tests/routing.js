@@ -45,30 +45,51 @@ describe('The app-switcher URL routing', function () {
     );
 
     it(
-        'restores each app\'s last route on a programmatic switch (syncAppToHash)',
+        "restores each app's last route on a programmatic switch (syncAppToHash)",
+        mock.initConverse(converse, [], { enable_url_routing: true, view_mode: 'fullscreen' }, function (_converse) {
+            const { api } = _converse;
+            const chat = api.apps.get('chat');
+            const social = api.apps.get('social');
+
+            // `appSwitch` is what `api.apps.switch` triggers for the hash side;
+            // firing it directly exercises `syncAppToHash`.
+            history.replaceState(null, '', '#converse/chat/mercutio@montague.lit');
+            api.trigger('appSwitch', social);
+            expect(location.hash).toBe('#converse/social');
+
+            history.replaceState(null, '', '#converse/social/tag/xmpp');
+            api.trigger('appSwitch', chat);
+            expect(location.hash).toBe('#converse/chat/mercutio@montague.lit');
+
+            api.trigger('appSwitch', social);
+            expect(location.hash).toBe('#converse/social/tag/xmpp');
+
+            clearHash();
+        }),
+    );
+
+    it(
+        "doesn't switch apps for a legacy `?jid=` link before it is handled",
         mock.initConverse(
             converse,
             [],
             { enable_url_routing: true, view_mode: 'fullscreen' },
-            function (_converse) {
+            async function (_converse) {
                 const { api } = _converse;
-                const chat = api.apps.get('chat');
-                const social = api.apps.get('social');
+                await mock.waitForRoster(_converse, 'current', 1);
+                clearHash();
+                api.apps.switch('social');
+                await u.waitUntil(() => api.apps.getActive().name === 'social');
 
-                // `appSwitch` is what `api.apps.switch` triggers for the hash side;
-                // firing it directly exercises `syncAppToHash`.
-                history.replaceState(null, '', '#converse/chat/mercutio@montague.lit');
-                api.trigger('appSwitch', social);
-                expect(location.hash).toBe('#converse/social');
-
-                history.replaceState(null, '', '#converse/social/tag/xmpp');
-                api.trigger('appSwitch', chat);
-                expect(location.hash).toBe('#converse/chat/mercutio@montague.lit');
-
-                api.trigger('appSwitch', social);
-                expect(location.hash).toBe('#converse/social/tag/xmpp');
+                // A domain-only JID is not one the protocol handler acts on, so
+                // nothing opens, and leaving Social for it would strand the user.
+                location.hash = '#converse/chat?jid=montague.lit';
+                await new Promise((resolve) => setTimeout(resolve, 50));
+                expect(api.apps.getActive().name).toBe('social');
 
                 clearHash();
+                api.apps.switch('chat');
+                await u.waitUntil(() => document.querySelector('converse-app-chat'));
             },
         ),
     );

@@ -190,9 +190,11 @@ Allows users to be invited to join MUC chatrooms. An "Invite" widget will appear
 
 ### allow_non_roster_messaging
 
-- Default: `false`
+- Default: `true`
 
 Determines whether you'll receive messages from users that are not in your roster. The XMPP specification allows for this (similar to email). Setting this to `true` increases your chances of receiving spam (when using a federated server), while setting it to `false` means that people not on your roster can't contact you unless one (or both) of you subscribe to one another's presence (i.e. adding as a roster contact).
+
+The same applies to incoming audio calls: when this is `false`, calls from people not on your roster are ignored without ringing.
 
 ### allow_public_bookmarks
 
@@ -468,6 +470,23 @@ Please refer to your XMPP server's documentation on how to enable BOSH. For more
 
 A more modern alternative to BOSH is to use [websockets](https://developer.mozilla.org/en/docs/WebSockets). Please see the `websocket-url` configuration setting.
 
+Note that this setting is superseded by any server-defined settings in host-meta when [discover_connection_methods](#discover_connection_methods) is enabled. If you want to avoid this, set [discover_connection_methods](#discover_connection_methods) to `false`.
+
+### call_ice_servers
+
+- Default: `[]`
+
+A list of ICE servers (STUN and/or TURN) used to establish the media connection for 1:1 audio calls. Each entry is an [RTCIceServer](https://developer.mozilla.org/en-US/docs/Web/API/RTCIceServer) object, for example:
+
+```javascript
+call_ice_servers: [
+    { urls: 'stun:stun.example.org:3478' },
+    { urls: 'turn:turn.example.org:3478', username: 'user', credential: 'secret' },
+]
+```
+
+Converse also discovers servers advertised by your XMPP server via [XEP-0215](https://xmpp.org/extensions/xep-0215.html). The servers configured here are used in addition to those, so leaving this empty is fine when your server already advertises STUN/TURN.
+
 ### caps_cache_size
 
 - Default: `3000`
@@ -518,6 +537,16 @@ Some user's clients routinely connect and disconnect (likely on mobile) and each
 When desktop notifications are turned on (see [show_desktop_notifications](#show_desktop_notifications)), then you'll receive notification messages each time this happens.
 
 Receiving constant notifications that a user's client is connecting and disconnecting is annoying, so this option allows you to ignore those JIDs.
+
+### confirm_external_links
+
+- Default: `true`
+
+When a link in a chat message leads to a web page outside of Converse, ask the user to confirm before following it. The confirmation shows the site and the full address the link points to, which can differ from what the message made it look like. This applies to a middle-click as well as a normal click.
+
+Links that Converse handles itself, such as `xmpp:` URIs and invitation links that open a chat or groupchat, and links to the page Converse runs on, are followed without asking. So are links that open another app rather than a web page, such as `mailto:` links.
+
+A confirmed link opens in a new tab. A shift-click opens it in a new window, but a Ctrl- or Cmd-click opens it in the foreground rather than in a background tab.
 
 ### connection_options
 
@@ -609,6 +638,8 @@ JIDs with other domains are still allowed but need to be provided in full. To sp
 Use [XEP-0156](https://xmpp.org/extensions/xep-0156.html) to discover whether the XMPP host for the current user advertises any Websocket or BOSH connection URLs that can be used.
 
 Currently only the XML encoded host-meta resource is supported as shown in [Example 2 under section 3.3](https://xmpp.org/extensions/xep-0156.html#httpexamples).
+
+When this setting is enabled, endpoints discovered from host-meta (if any) will supersede endpoints specified via the [websocket_url](#websocket_url) and [bosh_service_url](#bosh_service_url) settings.
 
 ### domain_placeholder
 
@@ -1084,7 +1115,9 @@ So, for example, if <john@example.com> joins a chatroom, his nickname will autom
 
 - Default: `'api@search.jabber.network'`
 
-The JID of the service that should be used to search for MUCs for auto-complete purposes. If this value is set to an empty string, no service will be used and the auto-complete feature for adding MUCs will be disabled.
+The JID of a [XEP-0433 Extended Channel Search](https://xmpp.org/extensions/xep-0433.html) service, used to suggest groupchats while you type the name or address of one to join, and by `api.rooms.search`. Services that only speak the pre-standard protocol of search.jabber.network are supported as well.
+
+If this value is set to an empty string, no service will be used and groupchats won't be suggested.
 
 ### muc_send_probes
 
@@ -1288,9 +1321,11 @@ If you set this value to `0` or any negative value, il will disable this functio
 
 ### play_sounds
 
-- Default: `false`
+- Default: `true`
 
 Plays a notification sound when you receive a personal message or when your nickname is mentioned in a chatroom.
+
+It also plays a ring tone while an incoming audio call rings, and a ringback tone while the other side's phone rings for a call you made. These tones are generated by the browser, so they need no sound files.
 
 Inside the `./sounds` directory of the Converse repo you'll see MP3 and Ogg formatted sound files. We need both, because neither format is supported by all browsers.
 
@@ -1500,6 +1535,16 @@ This setting, together with the three allowed domain settings above, obsolete th
 
 :::
 
+### retry_initial_connection
+
+- Default: `false`
+
+Keep trying to connect when the XMPP server can't be reached at startup, for as long as it takes.
+
+By default, a connection that was never established is given up on after one retry, so that for example a mistyped address is reported to the user. Set this to `true` for a client that runs unattended. It only has an effect when [auto_reconnect](#auto_reconnect) is on.
+
+Errors that retrying can't fix still stop it: wrong credentials, a domain the server doesn't host (`host-unknown`), malformed XML from the server (`not-well-formed`), and a server that offers no supported authentication mechanism.
+
 ### reuse_scram_keys
 
 - Default: `true`
@@ -1617,6 +1662,39 @@ When sharing is turned off entirely, Converse also stops advertising `urn:xmpp:t
 Changing this during a session takes effect immediately for the queries Converse answers. The advertised service discovery features are settled when the session starts, so those only catch up after reconnecting.
 
 Note that this setting controls _outgoing_ timezone information only. To stop Converse from querying your contacts, use `show_entity_time`.
+
+### shareable_link_apps
+
+- Default: Conversations, Converse Desktop, Monal, Gajim and Dino
+
+The XMPP apps suggested to someone who opens a [shareable link](/docs/configuration/#shareable_link_url) while logged out, followed by a link to the full list on xmpp.org. Each entry has a `name`, the `url` to get it from and, optionally, the `platforms` it runs on: `'Android'`, `'iOS'`, `'Windows'`, `'macOS'` or `'Linux'`.
+
+```javascript
+converse.initialize({
+    shareable_link_apps: [
+        { name: 'Conversations', url: 'https://conversations.im/', platforms: ['Android'] },
+        { name: 'Gajim', url: 'https://gajim.org/', platforms: ['Windows', 'Linux'] },
+    ],
+});
+```
+
+Only the first app for the visitor's platform is suggested, so order the list by preference. When the platform can't be told, or no app is listed for it, all of them are.
+
+Set it to an empty list to suggest no apps.
+
+### shareable_link_url
+
+- Default: `'https://chat.conversejs.org/'`
+
+The page that shareable invitation links point at. An `xmpp:` address can't be clicked in an email, on social media or in most chat apps, so the profile, user details and groupchat details modals also show an https link, with a button to copy it and, where the browser supports the Web Share API, one to share it.
+
+The XMPP address goes in the link's fragment, as [xmpp.link](https://xmpp.link) does it, so the server hosting the page never sees it: `https://chat.conversejs.org/#romeo@montague.lit` for a contact, and `https://chat.conversejs.org/#coven@chat.shakespeare.lit?join` for a groupchat.
+
+Set this to your own Converse deployment to have the links point there. Converse opens a link to that page in-app, both when it's clicked in a message and when the page itself is opened with one, once the user has logged in. A groupchat link asks for confirmation before joining.
+
+Someone who opens a link while logged out sees the invitation above the login form, with a button that hands it to the XMPP app they already have and a short list of apps for those who'd rather install one (see [shareable_link_apps](/docs/configuration/#shareable_link_apps)). They can also log in, or create an account, and then land in the chat or groupchat the link was for.
+
+Set it to an empty string to turn shareable links off, for example when your users can't use other XMPP clients and an outside link would only confuse them.
 
 ### show_background
 
@@ -1837,39 +1915,45 @@ See also [emoji_image_path](#emoji_image_path).
 
 ```javascript
 {
-    call: false,
+    call: true,
     clear: true,
     emoji: true,
     fileupload: true,
-    location: true,
+    location: false,
     spoiler: false,
+    voice_message: true, // With the converse-voice-messages plugin
 }
 ```
 
-Allows you to show or hide buttons on the chatboxes' toolbars.
+Allows you to show or hide the buttons on the chatboxes' toolbars, and the entries of the
+attachment menu that the toolbar's paperclip opens. The paperclip is only shown while the
+menu has at least one entry, so turning off every attachment key (`fileupload`, `location`
+and `voice_message`) removes it, for a text-only chat.
 
 - _call_:
-  Provides a button with a picture of a telephone on it. When the call button is pressed, it will emit an event that can be used by a third-party library to initiate a call.
-
-    ```javascript
-    converse.listen.on('callButtonClicked', function (data) {
-        console.log('Strophe connection is', data.connection);
-        console.log('Bare buddy JID is', data.model.get('jid'));
-        // ... Third-party library code ...
-    });
-    ```
+  Shows a telephone button in 1:1 chats that starts an audio call with the contact.
+  The button comes with the `converse-jingle-views` plugin, so without it there is none.
+  To add a call button of your own, for example for another calling service, use the
+  `getToolbarButtons` [hook](/docs/development/plugin-development/#hooks).
 
 - _emoji_:
   Enables rendering of emoji and provides a toolbar button for choosing them.
 
 - _fileupload_:
-  Shows the button (a paperclip) for sharing files via [XEP-0363](https://xmpp.org/extensions/xep-0363.html) HTTP File Upload. The button only appears if the server actually advertises HTTP Upload support; setting this to `false` hides it even when supported. For backwards compatibility an absent `fileupload` key is treated as `true`.
+  Lists the "Send a file" and "Send an image" entries in the attachment menu, for sharing files via [XEP-0363](https://xmpp.org/extensions/xep-0363.html) HTTP File Upload. The entries only appear if the server actually advertises HTTP Upload support; setting this to `false` hides them even when supported. For backwards compatibility an absent `fileupload` key is treated as `true`.
 
 - _location_:
-  Shows a button for sharing your geo-location.
+  Lists the "Share your location" entry in the attachment menu, for sharing your geo-location. Off by default.
 
 - _spoiler_:
-  Shows a button for showing[XEP-0382](https://xmpp.org/extensions/xep-0382.html) spoiler messages.
+  Shows a button for showing [XEP-0382](https://xmpp.org/extensions/xep-0382.html) spoiler messages.
+
+- _voice_message_:
+  Lists the "Record a voice message" entry in the attachment menu, for recording and sending a [voice message](/docs/voice-messages/).
+  The entry comes with the `converse-voice-messages` plugin, so without it there is none.
+
+To add an entry of your own to the attachment menu, use the `getAttachmentMenuItems`
+[hook](/docs/development/plugin-development/#attachment-menu).
 
 ### websocket_url
 
@@ -1884,6 +1968,8 @@ This option is used to specify a [websocket](https://developer.mozilla.org/en/do
 Websockets provide a more modern and effective two-way communication protocol between the browser and a server, effectively emulating TCP at the application layer and therefore overcoming many of the problems with existing long-polling techniques for bidirectional HTTP (such as [BOSH](https://en.wikipedia.org/wiki/BOSH)).
 
 Please refer to your XMPP server's documentation on how to enable websocket support.
+
+Note that this setting is superseded by any server-defined settings in host-meta when [discover_connection_methods](#discover_connection_methods) is enabled. If you want to avoid this, set [discover_connection_methods](#discover_connection_methods) to `false`.
 
 ### view_mode
 

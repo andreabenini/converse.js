@@ -29,23 +29,9 @@ export function isSpotifyTrack(url) {
     try {
         const { hostname, pathname } = u.getURL(url);
         return hostname === 'open.spotify.com' && pathname.startsWith('/track/');
-    } catch (e) {
+    } catch {
         console.debug(`Could not create URL object from ${url}`);
         return false;
-    }
-}
-
-/**
- * @param {string} url
- * @returns {Promise<Headers>}
- */
-export async function getHeaders(url) {
-    try {
-        const response = await fetch(url, { method: 'HEAD' });
-        return response.headers;
-    } catch (e) {
-        console.debug(`Error calling HEAD on url ${url}: ${e}`);
-        return null;
     }
 }
 
@@ -273,4 +259,4 @@ export function getURLRanges(string) {
     return ranges;
 }
 
-export default Object.assign(u, { getURLRanges });
+Object.assign(u, { getURLRanges });

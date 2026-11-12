@@ -107,9 +107,31 @@ describe('XEP-0363: HTTP File Upload', function () {
     });
 
     describe('When not supported', function () {
-        describe('A file upload toolbar button', function () {
+        it(
+            'sends no messages',
+            mock.initConverse(converse, [], {}, async function (_converse) {
+                await mock.waitForRoster(_converse, 'current', 3);
+                const contact_jid = mock.cur_names[0].replace(/ /g, '.').toLowerCase() + '@montague.lit';
+                await mock.openChatBoxFor(_converse, contact_jid);
+                await mock.waitUntilDiscoConfirmed(
+                    _converse,
+                    _converse.domain,
+                    [{ 'category': 'server', 'type': 'IM' }],
+                    ['http://jabber.org/protocol/disco#items'],
+                    [],
+                    'info',
+                );
+                await mock.waitUntilDiscoConfirmed(_converse, _converse.domain, [], [], [], 'items');
+
+                const view = _converse.chatboxviews.get(contact_jid);
+                const messages = await view.model.sendFiles([new File(['audio'], 'voice-message.weba')]);
+                expect(messages).toEqual([]);
+            }),
+        );
+
+        describe('The attachment menu', function () {
             it(
-                'does not appear in private chats',
+                'has no file item in private chats',
                 mock.initConverse(converse, [], {}, async function (_converse) {
                     await mock.waitForRoster(_converse, 'current', 3);
                     mock.openControlBox(_converse);
@@ -126,16 +148,16 @@ describe('XEP-0363: HTTP File Upload', function () {
 
                     await mock.waitUntilDiscoConfirmed(_converse, _converse.domain, [], [], [], 'items');
                     const view = _converse.chatboxviews.get(contact_jid);
-                    expect(view.querySelector('.chat-toolbar .fileupload')).toBe(null);
+                    expect(view.querySelector('.chat-toolbar .attachment-menu__item[data-name="file"]')).toBe(null);
                 }),
             );
         });
     });
 
     describe('When supported', function () {
-        describe('A file upload toolbar button', function () {
+        describe('The attachment menu', function () {
             it(
-                'appears in private chats',
+                'has a file item in private chats',
                 mock.initConverse(converse, [], {}, async (_converse) => {
                     await mock.waitForRoster(_converse, 'current', 3);
                     const contact_jid = mock.cur_names[2].replace(/ /g, '.').toLowerCase() + '@montague.lit';
@@ -167,12 +189,14 @@ describe('XEP-0363: HTTP File Upload', function () {
                         [],
                     );
 
-                    const el = await u.waitUntil(() => view.querySelector('.chat-toolbar .fileupload'));
+                    const el = await u.waitUntil(() =>
+                        view.querySelector('.chat-toolbar .attachment-menu__item[data-name="file"]'),
+                    );
                     expect(el).not.toEqual(null);
                 }),
             );
 
-            describe('when clicked and a file chosen', function () {
+            describe('when a file is chosen', function () {
                 it(
                     'is uploaded and sent out',
                     mock.initConverse(converse, ['chatBoxesFetched'], {}, async (_converse) => {
@@ -203,12 +227,7 @@ describe('XEP-0363: HTTP File Upload', function () {
                         const contact_jid = mock.cur_names[2].replace(/ /g, '.').toLowerCase() + '@montague.lit';
                         await mock.openChatBoxFor(_converse, contact_jid);
                         const view = _converse.chatboxviews.get(contact_jid);
-                        const file = {
-                            'type': 'image/jpeg',
-                            'size': '23456',
-                            'lastModifiedDate': '',
-                            'name': 'my-juliet.jpg',
-                        };
+                        const file = new File([new Uint8Array(23456)], 'my-juliet.jpg', { type: 'image/jpeg' });
                         view.model.sendFiles([file]);
 
                         await u.waitUntil(
@@ -435,13 +454,10 @@ describe('XEP-0363: HTTP File Upload', function () {
                         const contact_jid = mock.cur_names[2].replace(/ /g, '.').toLowerCase() + '@montague.lit';
                         await mock.openChatBoxFor(_converse, contact_jid);
                         const view = _converse.chatboxviews.get(contact_jid);
-                        const file = {
-                            'type': 'image/jpeg',
-                            'size': '5242881',
-                            'lastModifiedDate': '',
-                            'name': 'my-juliet.jpg',
-                        };
-                        view.model.sendFiles([file]);
+                        const file = new File([new Uint8Array(5242881)], 'my-juliet.jpg', { type: 'image/jpeg' });
+                        const [message] = await view.model.sendFiles([file]);
+                        expect(message.get('upload')).toBe('failure');
+                        expect(message.get('type')).toBe('error');
                         await u.waitUntil(() => view.querySelectorAll('.message').length);
                         const messages = view.querySelectorAll('.message.chat-error');
                         expect(messages.length).toBe(1);
@@ -488,12 +504,7 @@ describe('XEP-0363: HTTP File Upload', function () {
                     const contact_jid = mock.cur_names[2].replace(/ /g, '.').toLowerCase() + '@montague.lit';
                     await mock.openChatBoxFor(_converse, contact_jid);
                     const view = _converse.chatboxviews.get(contact_jid);
-                    const file = {
-                        'type': 'image/jpeg',
-                        'size': '23456',
-                        'lastModifiedDate': '',
-                        'name': 'my-juliet.jpg',
-                    };
+                    const file = new File([new Uint8Array(23456)], 'my-juliet.jpg', { type: 'image/jpeg' });
                     view.model.sendFiles([file]);
                     await u.waitUntil(
                         () =>
@@ -578,9 +589,7 @@ describe('XEP-0363: HTTP File Upload', function () {
                 const contact_jid = mock.cur_names[2].replace(/ /g, '.').toLowerCase() + '@montague.lit';
                 await mock.openChatBoxFor(_converse, contact_jid);
                 const view = _converse.chatboxviews.get(contact_jid);
-                view.model.sendFiles([
-                    { 'type': 'image/jpeg', 'size': '23456', 'lastModifiedDate': '', 'name': 'my-juliet.jpg' },
-                ]);
+                view.model.sendFiles([new File([new Uint8Array(23456)], 'my-juliet.jpg', { type: 'image/jpeg' })]);
                 const iq = await u.waitUntil(() =>
                     api.connection
                         .get()
@@ -697,6 +706,53 @@ describe('XEP-0363: HTTP File Upload', function () {
                     const message = await failThePut(_converse, '');
                     expect(message.get('message')).toBe('Sorry, could not successfully upload your file.');
                     expect(message.get('upload')).toBe(_converse.FAILURE);
+                }),
+            );
+
+            it(
+                'says so, without requesting a slot, for a folder or an empty file',
+                mock.initConverse(converse, ['chatBoxesFetched'], {}, async (_converse) => {
+                    const { api } = _converse;
+                    const domain = _converse.session.get('domain');
+                    await mock.waitUntilDiscoConfirmed(
+                        _converse,
+                        domain,
+                        [{ 'category': 'server', 'type': 'IM' }],
+                        ['http://jabber.org/protocol/disco#items'],
+                        [],
+                        'info',
+                    );
+                    await mock.waitUntilDiscoConfirmed(_converse, domain, [], [], ['upload.montague.tld'], 'items');
+                    await mock.waitUntilDiscoConfirmed(
+                        _converse,
+                        'upload.montague.tld',
+                        [],
+                        [Strophe.NS.HTTPUPLOAD],
+                        [],
+                    );
+                    await mock.waitForRoster(_converse, 'current');
+                    const contact_jid = mock.cur_names[2].replace(/ /g, '.').toLowerCase() + '@montague.lit';
+                    await mock.openChatBoxFor(_converse, contact_jid);
+                    const view = _converse.chatboxviews.get(contact_jid);
+
+                    // Chromium exposes a directory copied or dragged from a file manager as
+                    // a typeless file, with the directory's size on disk, which can't be read.
+                    const messages = await view.model.sendFiles([
+                        mock.mockUnreadableFile('Downloads'),
+                        new File([], 'empty.txt'),
+                    ]);
+                    expect(messages.map((m) => m.get('message'))).toEqual([
+                        'Sorry, Downloads could not be uploaded, because it is a folder or could not be read.',
+                        'Sorry, empty.txt could not be uploaded, because it is empty.',
+                    ]);
+                    expect(messages.every((m) => m.get('type') === 'error')).toBe(true);
+                    expect(messages.every((m) => m.get('upload') === _converse.FAILURE)).toBe(true);
+                    await u.waitUntil(() => view.querySelectorAll('.message.chat-error').length === 2);
+
+                    const slot_requests = api.connection
+                        .get()
+                        .IQ_stanzas.filter((s) => s.querySelector('request[xmlns="urn:xmpp:http:upload:0"]'));
+                    expect(slot_requests.length).toBe(0);
                 }),
             );
         });

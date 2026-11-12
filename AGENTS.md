@@ -1,18 +1,10 @@
-# Converse.js Agent Guidelines
+# Converse Agent Guidelines
 
-**Converse.js** is an XMPP chat client built with JavaScript and web tech.
-It has a plugin-based architecture, uses JSDoc TypeScript type definitions,
-Bootstrap 5 and Lit UI components.
-
-## Project Overview
-
-- **Type**: XMPP/Jabber web-based chat client
-- **Build Tool**: Rspack (Webpack-compatible)
-- **UI Framework**: Lit (Web Components)
-- **Testing**: Vitest (browser mode, Playwright/Chromium) with a Jasmine-compat shim
-- **Styling**: SCSS with Bootstrap 5
-- **Language**: JavaScript
-- **Type System**: TypeScript via JSDoc annotations
+**Converse** is an XMPP chat client written in JavaScript, with JSDoc
+TypeScript type definitions. Its plugin-based headless core
+(`@converse/headless`) runs in the browser and in Node.js. Front ends sit on
+top of it: the web UI (Bootstrap 5 and Lit components), with a CLI and later
+a TUI in development.
 
 ## Monorepo
 
@@ -27,39 +19,6 @@ Three npm workspaces:
     Read: src/headless/AGENTS.md
 
 - **Log** (`src/log/`): Logging utility, separate package `@converse/log`
-
-### Key Entry Points
-
-- `src/index.js` — Main entry
-- `src/headless/index.js` — Headless entry
-- `rspack/` — Build configs
-
-### Directory Structure
-
-```
-src/
-├── headless/             # Core XMPP logic (separate package @converse/headless)
-│   ├── plugins/          # Headless plugins (chat, muc, roster, etc.)
-│   ├── shared/           # Shared headless utilities
-│   ├── types/            # Generated TypeScript definitions
-│   └── dist/             # Built headless package
-├── plugins/              # UI plugins
-│   ├── chatview/         # Chat UI
-│   ├── muc-views/        # Multi-user chat UI
-│   ├── rosterview/       # Contact list UI
-│   └── controlbox/       # Main control panel
-├── shared/               # Shared UI components
-│   ├── components/       # Reusable Lit components
-│   ├── chat/             # Chat-related shared components
-│   ├── modals/           # Modal dialogs
-│   └── styles/           # Shared SCSS files
-├── templates/            # Lit template functions
-├── i18n/                 # Internationalization
-│   └── locales/          # Translation files (.po)
-├── types/                # Generated TypeScript definitions
-└── utils/                # Utility functions
-media/                    # Sponsor logos (separate repo: conversejs/media)
-```
 
 #### Media Repository
 
@@ -81,16 +40,12 @@ details you cannot read off `package.json`:
 - `npm run serve` serves static files on http://localhost:8080, searching upwards for a
   free port if that one is taken. Pass a port with `npm run serve -- -p 8000`.
 - `npm run serve-tls` is the HTTPS equivalent and needs a certificate and key in `certs/`.
+- `make check` is what CI runs: lint, `npm run types` and all tests. Slow, use sparingly.
 
 ### Testing
 
-- **Framework**: Vitest browser mode (Playwright/Chromium) with a Jasmine-compat shim (`vitest/setup.jasmine-shim.js`)
-- **Test files**: Located in `tests/` subdirectory of each plugin (auto-discovered by glob — no manual registration)
-- **Naming**: `*.js` (e.g., `chatbox.js`, `actions.js`, `corrections.js`)
-- **Mock data**: `src/headless/tests/mock.js` and `src/shared/tests/mock.js`
-
-**`npm test` is single-run by default** (it maps to `vitest run`); no `--single-run` flag is needed. Use
-`npm run test:browser` for a headed/watch session.
+Tests live in a `tests/` subdirectory of each plugin. Mock data is in
+`src/headless/tests/mock.js` and `src/shared/tests/mock.js`.
 
 **Always run `npm run dev` before running tests.** Vitest runs against the pre-built `dist/converse.js` bundle,
 not source files directly. If you skip the build, you will be testing against a stale bundle and changes to source
@@ -101,14 +56,6 @@ regressed across the entire codebase. When working on a specific feature, pass a
 (see below).
 
 ```bash
-# Always build first, then test
-npm run dev && npm test
-
-npm test                                    # Run main UI tests (headless Chromium)
-npm run test:all                            # Run both headless and main tests
-npm run test:headless                       # Run headless (core XMPP) tests only
-cd src/headless && npm test                 # Alternative way to run headless tests
-
 # Run only specific files (fastest turnaround) — pass a path/substring to vitest
 npx vitest run --project main src/plugins/chatview/tests/messages.js
 ```
@@ -118,17 +65,14 @@ npx vitest run --project main src/plugins/chatview/tests/messages.js
 > Use `npm run test:headless` (or `npm run dev:headless` before it) when
 > working in that area. `npm test` only covers the UI plugins under `src/plugins/`.
 
-```bash
-# Full test suite (as used in CI) — slow, use sparingly
-make check                    # Runs lint + types + all tests
-```
+The daemon and CLI tests run under Node with a mock connection: `npm run test:daemon`. The real-server
+tests need Docker and start Prosody themselves: `npm run test:prosody`.
 
 #### Creating new test files
 
 Just drop the `*.js` file in a plugin's `tests/` directory — Vitest discovers it via the
-`include` globs in `vitest.config.js`. No manual registration is required (unlike the old
-Karma `files` array). Non-spec helpers in a `tests/` dir must be added to `commonExclude`
-in `vitest.config.js` so they aren't collected as empty test files.
+`include` globs in `vitest.config.js`. Non-spec helpers in a `tests/` dir must be added to
+`commonExclude` in `vitest.config.js` so they aren't collected as empty test files.
 
 #### Focusing tests with `fdescribe` / `fit`
 
@@ -165,23 +109,13 @@ Two caveats, independent of style:
 - **`vi.mock()` can't stub Converse internals** — specs import the prebuilt `dist/converse.js`
   bundle (modules are inlined, no path to intercept). Stub at runtime: `vi.spyOn(converse.env.X, …)`,
   `vi.spyOn(SomeClass.prototype, …)`, `vi.stubGlobal('Notification', …)`.
-- **No `.concurrent`** — the suite needs serial execution + shared browser state
-  (`fileParallelism: false`, `isolate: false`); concurrent tests break cumulative storage state.
-
-### Code Quality
-
-```bash
-# Linting
-npm run lint                  # Run ESLint on all source files
-
-# Type checking
-npm run types:check           # TypeScript type checking (no emit)
-npm run types                 # Generate type definitions
-```
+- **No `.concurrent`** — the suite runs serially (`fileParallelism: false`) because tests
+  share global state (`#conversejs`, storage) within a file.
 
 ## Code Style and Conventions
 
-### Formatting (Prettier)
+Formatting is set by `.oxfmtrc.json` and enforced in CI: run `npm run format` before
+committing (`npm run format:check` only reports). Naming conventions:
 
 - **Files**: `kebab-case.js`
 - **Variables**: `snake_case` (`camelCase` for variables referring to functions)
@@ -190,20 +124,37 @@ npm run types                 # Generate type definitions
 - **Private methods**: `#privateMethod()`
 - **Templates**: `tplPlaceholder`
 - **Unused vars**: prefix with `_`
-- **Logging**: use `log.debug/info/warn/error` from `@converse/log`, not `console`
-- **Prettier**: single quotes, 120 line width, 4-space indent, `spaceBeforeFunctionParen`
+- **Logging**: use `log.debug/info/warn/error`, not `console`. Outside `src/headless/`, import `log` from `@converse/headless`, never `@converse/log` directly (that bundles a second logger)
 - **Line endings**: LF
+
+Types are JSDoc annotations in `.js` files. `npm run types` emits per-file `.d.ts` files
+under `src/types/` and `src/headless/types/` (gitignored) and bundles each package's into
+one file with rollup-plugin-dts: `src/headless/dist/converse-headless.d.ts` and
+`dist/converse.d.ts`. `npm run types:check` type-checks without writing anything. The UI
+checks against the headless source; the daemon and CLI check against the headless bundle,
+as consumers see it. The bundle only contains what the entry point exports, so a type that
+UI code or plugins need from headless has to be exported from `src/headless/index.js` (a
+top-level `@typedef` there is enough); import it as `import('@converse/headless').Name`,
+never from a `@converse/headless/types/...` subpath. Likewise, UI types that plugins need
+are exported from `src/index.js`. Bare imports such as `shared/components/element.js`
+resolve through the catch-all `paths` entry of each `tsconfig.json`, not through
+`baseUrl`. Side-effect imports of stylesheets are covered by the ambient `*.scss`
+declaration in `src/shared/styles/scss.d.ts`.
+
+## Commits
+
+Keep commit messages short: a `type(scope): summary` subject (e.g.
+`fix(reactions): …`, `feat(muc): …`) that states what was fixed or which feature was
+implemented. Don't explain how; the code and its comments document that.
 
 ## Architecture
 
 ### Plugin System
 
-Converse.js uses a **plugin-based architecture** powered by `pluggable.js`:
+Converse uses a **plugin-based architecture** powered by `pluggable.js`:
 
 - **Headless plugins** (`src/headless/plugins/`): Core XMPP logic, no UI
-    - Examples: `chat`, `muc`, `disco`, `roster`, `ping`, `bookmarks`
 - **UI plugins** (`src/plugins/`): Visual components that depend on headless
-    - Examples: `chatview`, `muc-views`, `rosterview`, `controlbox`
 
 ### Plugin Structure
 
@@ -239,7 +190,18 @@ converse.plugins.add('plugin-name', {
 ### Plugin Design Philosophy
 
 Converse.js mirrors the XMPP philosophy: a minimal core with features implemented as
-plugins corresponding to individual XEPs.
+plugins.
+
+**Plugin boundaries follow features, not XEPs:** a plugin should hold one cohesive feature
+that makes sense on its own. A XEP doesn't automatically get its own plugin, nor does it
+automatically go into an existing one. Ask whether the code could stand alone:
+
+- If it only serves an existing feature (it depends on that plugin, extends its API, and has
+  no other consumer), put it in that plugin, in its own file or subdirectory
+  (e.g. `src/headless/plugins/muc/affiliations/`).
+- If it's a distinct feature that other plugins or UIs could use independently, or that a
+  deployment might want to leave out, give it its own plugin, rather than growing an
+  existing plugin with unrelated functionality.
 
 **Avoiding leaky abstractions:** Shared core code (`src/headless/shared/`, e.g.
 `model-with-messages.js`) must not contain logic specific to a particular plugin.
@@ -294,10 +256,10 @@ a hook instead of an event only when the call site genuinely needs a return valu
 
 ```javascript
 // Headless core imports
-import { _converse, api, converse } from '@converse/headless';
+import { _converse, api, converse, u } from '@converse/headless';
 
 // Logging
-import { log } from '@converse/log';
+import { log } from '@converse/headless';
 
 // Lit framework
 import { html, css } from 'lit';
@@ -307,8 +269,8 @@ import ChatView from './chat.js';
 import './styles/index.scss';
 
 // Utilities
-import { u } from '@converse/headless'; // Utility functions
-const { dayjs, Strophe, sizzle } = converse.env; // Common libraries
+// Common libraries (`u` is also available here)
+const { dayjs, Strophe, sizzle, stx, $msg, $iq, $pres, $build } = converse.env;
 ```
 
 #### Using utility functions from @converse/headless
@@ -334,6 +296,7 @@ import { getOwnReactionJID } from '@converse/headless/plugins/reactions/utils.js
 
 ```javascript
 import { html } from 'lit';
+import { api } from '@converse/headless';
 import { CustomElement } from 'shared/components/element.js';
 
 export default class MyComponent extends CustomElement {
@@ -355,7 +318,7 @@ export default class MyComponent extends CustomElement {
         return html`<div>...</div>`;
     }
 }
-customElements.define('my-component', MyComponent);
+api.elements.define('my-component', MyComponent);
 ```
 
 **Templates** are functions returning `html` tagged templates:
@@ -370,6 +333,22 @@ export default (model) => html`
     </div>
 `;
 ```
+
+### API design
+
+The integration API follows a design of short methods chained onto namespaces,
+so it reads as `api.<noun>.<verb>()`.
+
+- Use `api.user.get()`, not `api.getUser()`. Group methods by the thing they act on
+  (`api.chats`, `api.rooms`, `api.contacts`, `api.settings`), with short verbs: `get`,
+  `set`, `create`, `open`, `add`, `remove`.
+- Nest a namespace for a sub-resource rather than compounding the method name:
+  `api.disco.entities.get()`, `api.user.status.set()`, `api.microblog.feeds.get()`.
+- A compound name like `getActive` or `browseFeeds` usually means a namespace is missing
+  (`api.apps.active.get()`, `api.microblog.feeds.browse()`). Predicates (`is…`, `can…`)
+  are the usual exception.
+- A plugin adds its methods under its own namespace, not as loose top-level methods on
+  `api`. Exceptions exist, like `api.waitUntil()` and `api.sendIQ()`.
 
 ### API Usage Patterns
 
@@ -395,50 +374,14 @@ await api.waitUntil('connected');
 // User interaction
 const confirmed = await api.confirm('Are you sure?');
 await api.alert('Something happened');
+
+// Access global state via `_converse.state` (use sparingly, prefer api)
+const { chatboxes } = _converse.state;
 ```
-
-## TypeScript and Type Definitions
-
-See `tsconfig.json`
-
-### JSDoc for Types
-
-Add JSDoc comments to document types in `.js` files:
-
-### Type Checking
-
-```bash
-npm run types:check  # Check types without generating files
-npm run types        # Generate type definitions
-```
-
-## Styling
-
-### SCSS Organization
-
-- **Framework**: Bootstrap 5 (imported from node_modules)
-- **Location**: Component-specific styles in plugin directories
-- **Shared styles**: `src/shared/styles/` (alerts, badges, buttons, forms, etc.)
-- **Import paths**: Rspack configured with `node_modules/` and `src/` as includePaths
-
-### CSS Loading
-
-Styles are imported directly in JavaScript:
-
-```javascript
-import './styles/chat-content.scss';
-```
-
-Rspack uses `style-loader` + `css-loader` + `postcss-loader` + `sass-loader` to process and inject styles.
 
 ## Internationalization (i18n)
 
-### Translation System
-
-- **Library**: Jed (Gettext for JavaScript)
-- **Format**: PO files in `src/i18n/locales/*/LC_MESSAGES/converse.po`
-
-### Using Translations
+Translations use gettext `.po` files in `src/i18n/locales/`:
 
 ```javascript
 import { __ } from '@converse/headless';
@@ -501,20 +444,13 @@ Read: RELEASE.md
 
 - **Source**: `docs/src/content/docs/` (Markdown)
 - **Framework**: Starlight (Astro)
-- **Build**: `make doc` or `npm run docs:build`
-- **Dev server**: `npm run docs:dev`
 - **Output**: `docs/dist/`
 - **Online**: https://conversejs.org/docs/
 - **Self-contained**: the docs have their own `package.json`; building them does not
   require the root `npm install`
 
-Generate docs:
-
-```bash
-make doc           # Build HTML documentation
-npm run docs:dev   # Start dev server with live reload
-npm run docs:build # Build for production
-```
+Build with `make doc` or `npm run docs:build`; `npm run docs:dev` starts a dev server with
+live reload.
 
 ### Internal links
 

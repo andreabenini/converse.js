@@ -61,7 +61,7 @@ describe('A blocklist', function () {
             await mock.waitForRoster(_converse, 'current', 0);
 
             const IQ_stanzas = api.connection.get().IQ_stanzas;
-            let sent_stanza = await u.waitUntil(() => IQ_stanzas.find((s) => s.querySelector('iq blocklist')));
+            const sent_stanza = await u.waitUntil(() => IQ_stanzas.find((s) => s.querySelector('iq blocklist')));
 
             const stanza = stx`
                     <iq xmlns="jabber:client"
@@ -79,7 +79,8 @@ describe('A blocklist', function () {
 
             // The server sends a push IQ stanza
             _converse.api.connection.get()._dataRecv(
-                mock.createRequest(_converse, 
+                mock.createRequest(
+                    _converse,
                     stx`
                     <iq xmlns="jabber:client"
                         to="${api.connection.get().jid}"
@@ -96,7 +97,8 @@ describe('A blocklist', function () {
 
             // The server sends a push IQ stanza
             _converse.api.connection.get()._dataRecv(
-                mock.createRequest(_converse, 
+                mock.createRequest(
+                    _converse,
                     stx`
                     <iq xmlns="jabber:client"
                         to="${api.connection.get().jid}"
@@ -131,7 +133,8 @@ describe('A blocklist', function () {
             let sent_stanza = await u.waitUntil(() => IQ_stanzas.find((s) => s.querySelector('iq blocklist')));
 
             _converse.api.connection.get()._dataRecv(
-                mock.createRequest(_converse, 
+                mock.createRequest(
+                    _converse,
                     stx`<iq xmlns="jabber:client"
                         to="${api.connection.get().jid}"
                         type="result"
@@ -159,7 +162,8 @@ describe('A blocklist', function () {
             _converse.api.connection
                 .get()
                 ._dataRecv(
-                    mock.createRequest(_converse, 
+                    mock.createRequest(
+                        _converse,
                         stx`<iq xmlns="jabber:client" type="result" id="${sent_stanza.getAttribute('id')}"/>`,
                     ),
                 );
@@ -180,7 +184,8 @@ describe('A blocklist', function () {
             _converse.api.connection
                 .get()
                 ._dataRecv(
-                    mock.createRequest(_converse, 
+                    mock.createRequest(
+                        _converse,
                         stx`<iq xmlns="jabber:client" type="result" id="${sent_stanza.getAttribute('id')}"/>`,
                     ),
                 );
@@ -205,7 +210,9 @@ describe('A Chat Message', function () {
             const message = await chat.sendMessage({ body: msg_text });
 
             api.connection.get()._dataRecv(
-                mock.createRequest(_converse, stx`
+                mock.createRequest(
+                    _converse,
+                    stx`
                 <message xmlns="jabber:client"
                     to="${api.connection.get().jid}"
                     type="error"
@@ -215,11 +222,37 @@ describe('A Chat Message', function () {
                         <not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
                         <blocked xmlns='urn:xmpp:blocking:errors'/>
                     </error>
-                </message>`),
+                </message>`,
+                ),
             );
 
             await u.waitUntil(() => message.get('is_error') === true);
             expect(message.get('error')).toBe('You are blocked from sending messages.');
+        }),
+    );
+});
+
+describe('A server without XEP-0191 blocking', function () {
+    it(
+        'still lets a message from someone outside the roster through',
+        mock.initConverse(converse, ['discoInitialized'], {}, async function (_converse) {
+            const { api } = _converse;
+            await mock.waitUntilDiscoConfirmed(_converse, _converse.domain, [{ category: 'server', type: 'IM' }], []);
+            await mock.waitForRoster(_converse, 'current', 0);
+
+            const blocklist = await api.blocklist.get();
+            expect(blocklist.length).toBe(0);
+
+            const stanza = stx`
+                <message xmlns="jabber:client" from="stranger@shakespeare.lit/x" to="${api.connection.get().jid}"
+                        type="chat" id="${u.getUniqueId()}">
+                    <body>Hello</body>
+                </message>`;
+            api.connection.get()._dataRecv(mock.createRequest(_converse, stanza));
+
+            const chat = await u.waitUntil(() => _converse.state.chatboxes.get('stranger@shakespeare.lit'));
+            await u.waitUntil(() => chat.messages.length);
+            expect(chat.messages.at(0).get('body')).toBe('Hello');
         }),
     );
 });

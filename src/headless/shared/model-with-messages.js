@@ -14,13 +14,30 @@ import _converse from './_converse.js';
 import * as errors from './errors.js';
 import { sendMarker, sendReceiptStanza, sendRetractionMessage } from './actions.js';
 import { parseMessage } from '../plugins/chat/parsers.js';
+import { getStanzaIDsByJID } from './parsers.js';
+import { isUploadableFile } from './http-upload.js';
 
 const { Strophe, stx, u } = converse.env;
+const { CORRECTED_ATTRS } = constants;
 
 // How many code points of the replied-to message to quote in the XEP-0461
 // compatibility fallback. Matches the preview length shown by the reply-context
 // UI (shared/chat/reply-context.js), so we never quote more than we'd display.
 const REPLY_FALLBACK_QUOTE_LENGTH = 80;
+
+/**
+ * Whether a stored message and the attributes of an incoming one are from the same sender,
+ * for the purposes of XEP-0308 corrections.
+ * @param {import('./message').default} message
+ * @param {object} attrs - Attributes representing a received message
+ * @returns {boolean}
+ */
+function isFromSameSender(message, attrs) {
+    if (attrs.type === 'groupchat' && attrs.occupant_id) {
+        return message.get('occupant_id') == attrs.occupant_id;
+    }
+    return message.get('from') === attrs.from && message.get('occupant_id') == null;
+}
 
 /**
  * Adds a messages collection to a model and various methods related to sending
@@ -32,6 +49,7 @@ const REPLY_FALLBACK_QUOTE_LENGTH = 80;
  *
  * @template {import('./types').ModelExtender} T
  * @param {T} BaseModel
+ * @returns {T & import('./types').Constructor<import('./types').MessagesAware>}
  */
 export default function ModelWithMessages(BaseModel) {
     /**
@@ -189,7 +207,8 @@ export default function ModelWithMessages(BaseModel) {
             } else {
                 new_attrs = {
                     is_archived: attrs.is_archived,
-                    ...(attrs.is_archived && attrs.time && { time: attrs.time }),
+                    // A correction's time is when it was edited, not when the message was sent
+                    ...(attrs.is_archived && attrs.time && !attrs.replace_id && { time: attrs.time }),
                 };
             }
 
@@ -211,41 +230,64 @@ export default function ModelWithMessages(BaseModel) {
         }
 
         /**
+         * Finds the message which is corrected by the XEP-0308 correction
+         * represented by the passed in attributes.
+         * If the original hasn't been received yet, that is the message saved from
+         * an earlier correction of it.
+         * @param {MessageAttributes|MUCMessageAttributes} attrs - Attributes representing a received
+         *  correction, as returned by {@link parseMessage}
+         * @returns {BaseMessage|undefined}
+         */
+        getCorrectedMessage(attrs) {
+            if (!attrs.replace_id || !attrs.from) {
+                return;
+            }
+            return this.messages.models.find(
+                (m) =>
+                    (m.get('msgid') === attrs.replace_id || m.get('replace_id') === attrs.replace_id) &&
+                    isFromSameSender(m, attrs),
+            );
+        }
+
+        /**
          * Determines whether the given attributes of an incoming message
          * represent a XEP-0308 correction and, if so, handles it appropriately.
+         * Also handles the original version of a message of which a correction
+         * was received first (e.g. when paging back through the archive).
          * @param {MessageAttributes|MUCMessageAttributes} attrs - Attributes representing a received
          *  message, as returned by {@link parseMessage}
          * @returns {Promise<BaseMessage|void>} Returns the corrected
          *  message or `undefined` if not applicable.
          */
         async handleCorrection(attrs) {
-            if (!attrs.replace_id || !attrs.from) {
+            if (!attrs.from) {
                 return;
+            } else if (!attrs.replace_id) {
+                return this.handleOriginalOfCorrection(attrs);
             }
 
-            let query;
-            if (attrs.type === 'groupchat') {
-                const { occupant_id, replace_id } = /** @type {MUCMessageAttributes} */ (attrs);
-                query = occupant_id
-                    ? ({ attributes: m }) => m.msgid === replace_id && m.occupant_id == occupant_id
-                    : ({ attributes: m }) =>
-                          m.msgid === attrs.replace_id && m.from === attrs.from && m.occupant_id == null;
-            } else {
-                query = ({ attributes: m }) =>
-                    m.msgid === attrs.replace_id && m.from === attrs.from && m.occupant_id == null;
-            }
-
-            const message = this.messages.models.find(query);
+            const message = this.getCorrectedMessage(attrs);
             if (!message) {
                 attrs['older_versions'] = {};
                 return await this.createMessage(attrs);
             }
 
+            if (message.hasStanzaIDOf(attrs)) {
+                // We've already applied this correction
+                return message;
+            }
+            const correction_stanza_ids = message.getCorrectionStanzaIDs(attrs);
+            // A correction's stanza-ids are properties of the correction stanza
+            // (XEP-0308 Business Rules), so they mustn't overwrite those of the message.
+            // The passed in attrs may be used elsewhere (e.g. by MAM), so they're copied.
+            attrs = { ...attrs };
+            Object.keys(getStanzaIDsByJID(attrs)).forEach((by_jid) => delete attrs[`stanza_id ${by_jid}`]);
+
             const older_versions = message.get('older_versions') || {};
             if (attrs.time < message.get('time') && message.get('edited')) {
                 // This is an older message which has been corrected afterwards
                 older_versions[attrs.time] = attrs['message'];
-                message.save({ older_versions });
+                message.save({ older_versions, correction_stanza_ids });
             } else {
                 // This is a correction of an earlier message we already received
                 if (Object.keys(older_versions).length) {
@@ -253,12 +295,48 @@ export default function ModelWithMessages(BaseModel) {
                 } else {
                     older_versions[message.get('time')] = message.getMessageText();
                 }
-                attrs = Object.assign(attrs, { older_versions });
+                attrs = Object.assign(attrs, { older_versions, correction_stanza_ids });
                 delete attrs['msgid']; // We want to keep the msgid of the original message
                 delete attrs['id']; // Delete id, otherwise a new cache entry gets created
                 attrs['time'] = message.get('time');
                 message.save(attrs);
             }
+            return message;
+        }
+
+        /**
+         * If a correction of the message represented by the passed in attributes
+         * was received before it, the correction was saved as a message of its own.
+         * Turns that message into the corrected version of this one.
+         * @param {MessageAttributes|MUCMessageAttributes} attrs - Attributes representing a received
+         *  message which isn't a correction, as returned by {@link parseMessage}
+         * @returns {BaseMessage|undefined} The corrected message, or `undefined` if not applicable.
+         */
+        handleOriginalOfCorrection(attrs) {
+            const message = this.messages.models.find(
+                (m) => m.get('replace_id') === attrs.msgid && m.get('time') > attrs.time && isFromSameSender(m, attrs),
+            );
+            if (!message) return;
+
+            // Until now, the message had the stanza-ids of the correction it was saved from
+            const stanza_ids = {};
+            const correction_stanza_ids = { ...message.get('correction_stanza_ids') };
+            for (const [by_jid, id] of Object.entries(getStanzaIDsByJID(attrs))) {
+                const key = `stanza_id ${by_jid}`;
+                const placeholder_id = message.get(key);
+                if (placeholder_id) {
+                    correction_stanza_ids[by_jid] = [placeholder_id, ...(correction_stanza_ids[by_jid] ?? [])];
+                }
+                stanza_ids[key] = id;
+            }
+
+            message.save({
+                ...stanza_ids,
+                correction_stanza_ids,
+                msgid: attrs.msgid,
+                older_versions: { ...message.get('older_versions'), [attrs.time]: attrs['message'] },
+                time: attrs.time,
+            });
             return message;
         }
 
@@ -297,6 +375,21 @@ export default function ModelWithMessages(BaseModel) {
             return this.messages.models.find(
                 (m) => m.get('origin_id') === reply_to_id || m.get('msgid') === reply_to_id,
             );
+        }
+
+        /**
+         * The message an outgoing one replies to (XEP-0461). A reply passed in
+         * with `attrs` wins over the one chosen on the chat, which then stays
+         * chosen. Otherwise the chosen one is used up, and cleared.
+         * @param {MessageAttributes} [attrs]
+         * @returns {Pick<MessageAttributes, 'reply_to_id'|'reply_to'>}
+         */
+        takeReplyAttributes(attrs) {
+            if (attrs?.reply_to_id) return { reply_to_id: attrs.reply_to_id, reply_to: attrs.reply_to };
+
+            const reply = { reply_to_id: this.get('reply_to_id'), reply_to: this.get('reply_to') };
+            if (reply.reply_to_id) this.save({ reply_to_id: undefined, reply_to: undefined });
+            return reply;
         }
 
         /**
@@ -348,33 +441,66 @@ export default function ModelWithMessages(BaseModel) {
 
         /**
          * Responsible for sending off a text message inside an ongoing chat conversation.
+         *
+         * If the send fails, the promise rejects with the error, which has a `code` that
+         * identifies the reason. The message is kept in the conversation with `send_status`
+         * set to `failed` and `send_error_code` set to that code. Nothing resends it on its
+         * own. Call {@link resendFailedMessage} or {@link discardFailedMessage} to act on it.
          * @param {Object} [attrs] - A map of attributes to be saved on the message
+         * @param {Object} [options]
+         * @param {BaseMessage} [options.replying_to] - A message of this conversation that this
+         *  one replies to (XEP-0461). Defaults to the one chosen with the chat's `reply_to_id`.
+         * @param {BaseMessage} [options.correcting] - One of our messages in this conversation
+         *  that this one corrects (XEP-0308). Defaults to the one marked `correcting`.
          * @returns {Promise<BaseMessage>}
+         * @throws {Error} When the message could not be sent. Its `code` gives the reason.
          * @example
          *  const chat = api.chats.get('buddy1@example.org');
-         *  chat.sendMessage({'body': 'hello world'});
+         *  try {
+         *      await chat.sendMessage({'body': 'hello world'});
+         *  } catch (e) {
+         *      // e.code is set, for example 'no-omemo-devices'
+         *  }
          */
-        async sendMessage(attrs) {
+        async sendMessage(attrs, { replying_to, correcting } = {}) {
             await api.emojis.initialize();
 
-            if (!this.canPostMessages()) {
+            // A room we lost with the connection can't post either, but its message is kept as a failed one.
+            if (api.connection.authenticated() && !this.canPostMessages()) {
                 log.warn('sendMessage was called but canPostMessages is false');
                 return;
             }
 
+            if (replying_to) {
+                const reply_to_id = replying_to.getReferenceID();
+                if (!reply_to_id) {
+                    throw new Error("Can't reply to a groupchat message that has no stanza-id from the room");
+                }
+                attrs = { ...attrs, reply_to_id, reply_to: replying_to.get('from') };
+            }
+            if (correcting && (correcting.collection !== this.messages || !correcting.get('editable'))) {
+                throw new Error("Can't correct a message that isn't an editable one of ours in this conversation");
+            }
+
             attrs = await this.getOutgoingMessageAttributes(attrs);
-            let message = this.messages.findWhere('correcting');
+            let message = correcting ?? this.messages.findWhere('correcting');
             if (message) {
-                const older_versions = message.get('older_versions') || {};
+                const older_versions = { ...message.get('older_versions') };
                 const edited_time = message.get('edited') || message.get('time');
                 older_versions[edited_time] = message.getMessageText();
+                // A message that's already failed was never delivered, so there's nothing new to go back to.
+                const before_correction =
+                    message.get('send_status') === 'failed'
+                        ? message.get('before_correction')
+                        : pick(message.attributes, CORRECTED_ATTRS);
 
                 message.save({
                     ...['body', 'is_only_emojis', 'media_urls', 'references', 'is_encrypted'].reduce((obj, k) => {
-                        if (attrs.hasOwnProperty(k)) obj[k] = attrs[k];
+                        if (Object.hasOwn(attrs, k)) obj[k] = attrs[k];
                         return obj;
                     }, {}),
                     ...{
+                        before_correction,
                         correcting: false,
                         edited: new Date().toISOString(),
                         message: attrs.body,
@@ -390,14 +516,7 @@ export default function ModelWithMessages(BaseModel) {
                 message = await this.createMessage(attrs);
             }
 
-            try {
-                const stanza = await this.createMessageStanza(message);
-                api.send(stanza);
-            } catch (e) {
-                message.destroy();
-                log.error(e);
-                return;
-            }
+            await this.#sendStoredMessage(message);
 
             /**
              * Triggered when a message is being sent out
@@ -409,6 +528,101 @@ export default function ModelWithMessages(BaseModel) {
              */
             api.trigger('sendMessage', { chatbox: this, message });
             return message;
+        }
+
+        /**
+         * Tests `authenticated` because `connected` is already true before SASL and
+         * resource binding, when the server won't accept a message.
+         */
+        #throwIfNotConnected() {
+            if (!api.connection.authenticated()) {
+                throw new errors.CodedError('not-connected', 'Message not sent, there is no connection');
+            }
+        }
+
+        /**
+         * Builds and sends the stanza for a stored message. On failure the message
+         * is kept, marked as failed with the error's code, and the error is re-thrown.
+         * @param {BaseMessage} message
+         */
+        async #sendStoredMessage(message) {
+            try {
+                this.#throwIfNotConnected();
+                const stanza = await this.createMessageStanza(message);
+                // The connection can drop during the build, and api.send drops the stanza silently.
+                this.#throwIfNotConnected();
+                api.send(stanza);
+                if (message.get('before_correction')) message.save({ before_correction: undefined });
+            } catch (e) {
+                const { code, iq, can_send_unencrypted } =
+                    /** @type {{code?: string, iq?: Element, can_send_unencrypted?: boolean}} */ (e);
+                // The sender of a failed IQ is the JID that the reason names.
+                message.save({
+                    send_status: 'failed',
+                    send_error_code: code ?? 'send-failed',
+                    send_error_from: iq?.getAttribute('from') ?? undefined,
+                    send_can_send_unencrypted: can_send_unencrypted === true,
+                });
+                log.error(e);
+                throw e;
+            }
+        }
+
+        /**
+         * Sends a failed message again. Only a call from the client resends a message,
+         * nothing resends on its own. The `attrs` apply to this attempt only: they are
+         * saved before the send and restored if it fails again. A failed attempt keeps
+         * its own failure, not the earlier one, since that's the one the user hasn't seen.
+         * @param {BaseMessage} message - A message whose `send_status` is `failed`.
+         * @param {Object} [attrs] - Attributes to apply to this attempt.
+         * @returns {Promise<BaseMessage>}
+         */
+        async resendFailedMessage(message, attrs = {}) {
+            this.#clearSendFailure(message);
+            const previous = Object.fromEntries(Object.keys(attrs).map((key) => [key, message.get(key)]));
+            message.save(attrs);
+            try {
+                await this.#sendStoredMessage(message);
+            } catch (e) {
+                message.save(previous);
+                throw e;
+            }
+            return message;
+        }
+
+        /**
+         * Removes a failed message from the history. A failed correction goes back
+         * to the version that was delivered instead, since that one still exists for others.
+         * @param {BaseMessage} message
+         */
+        discardFailedMessage(message) {
+            if (message.get('send_status') !== 'failed') return;
+
+            const before_correction = message.get('before_correction');
+            if (before_correction) {
+                this.#clearSendFailure(message);
+                // By name, so that what the correction added and the original lacked is cleared too.
+                const restored = Object.fromEntries(CORRECTED_ATTRS.map((k) => [k, before_correction[k]]));
+                message.save({ ...restored, before_correction: undefined });
+            } else {
+                message.destroy();
+            }
+        }
+
+        /**
+         * Clears the failure from a message, so that a new attempt can record its own.
+         * @param {BaseMessage} message
+         */
+        #clearSendFailure(message) {
+            if (message.get('send_status') !== 'failed') {
+                throw new Error('Only a failed message can be sent again');
+            }
+            message.save({
+                send_status: undefined,
+                send_error_code: undefined,
+                send_error_from: undefined,
+                send_can_send_unencrypted: undefined,
+            });
         }
 
         /**
@@ -428,7 +642,15 @@ export default function ModelWithMessages(BaseModel) {
         }
 
         /**
-         * @param {File[]} files'
+         * Upload files via XEP-0363 and send them out as messages.
+         * Resolves once a message has been created for each file, or to `[]` if
+         * the server has no upload service. Each message's `upload` attribute is
+         * set to `SUCCESS` or `FAILURE` once its upload has finished. A file
+         * which is empty, unreadable (e.g. a directory) or too large gets an
+         * ephemeral error message instead, whose `upload` is already `FAILURE`
+         * and whose `message` explains why.
+         * @param {File[]|FileList} files
+         * @returns {Promise<BaseMessage[]>}
          */
         async sendFiles(files) {
             const { __, session } = _converse;
@@ -440,7 +662,7 @@ export default function ModelWithMessages(BaseModel) {
                     type: 'error',
                     is_ephemeral: true,
                 });
-                return;
+                return [];
             }
             const data = item.dataforms
                 .where({ 'FORM_TYPE': { 'value': Strophe.NS.HTTPUPLOAD, 'type': 'hidden' } })
@@ -454,9 +676,23 @@ export default function ModelWithMessages(BaseModel) {
                     type: 'error',
                     is_ephemeral: true,
                 });
-                return;
+                return [];
             }
-            Array.from(files).forEach(async (file) => {
+            const messages = Array.from(files).map(async (file) => {
+                if (!(await isUploadableFile(file))) {
+                    return this.createMessage({
+                        message: file.size
+                            ? __(
+                                  'Sorry, %1$s could not be uploaded, because it is a folder or could not be read.',
+                                  file.name,
+                              )
+                            : __('Sorry, %1$s could not be uploaded, because it is empty.', file.name),
+                        type: 'error',
+                        is_ephemeral: true,
+                        upload: constants.FAILURE,
+                    });
+                }
+
                 /**
                  * *Hook* which allows plugins to transform files before they'll be
                  * uploaded. The main use-case is to encrypt the files.
@@ -479,6 +715,7 @@ export default function ModelWithMessages(BaseModel) {
                         message,
                         type: 'error',
                         is_ephemeral: true,
+                        upload: constants.FAILURE,
                     });
                 } else {
                     const initial_attrs = await this.getOutgoingMessageAttributes();
@@ -492,8 +729,10 @@ export default function ModelWithMessages(BaseModel) {
                     message.file = file;
                     this.messages.trigger('add', message);
                     message.getRequestSlotURL();
+                    return message;
                 }
             });
+            return Promise.all(messages);
         }
 
         /**
@@ -572,7 +811,8 @@ export default function ModelWithMessages(BaseModel) {
                     'spoiler_hint': message.get('spoiler_hint'),
                     'oob_url': message.get('oob_url'),
                 };
-                await this.sendMessage(attrs);
+                // A failed send stays in the history as a failed message, so the upload placeholder goes either way.
+                await this.sendMessage(attrs).catch((e) => log.error(e));
                 message.destroy();
             }
         }
@@ -784,8 +1024,22 @@ export default function ModelWithMessages(BaseModel) {
 
             return this.messages.models.find(
                 /** @param {BaseMessage} m */
-                (m) => queries.find((q) => Object.keys(q).every((k) => m.get(k) === q[k])),
+                (m) =>
+                    queries.find((q) => Object.keys(q).every((k) => m.get(k) === q[k])) ||
+                    this.isCorrectionOf(attrs, m),
             );
+        }
+
+        /**
+         * Whether the passed in attributes are those of a XEP-0308 correction
+         * which was already applied to the given message, based on its stanza-ids.
+         * @param {object} attrs - Attributes representing a received message
+         * @param {BaseMessage} message
+         * @returns {boolean}
+         */
+        isCorrectionOf(attrs, message) {
+            // The collection also holds models which aren't messages, e.g. MAM placeholders
+            return !!attrs.replace_id && !!message.hasStanzaIDOf?.(attrs);
         }
 
         /**

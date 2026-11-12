@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import {
     chatroom_names,
     createChatMessage,
@@ -19,6 +20,32 @@ import {
     waitUntilBookmarksReturned,
     waitUntilDiscoConfirmed,
 } from '../../headless/tests/mock.js';
+
+const blobSlice = Blob.prototype.slice;
+const unreadable_file_names = new Set();
+
+/**
+ * A `File` standing in for a directory copied in a file manager, or for a file deleted
+ * after it was copied: it has a size, but can't be read. Safe to call more than once
+ * per test.
+ * @param {string} name
+ * @param {number} [size] - Defaults to a directory's typical size on disk.
+ * @returns {File}
+ */
+function mockUnreadableFile(name, size = 4096) {
+    if (!vi.isMockFunction(Blob.prototype.slice)) {
+        // A fresh test: the previous one's spy has been restored.
+        unreadable_file_names.clear();
+        vi.spyOn(Blob.prototype, 'slice').mockImplementation(function (...args) {
+            if (this instanceof File && unreadable_file_names.has(this.name)) {
+                return { arrayBuffer: () => Promise.reject(new DOMException('', 'NotReadableError')) };
+            }
+            return blobSlice.apply(this, args);
+        });
+    }
+    unreadable_file_names.add(name);
+    return new File([new Uint8Array(size)], name);
+}
 
 function getContactJID(index) {
     return cur_names[index].replace(/ /g, '.').toLowerCase() + '@montague.lit';
@@ -197,6 +224,32 @@ function getMessageForm(view) {
 }
 
 /**
+ * Click the paperclip in a chat view's toolbar, wait for the attachment menu to open, and
+ * return the menu element.
+ * @param {HTMLElement} view
+ * @returns {Promise<HTMLElement>}
+ */
+async function openAttachmentMenu(view) {
+    const { u } = window.converse.env;
+    const button = await u.waitUntil(() => view.querySelector('converse-chat-toolbar .toggle-attachment-menu'));
+    button.click();
+    const menu = button.closest('converse-attachment-menu');
+    await u.waitUntil(() => u.isVisible(menu.querySelector('.attachment-menu')));
+    return menu;
+}
+
+/**
+ * The labels of a chat view's attachment menu items, in the order they are listed. Synchronous,
+ * so it can be used inside `u.waitUntil`.
+ * @param {HTMLElement} view
+ * @returns {string[]}
+ */
+function attachmentMenuItems(view) {
+    const items = view.querySelectorAll('converse-chat-toolbar .attachment-menu__item');
+    return Array.from(items).map((el) => el.textContent.trim());
+}
+
+/**
  * The composer's current text, whichever composer it is. Deliberately synchronous, so it
  * can be used inside `u.waitUntil` (which tests the predicate's return value for
  * truthiness, and would treat a promise as an immediate success).
@@ -315,6 +368,10 @@ window.libomemo.OMEMOAddress.prototype.toString = function () {
 // decryption tests never trigger a heartbeat.
 window.libomemo.mock_ratchet = { counter: 0, key: new Uint8Array([5, 1, 2, 3]).buffer };
 
+// When set, the mocked decrypt methods throw this error instead of decrypting. Tests use it
+// to simulate libsignal rejecting a repeated message key (a `MessageCounterError`).
+window.libomemo.mock_decrypt_error = null;
+
 Object.assign(window.libomemo, {
     // Mock Ed25519 key conversion: just return the input as-is (real impl converts Curve25519 → Ed25519)
     'curvePubKeyToEd25519PubKey': async (curve_key) => new Uint8Array(curve_key).slice(0, 32).buffer,
@@ -334,6 +391,7 @@ Object.assign(window.libomemo, {
         // here, the same way libomemo does, so that store-interface regressions
         // are caught by tests.
         this.decryptPreKeyWhisperMessage = async (key_and_tag) => {
+            if (window.libomemo.mock_decrypt_error) throw window.libomemo.mock_decrypt_error;
             // Mirror libomemo's SessionBuilder.processV3 + initSession.
             const signed_prekey = await storage.loadSignedPreKey(0);
             if (signed_prekey === undefined) {
@@ -364,6 +422,7 @@ Object.assign(window.libomemo, {
             return { plaintext: key_and_tag, ratchet: { ...window.libomemo.mock_ratchet } };
         };
         this.decryptWhisperMessage = async (key_and_tag) => {
+            if (window.libomemo.mock_decrypt_error) throw window.libomemo.mock_decrypt_error;
             // Mirror libomemo's SessionCipher.doDecryptWhisperMessage, which
             // reads the identity keypair from the store.
             const identity_keypair = await storage.getIdentityKeyPair();
@@ -722,6 +781,7 @@ export default {
     groups_map,
     initConverse,
     initializedOMEMO,
+    mockUnreadableFile,
     num_contacts,
     openAddMUCModal,
     openAndEnterMUC,
@@ -736,6 +796,8 @@ export default {
     returnMemberLists,
     sendMessage,
     getMessageForm,
+    openAttachmentMenu,
+    attachmentMenuItems,
     composerText,
     setComposerText,
     pressComposerKey,

@@ -13,7 +13,8 @@ describe('Message Archive Management', function () {
     describe('The XEP-0313 Archive', function () {
         it(
             'is queried when the user enters a new MUC',
-            mock.initConverse(converse, 
+            mock.initConverse(
+                converse,
                 ['discoInitialized'],
                 {
                     archived_messages_page_size: 2,
@@ -26,7 +27,7 @@ describe('Message Archive Management', function () {
                     const own_jid = _converse.session.get('jid');
                     await mock.openAndEnterMUC(_converse, muc_jid, nick);
 
-                    let view = _converse.chatboxviews.get(muc_jid);
+                    const view = _converse.chatboxviews.get(muc_jid);
                     let iq_get = await u.waitUntil(() =>
                         sent_IQs.filter((iq) => sizzle(`query[xmlns="${Strophe.NS.MAM}"]`, iq).length).pop(),
                     );
@@ -231,7 +232,8 @@ describe('Message Archive Management', function () {
 
         it(
             'is queried correctly when a user leaves and re-enters a MUC',
-            mock.initConverse(converse, 
+            mock.initConverse(
+                converse,
                 ['discoInitialized'],
                 {
                     auto_fill_history_gaps: false,
@@ -471,7 +473,8 @@ describe('Message Archive Management', function () {
 
         it(
             "queries for messages using 'start' if there are cached messages in the MUC",
-            mock.initConverse(converse, 
+            mock.initConverse(
+                converse,
                 ['discoInitialized'],
                 {
                     auto_fill_history_gaps: false,
@@ -533,7 +536,7 @@ describe('Message Archive Management', function () {
                 </message>`;
                     _converse.api.connection.get()._dataRecv(mock.createRequest(_converse, message));
 
-                    let result = stx`
+                    const result = stx`
                 <iq type='result' id='${iq_get.getAttribute('id')}' xmlns="jabber:client">
                     <fin xmlns='urn:xmpp:mam:2' complete="true">
                         <set xmlns='http://jabber.org/protocol/rsm'>
@@ -581,7 +584,8 @@ describe('Message Archive Management', function () {
 
         it(
             "queries with the right 'start' value if a new message is received before the MAM query is made",
-            mock.initConverse(converse, 
+            mock.initConverse(
+                converse,
                 ['discoInitialized'],
                 {
                     auto_fill_history_gaps: false,
@@ -599,7 +603,7 @@ describe('Message Archive Management', function () {
                     const first_msg_id = u.getUniqueId();
 
                     // We first receive a new message before the MAM query could have been made.
-                    let message = stx`
+                    const message = stx`
                 <message xmlns="jabber:client" type="groupchat" id="${first_msg_id}" to="${own_jid}" from="${muc_jid}/juliet">
                     <body>First p0st!</body>
                     <active xmlns="http://jabber.org/protocol/chatstates"/>
@@ -609,7 +613,7 @@ describe('Message Archive Management', function () {
 
                     await u.waitUntil(() => muc.messages.length);
 
-                    let iq_get = await u.waitUntil(() =>
+                    const iq_get = await u.waitUntil(() =>
                         sent_IQs.filter((iq) => sizzle(`query[xmlns="${Strophe.NS.MAM}"]`, iq).length).pop(),
                     );
                     const query_id = iq_get.querySelector('query').getAttribute('queryid');

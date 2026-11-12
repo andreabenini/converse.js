@@ -1,13 +1,22 @@
 {
   "include": ["src/**/*.js", "src/**/*.ts"],
-  "exclude": ["**/dist/**/*", "src/**/tests/**/*", "src/headless/", "src/log/", "src/types/**/*", "src/website.js"],
+  "exclude": [
+    "**/dist/**/*",
+    "src/**/tests/**/*",
+    "src/headless/",
+    "src/log/",
+    "src/daemon/",
+    "src/cli/",
+    "src/types/**/*",
+    "src/website.js"
+  ],
   "compilerOptions": {
     "target": "es2020",
     "module": "esnext",
 
     "types": ["@types/webappsec-credential-management"],
 
-    "lib": ["es2023", "dom", "dom.iterable"],
+    "lib": ["es2023", "dom"],
 
     "allowJs": true,
     "checkJs": true,
@@ -19,11 +28,16 @@
 
     "rootDir": "./src",
     "outDir": "./src/types/",
-    "baseUrl": "./src/",
+    // Bare imports such as `shared/components/element.js` resolve through the
+    // catch-all entry, which replaces the `baseUrl` that TypeScript 6 deprecates.
     "paths": {
-      "@converse/log": ["log/types/index.d.ts"],
-      "@converse/headless": ["headless/types/index.d.ts"],
-      "@converse/skeletor": ["../node_modules/@converse/skeletor/dist/skeletor.d.ts"]
+      "@converse/log": ["./src/log/types/index.d.ts"],
+      // The headless source, so that nothing has to be built first and the UI is
+      // never checked against stale output. The daemon and CLI check against the
+      // bundle, as consumers see it.
+      "@converse/headless": ["./src/headless/index.js"],
+      "@converse/skeletor": ["./node_modules/@converse/skeletor/dist/skeletor.d.ts"],
+      "*": ["./src/*"]
     },
 
     "esModuleInterop": true,

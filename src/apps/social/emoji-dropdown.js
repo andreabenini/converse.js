@@ -14,7 +14,7 @@ import Dropdown from 'shared/components/dropdown.js';
 import { shortnamesToEmojis } from 'shared/chat/utils.js';
 import 'shared/chat/emoji-picker.js';
 
-export default class SocialEmojiDropdown extends Dropdown {
+class SocialEmojiDropdown extends Dropdown {
     static get properties() {
         return {
             ...super.properties,
@@ -62,17 +62,19 @@ export default class SocialEmojiDropdown extends Dropdown {
             </button>
             <ul class="dropdown-menu" aria-labelledby="${this.dropdown_id}">
                 <li>
-                    ${this._state
-                        ? html`<converse-emoji-picker
-                              .state=${this._state}
-                              .model=${this.model}
-                              ?render_emojis=${this._render_emojis}
-                              @emojiSelected=${(/** @type {CustomEvent} */ ev) => this.onEmojiSelected(ev)}
-                              current_category="${this._state.get('current_category') || ''}"
-                              current_skintone="${this._state.get('current_skintone') || ''}"
-                              query="${this._state.get('query') || ''}"
-                          ></converse-emoji-picker>`
-                        : ''}
+                    ${
+                        this._state
+                            ? html`<converse-emoji-picker
+                                  .state=${this._state}
+                                  .model=${this.model}
+                                  ?render_emojis=${this._render_emojis}
+                                  @emojiSelected=${(/** @type {CustomEvent} */ ev) => this.onEmojiSelected(ev)}
+                                  current_category="${this._state.get('current_category') || ''}"
+                                  current_skintone="${this._state.get('current_skintone') || ''}"
+                                  query="${this._state.get('query') || ''}"
+                              ></converse-emoji-picker>`
+                            : ''
+                    }
                 </li>
             </ul>`;
     }

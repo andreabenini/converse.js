@@ -8,9 +8,24 @@ description: How to set up a development environment for Converse.
 To develop and customize Converse, you'll first need to check out Converse's Git repository:
 
 ```bash
-git clone https://github.com/conversejs/converse.js.git
+git clone --filter=blob:none https://github.com/conversejs/converse.js.git
 cd converse.js
 ```
+
+Converse has been around for a long time and its Git history is large. The
+`--filter=blob:none` option makes a blobless clone: you get the full commit history,
+but the contents of older file versions are only downloaded when a command such as
+`git blame` or `git log -p` needs them. Cloning is much faster, and you can still
+work with the history as usual.
+
+If you don't need the history at all, for example to build Converse or try out a
+patch, a shallow clone is faster still:
+
+```bash
+git clone --depth 1 https://github.com/conversejs/converse.js.git
+```
+
+You can later fetch the full history of a shallow clone with `git fetch --unshallow`.
 
 We use development tools which depend on Node.js and NPM (the Node package manager). Make sure you have these installed on your system.
 
@@ -67,7 +82,7 @@ Check the terminal output from your `npm install` command for any error messages
 
 For additional help, you can join our community chatroom: [discuss@conference.conversejs.org](xmpp:discuss@conference.conversejs.org).
 
-If you don't have an XMPP client installed, you can access the chatroom directly through [conversejs.org](https://conversejs.org/fullscreen#converse/room?jid=discuss@conference.conversejs.org) where you can log in and join the conversation.
+If you don't have an XMPP client installed, you can access the chatroom directly through [chat.conversejs.org](https://chat.conversejs.org/#discuss@conference.conversejs.org?join) where you can log in and join the conversation.
 
 ## Optional: Enabling OMEMO Encryption
 

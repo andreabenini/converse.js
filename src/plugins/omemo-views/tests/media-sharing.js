@@ -49,13 +49,13 @@ describe('The OMEMO module', function () {
             await u.waitUntil(() => sent_stanzas.filter((s) => sizzle('body', s).length).pop(), 1000);
 
             // Test reception of an encrypted file
-            let obj = await u.omemo.encryptMessage(
+            const obj = await u.omemo.encryptMessage(
                 'aesgcm://upload.example.org/b9e3eaaa-2eae-4900-ae41/k9mKam2JT.jpg#6b5ba0f96eae',
             );
 
             // XXX: Normally the key will be encrypted via libsignal.
             // However, we're mocking libsignal in the tests, so we include it as plaintext in the message.
-            let stanza = stx`<message from="${contact_jid}"
+            const stanza = stx`<message from="${contact_jid}"
                         to="${_converse.api.connection.get().jid}"
                         type="chat"
                         id="${_converse.api.connection.get().getUniqueId()}"
@@ -146,9 +146,7 @@ describe('The OMEMO module', function () {
 
             // Return a fresh Response each call, since the body stream can only
             // be read once and the image is fetched again when re-shown.
-            spyOn(window, 'fetch').and.callFake(() =>
-                Promise.resolve(new Response(png_bytes.buffer, { status: 200 })),
-            );
+            spyOn(window, 'fetch').and.callFake(() => Promise.resolve(new Response(png_bytes.buffer, { status: 200 })));
             spyOn(crypto.subtle, 'importKey').and.returnValue(Promise.resolve(/** @type {CryptoKey} */ ({})));
             spyOn(crypto.subtle, 'decrypt').and.returnValue(Promise.resolve(png_bytes.buffer));
 

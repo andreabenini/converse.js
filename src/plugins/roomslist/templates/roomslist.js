@@ -3,81 +3,14 @@
  * @typedef {import('@converse/headless').MUC} MUC
  */
 import { html } from 'lit';
-import { api, u, constants } from '@converse/headless';
+import { api, constants } from '@converse/headless';
 import 'plugins/muc-views/modals/add-muc.js';
 import 'plugins/muc-views/modals/muc-list.js';
 import { __ } from 'i18n';
-import { getUnreadMsgsDisplay } from 'shared/chat/utils.js';
-
 import '../styles/roomsgroups.scss';
+import { tplRoomItem } from 'shared/roomslist/templates/room-item.js';
 
 const { CLOSED } = constants;
-const { isUniView } = u;
-
-/** @param {MUC} room */
-function isCurrentlyOpen(room) {
-    return isUniView() && !room.get('hidden');
-}
-
-/** @param {MUC} room */
-function tplUnreadIndicator(room) {
-    return html`<span class="list-item-badge badge badge--muc msgs-indicator">${getUnreadMsgsDisplay(room)}</span>`;
-}
-
-function tplActivityIndicator() {
-    return html`<span class="list-item-badge badge badge--muc msgs-indicator"></span>`;
-}
-
-/**
- * @param {RoomsList} el
- * @param {MUC} room
- */
-function tplRoomItem(el, room) {
-    const i18n_leave_room = __('Leave this groupchat');
-    const has_unread_msgs = room.get('num_unread_general') || room.get('has_activity');
-    return html` <li
-        class="list-item controlbox-padded available-chatroom d-flex flex-row ${isCurrentlyOpen(room)
-            ? 'open'
-            : ''} ${has_unread_msgs ? 'unread-msgs' : ''}"
-        data-room-jid="${room.get('jid')}"
-    >
-        <a
-            class="list-item-link open-room available-room w-100"
-            data-room-jid="${room.get('jid')}"
-            data-room-name="${room.getDisplayName()}"
-            title="${__('Click to open this groupchat')}"
-            @click=${(/** @type {Event} */ ev) => el.openRoom(ev)}
-        >
-            <converse-avatar
-                .model=${room}
-                class="avatar avatar-muc"
-                name="${room.getDisplayName()}"
-                nonce=${room.vcard?.get('vcard_updated')}
-                height="30"
-                width="30"
-            ></converse-avatar>
-            <span
-                >${room.get('num_unread')
-                    ? tplUnreadIndicator(room)
-                    : room.get('has_activity')
-                      ? tplActivityIndicator()
-                      : ''}
-                ${room.getDisplayName()}</span
-            >
-        </a>
-
-        <a
-            class="list-item-action close-room"
-            tabindex="0"
-            data-room-jid="${room.get('jid')}"
-            data-room-name="${room.getDisplayName()}"
-            title="${i18n_leave_room}"
-            @click=${(/** @type {Event} */ ev) => el.closeRoom(ev)}
-        >
-            <converse-icon class="fa fa-sign-out-alt" size="1.2em"></converse-icon>
-        </a>
-    </li>`;
-}
 
 /**
  * @param {RoomsList} el
@@ -130,11 +63,31 @@ function tplRoomDomainGroupList(el, rooms) {
 }
 
 /**
+ * The pinned rooms, rendered before all other rooms. The `Pinned` label is
+ * only needed to explain the ordering when unpinned rooms follow.
+ * @param {RoomsList} el
+ * @param {MUC[]} pinned
+ * @param {boolean} show_label
+ */
+function tplPinnedRooms(el, pinned, show_label) {
+    if (!show_label) return pinned.map((room) => tplRoomItem(el, room));
+
+    const heading_id = `${el.model.get('id')}-pinned-heading`;
+    return html`<li class="rooms-list-pinned">
+        <span class="rooms-list-subheading controlbox-padded" id="${heading_id}">${__('Pinned')}</span>
+        <ul class="items-list rooms-list-pinned__rooms" aria-labelledby="${heading_id}">
+            ${pinned.map((room) => tplRoomItem(el, room))}
+        </ul>
+    </li>`;
+}
+
+/**
  * @param {RoomsList} el
  */
 export default (el) => {
     const group_by_domain = api.settings.get('muc_grouped_by_domain');
-    const rooms = el.getRoomsToShow();
+    const { pinned, unpinned } = el.getRoomPartitions();
+    const rooms = [...pinned, ...unpinned];
     const i18n_desc_rooms = __('Click to toggle the list of open groupchats');
     const i18n_heading_chatrooms = __('Groupchats');
     const i18n_title_list_rooms = __('Query server');
@@ -175,7 +128,7 @@ export default (el) => {
     ];
 
     return html` <div class="d-flex controlbox-padded">
-            <span class="w-100 controlbox-heading controlbox-heading--groupchats">
+            <span class="controlbox-heading controlbox-heading--groupchats">
                 <a
                     class="list-toggle open-rooms-toggle"
                     role="heading"
@@ -184,13 +137,15 @@ export default (el) => {
                     @click=${(/** @type {Event} */ ev) => el.toggleRoomsList(ev)}
                 >
                     ${i18n_heading_chatrooms}
-                    ${rooms.length
-                        ? html`<converse-icon
-                              class="fa ${is_closed ? 'fa-caret-right' : 'fa-caret-down'}"
-                              size="1em"
-                              color="var(--muc-color)"
-                          ></converse-icon>`
-                        : ''}
+                    ${
+                        rooms.length
+                            ? html`<converse-icon
+                                  class="fa ${is_closed ? 'fa-caret-right' : 'fa-caret-down'}"
+                                  size="1em"
+                                  color="var(--muc-color)"
+                              ></converse-icon>`
+                            : ''
+                    }
                 </a>
             </span>
             <converse-dropdown class="btn-group dropstart" .items=${btns}></converse-dropdown>
@@ -198,9 +153,12 @@ export default (el) => {
 
         <div class="list-container list-container--openrooms ${rooms.length ? '' : 'hidden'}">
             <ul class="items-list rooms-list open-rooms-list ${is_closed ? 'collapsed' : ''}">
-                ${group_by_domain
-                    ? tplRoomDomainGroupList(el, rooms)
-                    : rooms.map(/** @param {MUC} room */ (room) => tplRoomItem(el, room))}
+                ${tplPinnedRooms(el, pinned, pinned.length > 0 && unpinned.length > 0)}
+                ${
+                    group_by_domain
+                        ? tplRoomDomainGroupList(el, unpinned)
+                        : unpinned.map(/** @param {MUC} room */ (room) => tplRoomItem(el, room))
+                }
             </ul>
         </div>`;
 };

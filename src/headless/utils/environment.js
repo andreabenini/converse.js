@@ -71,13 +71,14 @@ export function addVisibilityListener(listener) {
 
 /**
  * @param {EventListener} listener
+ * @public
  */
 export function removeVisibilityListener(listener) {
     if (IS_BROWSER) document.removeEventListener('visibilitychange', listener);
 }
 
 /**
- * The URL fragment Converse routes on, e.g. `#converse/room?jid=...`.
+ * The URL fragment Converse routes on, e.g. `#converse?loglevel=debug`.
  * @returns {string}
  */
 export function getRouteHash() {
@@ -93,6 +94,7 @@ export function addRouteListener(listener) {
 
 /**
  * @param {EventListener} listener
+ * @public
  */
 export function removeRouteListener(listener) {
     if (IS_BROWSER) window.removeEventListener('hashchange', listener);

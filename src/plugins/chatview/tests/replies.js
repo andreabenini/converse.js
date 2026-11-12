@@ -1,4 +1,4 @@
-﻿import mock from '../../../shared/tests/mock.js';
+import mock from '../../../shared/tests/mock.js';
 import converse from '../../../../dist/converse.js';
 
 const { u, stx } = converse.env;
@@ -16,7 +16,7 @@ describe('XEP-0461 Message Replies', function () {
 
                 const firstMessageText = 'But soft, what light through yonder airlock breaks?';
 
-            await mock.setComposerText(view, firstMessageText);
+                await mock.setComposerText(view, firstMessageText);
                 await mock.pressComposerKey(view, 'Enter');
                 await u.waitUntil(() => view.querySelectorAll('.chat-msg__text').length === 1);
 
@@ -31,10 +31,30 @@ describe('XEP-0461 Message Replies', function () {
                 expect(chatbox.get('reply_to')).toBeDefined();
 
                 // Check that the reply preview is shown
-                await u.waitUntil(() => view.querySelector('.reply-preview'));
-                const replyPreview = view.querySelector('.reply-preview');
+                await u.waitUntil(() => view.querySelector('.composer-panel--context'));
+                const replyPreview = view.querySelector('.composer-panel--context');
                 expect(replyPreview).not.toBeNull();
                 expect(replyPreview.querySelector('.reply-preview__text').textContent).toContain(firstMessageText);
+            }),
+        );
+
+        it(
+            'shows exactly one reply preview while replying',
+            mock.initConverse(converse, ['chatBoxesFetched'], {}, async function (_converse) {
+                await mock.waitForRoster(_converse, 'current', 1);
+                await mock.openControlBox(_converse);
+                const contact_jid = mock.cur_names[0].replace(/ /g, '.').toLowerCase() + '@montague.lit';
+                await mock.openChatBoxFor(_converse, contact_jid);
+                const view = _converse.chatboxviews.get(contact_jid);
+
+                await mock.setComposerText(view, 'Hello world');
+                await mock.pressComposerKey(view, 'Enter');
+                await u.waitUntil(() => view.querySelectorAll('.chat-msg__text').length === 1);
+
+                view.querySelector('.chat-msg__action-reply').click();
+
+                await u.waitUntil(() => view.querySelector('.composer-panel--context'));
+                expect(view.querySelectorAll('.composer-panel--context').length).toBe(1);
             }),
         );
 
@@ -49,7 +69,7 @@ describe('XEP-0461 Message Replies', function () {
 
                 const firstMessageText = 'Hello world';
 
-            await mock.setComposerText(view, firstMessageText);
+                await mock.setComposerText(view, firstMessageText);
                 await mock.pressComposerKey(view, 'Enter');
                 await u.waitUntil(() => view.querySelectorAll('.chat-msg__text').length === 1);
 
@@ -57,10 +77,10 @@ describe('XEP-0461 Message Replies', function () {
                 const replyAction = view.querySelector('.chat-msg__action-reply');
                 replyAction.click();
 
-                await u.waitUntil(() => view.querySelector('.reply-preview'));
+                await u.waitUntil(() => view.querySelector('.composer-panel--context'));
 
                 // Click the cancel button
-                const cancelButton = view.querySelector('.reply-preview__cancel');
+                const cancelButton = view.querySelector('.composer-panel__close');
                 expect(cancelButton).not.toBeNull();
                 cancelButton.click();
 
@@ -70,7 +90,132 @@ describe('XEP-0461 Message Replies', function () {
                 expect(chatbox.get('reply_to')).toBeUndefined();
 
                 // Check that the reply preview is hidden
-                await u.waitUntil(() => !view.querySelector('.reply-preview'));
+                await u.waitUntil(() => !view.querySelector('.composer-panel--context'));
+            }),
+        );
+
+        it(
+            'puts the reply preview close button in the top-right corner, labelled for screen readers',
+            mock.initConverse(converse, ['chatBoxesFetched'], {}, async function (_converse) {
+                await mock.waitForRoster(_converse, 'current', 1);
+                await mock.openControlBox(_converse);
+                const contact_jid = mock.cur_names[0].replace(/ /g, '.').toLowerCase() + '@montague.lit';
+                await mock.openChatBoxFor(_converse, contact_jid);
+                const view = _converse.chatboxviews.get(contact_jid);
+
+                await mock.setComposerText(view, 'Hello world');
+                await mock.pressComposerKey(view, 'Enter');
+                await u.waitUntil(() => view.querySelectorAll('.chat-msg__text').length === 1);
+                view.querySelector('.chat-msg__action-reply').click();
+
+                await u.waitUntil(() => view.querySelector('.composer-panel--context'));
+                const panel = view.querySelector('.composer-panel--context').getBoundingClientRect();
+                const close = view.querySelector('.composer-panel__close');
+                expect(close.getAttribute('aria-label')).toBe('Cancel reply');
+
+                const button = close.getBoundingClientRect();
+                expect(button.width).toBeGreaterThanOrEqual(24);
+                expect(button.height).toBeGreaterThanOrEqual(24);
+                expect(panel.right - button.right).toBeLessThan(12);
+                expect(button.top - panel.top).toBeLessThan(12);
+            }),
+        );
+
+        it(
+            'closes the reply preview with Escape from inside it, and returns focus to the message field',
+            mock.initConverse(converse, ['chatBoxesFetched'], {}, async function (_converse) {
+                await mock.waitForRoster(_converse, 'current', 1);
+                await mock.openControlBox(_converse);
+                const contact_jid = mock.cur_names[0].replace(/ /g, '.').toLowerCase() + '@montague.lit';
+                await mock.openChatBoxFor(_converse, contact_jid);
+                const view = _converse.chatboxviews.get(contact_jid);
+
+                await mock.setComposerText(view, 'Hello world');
+                await mock.pressComposerKey(view, 'Enter');
+                await u.waitUntil(() => view.querySelectorAll('.chat-msg__text').length === 1);
+                view.querySelector('.chat-msg__action-reply').click();
+
+                await u.waitUntil(() => view.querySelector('.composer-panel--context'));
+                const close = view.querySelector('.composer-panel__close');
+                close.focus();
+                close.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+                const chatbox = view.model;
+                await u.waitUntil(() => chatbox.get('reply_to_id') === undefined);
+                await u.waitUntil(() => document.activeElement === view.querySelector('.chat-textarea'));
+            }),
+        );
+
+        it(
+            'returns focus to the message field when the close button is activated from the keyboard',
+            mock.initConverse(converse, ['chatBoxesFetched'], {}, async function (_converse) {
+                await mock.waitForRoster(_converse, 'current', 1);
+                await mock.openControlBox(_converse);
+                const contact_jid = mock.cur_names[0].replace(/ /g, '.').toLowerCase() + '@montague.lit';
+                await mock.openChatBoxFor(_converse, contact_jid);
+                const view = _converse.chatboxviews.get(contact_jid);
+
+                await mock.setComposerText(view, 'Hello world');
+                await mock.pressComposerKey(view, 'Enter');
+                await u.waitUntil(() => view.querySelectorAll('.chat-msg__text').length === 1);
+                view.querySelector('.chat-msg__action-reply').click();
+
+                await u.waitUntil(() => view.querySelector('.composer-panel--context'));
+                const close = view.querySelector('.composer-panel__close');
+                close.focus();
+                // Enter or Space on a button fires a click with a detail of 0.
+                close.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }));
+
+                await u.waitUntil(() => view.model.get('reply_to_id') === undefined);
+                await u.waitUntil(() => document.activeElement === view.querySelector('.chat-textarea'));
+            }),
+        );
+
+        it(
+            'leaves focus alone when the close button is clicked with a pointer',
+            mock.initConverse(converse, ['chatBoxesFetched'], {}, async function (_converse) {
+                await mock.waitForRoster(_converse, 'current', 1);
+                await mock.openControlBox(_converse);
+                const contact_jid = mock.cur_names[0].replace(/ /g, '.').toLowerCase() + '@montague.lit';
+                await mock.openChatBoxFor(_converse, contact_jid);
+                const view = _converse.chatboxviews.get(contact_jid);
+
+                await mock.setComposerText(view, 'Hello world');
+                await mock.pressComposerKey(view, 'Enter');
+                await u.waitUntil(() => view.querySelectorAll('.chat-msg__text').length === 1);
+                view.querySelector('.chat-msg__action-reply').click();
+
+                await u.waitUntil(() => view.querySelector('.composer-panel--context'));
+                const close = view.querySelector('.composer-panel__close');
+                // A pointer press focuses the button before the click lands.
+                close.focus();
+                close.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+
+                await u.waitUntil(() => view.querySelector('.composer-panel--context') === null);
+                expect(view.model.get('reply_to_id')).toBeUndefined();
+                expect(document.activeElement).not.toBe(view.querySelector('.chat-textarea'));
+            }),
+        );
+
+        it(
+            'leaves the reply in place when Escape is pressed in the message field',
+            mock.initConverse(converse, ['chatBoxesFetched'], {}, async function (_converse) {
+                await mock.waitForRoster(_converse, 'current', 1);
+                await mock.openControlBox(_converse);
+                const contact_jid = mock.cur_names[0].replace(/ /g, '.').toLowerCase() + '@montague.lit';
+                await mock.openChatBoxFor(_converse, contact_jid);
+                const view = _converse.chatboxviews.get(contact_jid);
+
+                await mock.setComposerText(view, 'Hello world');
+                await mock.pressComposerKey(view, 'Enter');
+                await u.waitUntil(() => view.querySelectorAll('.chat-msg__text').length === 1);
+                view.querySelector('.chat-msg__action-reply').click();
+
+                await u.waitUntil(() => view.querySelector('.composer-panel--context'));
+                await mock.pressComposerKey(view, 'Escape');
+
+                expect(view.model.get('reply_to_id')).toBeDefined();
+                expect(view.querySelector('.composer-panel--context')).not.toBeNull();
             }),
         );
 
@@ -86,24 +231,24 @@ describe('XEP-0461 Message Replies', function () {
 
                 // Send a message first
                 const firstMessageText = 'Original message';
-            await mock.setComposerText(view, firstMessageText);
+                await mock.setComposerText(view, firstMessageText);
                 await mock.pressComposerKey(view, 'Enter');
                 await u.waitUntil(() => view.querySelectorAll('.chat-msg__text').length === 1);
 
                 // Click reply
                 const replyAction = view.querySelector('.chat-msg__action-reply');
                 replyAction.click();
-                await u.waitUntil(() => view.querySelector('.reply-preview'));
+                await u.waitUntil(() => view.querySelector('.composer-panel--context'));
 
                 // Send a reply
-                let sent_stanzas = [];
+                const sent_stanzas = [];
                 const send = api.connection.get().send;
                 spyOn(api.connection.get(), 'send').and.callFake((stanza) => {
                     sent_stanzas.push(stanza);
                     return send.call(api.connection.get(), stanza);
                 });
 
-            await mock.setComposerText(view, 'This is my reply');
+                await mock.setComposerText(view, 'This is my reply');
                 await mock.pressComposerKey(view, 'Enter');
 
                 await u.waitUntil(() => sent_stanzas.length === 1);
@@ -175,12 +320,12 @@ describe('XEP-0461 Message Replies', function () {
                 await mock.openChatBoxFor(_converse, contact_jid);
                 const view = _converse.chatboxviews.get(contact_jid);
 
-            await mock.setComposerText(view, 'Original message');
+                await mock.setComposerText(view, 'Original message');
                 await mock.pressComposerKey(view, 'Enter');
                 await u.waitUntil(() => view.querySelectorAll('.chat-msg__text').length === 1);
 
                 view.querySelector('.chat-msg__action-reply').click();
-                await u.waitUntil(() => view.querySelector('.reply-preview'));
+                await u.waitUntil(() => view.querySelector('.composer-panel--context'));
 
                 const sent_stanzas = [];
                 const send = api.connection.get().send;
@@ -190,7 +335,7 @@ describe('XEP-0461 Message Replies', function () {
                 });
 
                 const reply_text = 'This is my reply';
-            await mock.setComposerText(view, reply_text);
+                await mock.setComposerText(view, reply_text);
                 await mock.pressComposerKey(view, 'Enter');
                 await u.waitUntil(() => sent_stanzas.length === 1);
 
@@ -228,12 +373,12 @@ describe('XEP-0461 Message Replies', function () {
 
                 const long_original =
                     'But soft, what light through yonder airlock breaks? It is the east and Juliet is the sun, arise fair sun';
-            await mock.setComposerText(view, long_original);
+                await mock.setComposerText(view, long_original);
                 await mock.pressComposerKey(view, 'Enter');
                 await u.waitUntil(() => view.querySelectorAll('.chat-msg__text').length === 1);
 
                 view.querySelector('.chat-msg__action-reply').click();
-                await u.waitUntil(() => view.querySelector('.reply-preview'));
+                await u.waitUntil(() => view.querySelector('.composer-panel--context'));
 
                 const sent_stanzas = [];
                 const send = api.connection.get().send;
@@ -243,7 +388,7 @@ describe('XEP-0461 Message Replies', function () {
                 });
 
                 const reply_text = 'Indeed it does';
-            await mock.setComposerText(view, reply_text);
+                await mock.setComposerText(view, reply_text);
                 await mock.pressComposerKey(view, 'Enter');
                 await u.waitUntil(() => sent_stanzas.length === 1);
 

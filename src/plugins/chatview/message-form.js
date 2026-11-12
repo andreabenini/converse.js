@@ -17,6 +17,7 @@ import tplMessageForm from './templates/message-form.js';
 import { parseMessageForCommands } from './utils.js';
 import { TypeaheadController } from 'shared/rich-composer/typeahead.js';
 import { EMOJI_SOURCE } from 'shared/rich-composer/emoji-source.js';
+import { alertSendError } from 'shared/chat/send-errors.js';
 
 import './styles/message-form.scss';
 import 'shared/rich-composer/styles/typeahead.scss';
@@ -129,7 +130,11 @@ export default class MessageForm extends CustomElement {
 
         const host = /** @type {HTMLElement} */ (this.querySelector('.chat-rich__editable'));
 
-        this._init = import('./lexical-editor.js').then((m) => {
+        const init = import('./lexical-editor.js').then((m) => {
+            // Torn down while Lexical loaded. Attaching now would leave an editor that
+            // nothing destroys, sharing its host with the one the next call attaches.
+            if (this._init !== init) return this.ensureEditor();
+
             const handle = m.createChatEditor(host, { onChange: () => this.onChange() });
             this._handle = handle;
             const draft = this.model?.get('draft');
@@ -138,8 +143,8 @@ export default class MessageForm extends CustomElement {
             this.onChange();
             return handle;
         });
-
-        return this._init;
+        this._init = init;
+        return init;
     }
 
     /** Reflect emptiness so the placeholder shows only when there is nothing to send. */
@@ -336,11 +341,14 @@ export default class MessageForm extends CustomElement {
             return;
         }
 
-        if (!api.connection.get().authenticated) {
-            const err_msg = __('Sorry, the connection has been lost, and your message could not be sent');
-            api.alert('error', __('Error'), err_msg);
+        if (!api.connection.authenticated()) {
             api.connection.reconnect();
-            return;
+            // A message goes on to be kept as a failed one, which a command can't be.
+            if (message_text.trimStart().startsWith('/')) {
+                const err_msg = __('Sorry, the connection has been lost, and your message could not be sent');
+                api.alert('error', __('Error'), err_msg);
+                return;
+            }
         }
 
         let spoiler_hint,
@@ -353,8 +361,16 @@ export default class MessageForm extends CustomElement {
         /** @type {EmojiDropdown} */ (this.querySelector('converse-emoji-dropdown'))?.hide();
 
         const is_command = await parseMessageForCommands(this.model, message_text);
-        const message = is_command ? null : await this.model.sendMessage({ 'body': message_text, spoiler_hint });
-        if (is_command || message) {
+        let message = null;
+        let failed = false;
+        try {
+            message = is_command ? null : await this.model.sendMessage({ 'body': message_text, spoiler_hint });
+        } catch (e) {
+            // The failed message keeps the text in the conversation, where the user can retry or discard it.
+            failed = true;
+            alertSendError(/** @type {Error} */ (e));
+        }
+        if (is_command || message || failed) {
             hint_el.value = '';
             this.clearInput();
             this.model.save({ 'draft': '' });

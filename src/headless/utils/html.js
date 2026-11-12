@@ -1,4 +1,4 @@
-import he from 'he';
+import { decode } from 'he';
 import { Strophe, Builder, Stanza } from 'strophe.js';
 
 /**
@@ -114,8 +114,12 @@ export function queryChildren(el, selector) {
  * @return {number}
  */
 export function siblingIndex(el) {
-    /* eslint-disable no-cond-assign */
-    for (var i = 0; (el = el.previousElementSibling); i++);
+    let i = 0;
+    let sibling = el.previousElementSibling;
+    while (sibling) {
+        i++;
+        sibling = sibling.previousElementSibling;
+    }
     return i;
 }
 
@@ -192,12 +196,12 @@ function htmlToText(html) {
 
         if (!MARKUP_START.test(html[lt + 1] ?? '')) {
             // A bare `<`. Keep it as text and carry on after it.
-            text += he.decode(html.slice(i, lt + 1));
+            text += decode(html.slice(i, lt + 1));
             i = lt + 1;
             continue;
         }
 
-        text += he.decode(html.slice(i, lt));
+        text += decode(html.slice(i, lt));
         i = endOfMarkup(html, lt);
 
         const tag = TAG_NAME.exec(html.slice(lt + 1, i))?.[1].toLowerCase();
@@ -207,7 +211,7 @@ function htmlToText(html) {
             i = offset === -1 ? html.length : endOfMarkup(html, i + offset);
         }
     }
-    return text + he.decode(html.slice(i));
+    return text + decode(html.slice(i));
 }
 
 /**
@@ -230,5 +234,5 @@ export function decodeHTMLEntities(str) {
  * @return {string}
  */
 export function unescapeHTML(string) {
-    return typeof string === 'string' ? he.decode(string) : string;
+    return typeof string === 'string' ? decode(string) : string;
 }

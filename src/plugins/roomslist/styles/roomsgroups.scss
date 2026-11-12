@@ -10,7 +10,8 @@
             margin: 0.75em 0 0.25em 0;
         }
 
-        .muc-domain-group-toggle, .muc-domain-group-toggle .fa {
+        .muc-domain-group-toggle,
+        .muc-domain-group-toggle .fa {
             color: var(--muc-color);
             &:hover {
                 color: var(--muc-color-hover);
@@ -23,6 +24,19 @@
 
             svg {
                 fill: var(--muc-color);
+            }
+
+            .rooms-list-pinned {
+                margin-bottom: 0.5em;
+            }
+
+            .rooms-list-subheading {
+                display: block;
+                margin: 0.5em 0 0.25em 0;
+                color: var(--secondary-color);
+                font-size: 0.8em;
+                font-weight: bold;
+                text-transform: uppercase;
             }
 
             .list-item {

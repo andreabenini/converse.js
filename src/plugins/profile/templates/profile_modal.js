@@ -2,6 +2,9 @@ import { html } from 'lit';
 import { _converse } from '@converse/headless';
 import { __ } from 'i18n';
 import 'shared/components/image-picker.js';
+import tplCopyableAddress from 'templates/copyable-address.js';
+import tplShareableLink from 'templates/shareable-link.js';
+import { getShareableLink } from 'shared/xmpp-uri.js';
 import { shouldShowPasswordResetForm } from '../utils.js';
 import tplChatStatusForm from './chat-status-form.js';
 
@@ -28,6 +31,8 @@ export default (el) => {
     const i18n_fullname = __('Full Name');
     const i18n_jid = __('XMPP Address');
     const i18n_server = __('Server');
+    const i18n_share_link = __('Shareable link');
+    const share_link = getShareableLink(o.jid);
     const i18n_nickname = __('Nickname');
     const i18n_role = __('Role');
     const i18n_save = __('Save and close');
@@ -41,9 +46,7 @@ export default (el) => {
     const ii18n_reset_password = __('Reset Password');
 
     const sv = el._server_version;
-    const server_version = sv
-        ? [sv.name, sv.version].filter(Boolean).join(' ') + (sv.os ? ` (${sv.os})` : '')
-        : '';
+    const server_version = sv ? [sv.name, sv.version].filter(Boolean).join(' ') + (sv.os ? ` (${sv.os})` : '') : '';
 
     // Initialize navigation_tabs as a Map
     const navigation_tabs = new Map();
@@ -151,14 +154,24 @@ export default (el) => {
                         <div class="col">
                             <div class="px-3 profile-property">
                                 <label class="col-form-label">${i18n_jid}:</label>
-                                <div class="profile-property__value">${o.jid}</div>
+                                <div class="profile-property__value">${tplCopyableAddress(o.jid)}</div>
                             </div>
-                            ${server_version
-                                ? html`<div class="px-3 profile-property">
-                                      <label class="col-form-label">${i18n_server}:</label>
-                                      <div class="profile-property__value server-version">${server_version}</div>
-                                  </div>`
-                                : ''}
+                            ${
+                                share_link
+                                    ? html`<div class="px-3 profile-property">
+                                          <label class="col-form-label">${i18n_share_link}:</label>
+                                          <div class="profile-property__value">${tplShareableLink(share_link)}</div>
+                                      </div>`
+                                    : ''
+                            }
+                            ${
+                                server_version
+                                    ? html`<div class="px-3 profile-property">
+                                          <label class="col-form-label">${i18n_server}:</label>
+                                          <div class="profile-property__value server-version">${server_version}</div>
+                                      </div>`
+                                    : ''
+                            }
                         </div>
                     </div>
                     <div>
@@ -199,9 +212,11 @@ export default (el) => {
                           role="tabpanel"
                           aria-labelledby="passwordreset-tab"
                       >
-                          ${el.tab === 'passwordreset'
-                              ? html`<converse-change-password-form></converse-change-password-form>`
-                              : ''}
+                          ${
+                              el.tab === 'passwordreset'
+                                  ? html`<converse-change-password-form></converse-change-password-form>`
+                                  : ''
+                          }
                       </div>`
                     : ''
             }

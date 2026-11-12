@@ -1,9 +1,10 @@
-import { getVCardForModel } from "../plugins/vcard/utils.js";
-import _converse from "./_converse.js";
+import { getVCardForModel } from '../plugins/vcard/utils.js';
+import _converse from './_converse.js';
 
 /**
  * @template {import('./types').ModelExtender} T
  * @param {T} BaseModel
+ * @returns {T & import('./types').Constructor<import('./types').VCardAware>}
  */
 export default function ModelWithVCard(BaseModel) {
     /**
@@ -34,12 +35,12 @@ export default function ModelWithVCard(BaseModel) {
          */
         async getVCard() {
             const { pluggable } = _converse;
-            if (!pluggable.plugins["converse-vcard"]?.enabled(_converse)) return null;
+            if (!pluggable.plugins['converse-vcard']?.enabled(_converse)) return null;
 
             if (this._vcard) return this._vcard;
 
             this._vcard = await getVCardForModel(this, this.lazy_load_vcard);
-            this.trigger("vcard:add", { vcard: this._vcard });
+            this.trigger('vcard:add', { vcard: this._vcard });
 
             return this._vcard;
         }

@@ -1,4 +1,4 @@
-﻿import mock from '../../../shared/tests/mock.js';
+import mock from '../../../shared/tests/mock.js';
 import converse from '../../../../dist/converse.js';
 
 const { u, stx } = converse.env;
@@ -41,9 +41,27 @@ describe('XEP-0461 Message Replies', function () {
                 expect(chatbox.get('reply_to')).toBe(`${muc_jid}/juliet`);
 
                 // Check that the reply preview is shown
-                await u.waitUntil(() => view.querySelector('.reply-preview'));
-                const replyPreview = view.querySelector('.reply-preview');
+                await u.waitUntil(() => view.querySelector('.composer-panel--context'));
+                const replyPreview = view.querySelector('.composer-panel--context');
                 expect(replyPreview.querySelector('.reply-preview__text').textContent).toContain('Hello from juliet');
+            }),
+        );
+
+        it(
+            "can't be replied to while the room hasn't given it a stanza-id",
+            mock.initConverse(converse, ['chatBoxesFetched'], {}, async function (_converse) {
+                const muc_jid = 'lounge@montague.lit';
+                await mock.openAndEnterMUC(_converse, muc_jid, 'romeo');
+                const view = _converse.chatboxviews.get(muc_jid);
+
+                await view.model.handleMessageStanza(stx`
+                    <message xmlns="jabber:client" to="${_converse.jid}" from="${muc_jid}/juliet"
+                            type="groupchat" id="${u.getUniqueId()}">
+                        <body>Hello from juliet</body>
+                    </message>`);
+
+                await u.waitUntil(() => view.querySelector('.chat-msg__action-copy'));
+                expect(view.querySelector('.chat-msg__action-reply')).toBeNull();
             }),
         );
 

@@ -7,11 +7,17 @@ import 'shared/chat/help-messages.js';
 import 'shared/chat/toolbar.js';
 import ChatView from './chat.js';
 import { _converse, api, converse } from '@converse/headless';
-import { clearHistory } from './utils.js';
+import { html } from 'lit';
+import { getAttachmentMenuItems } from './attachments.js';
+import tplComposerPanel from 'shared/chat/templates/composer-panel.js';
+import 'shared/chat/reply-preview.js';
 
 import './styles/index.scss';
 
 const { Strophe } = converse.env;
+
+// The reply preview's slot among the composer panels, smallest at the top.
+const REPLY_PREVIEW_ORDER = 300;
 
 converse.plugins.add('converse-chatview', {
     /* Plugin dependencies are other plugins which might be
@@ -35,6 +41,7 @@ converse.plugins.add('converse-chatview', {
                 'allowed_image_domains': null,
                 'allowed_video_domains': null,
                 'auto_focus': true,
+                'confirm_external_links': true,
                 'debounced_content_rendering': true,
                 'filter_url_query_params': null,
                 'image_urls_regex': null,
@@ -47,7 +54,6 @@ converse.plugins.add('converse-chatview', {
                 'show_toolbar': true,
                 'use_system_emojis': true,
                 'visible_toolbar_buttons': {
-                    'call': false,
                     'clear': true,
                     'emoji': true,
                     'fileupload': true,
@@ -64,8 +70,18 @@ converse.plugins.add('converse-chatview', {
         };
         Object.assign(_converse, exports); // DEPRECATED
         Object.assign(_converse.exports, exports);
+        Object.assign(_converse.exports, { tplComposerPanel });
 
         api.listen.on('connected', () => api.disco.own.features.add(Strophe.NS.SPOILER));
-        api.listen.on('chatBoxClosed', (model) => clearHistory(model.get('jid')));
+        api.listen.on('getAttachmentMenuItems', getAttachmentMenuItems);
+
+        api.listen.on('getComposerPanels', (container, panels) => {
+            panels.push({
+                name: 'reply-preview',
+                order: REPLY_PREVIEW_ORDER,
+                template: html`<converse-reply-preview .model=${container.model}></converse-reply-preview>`,
+            });
+            return panels;
+        });
     },
 });

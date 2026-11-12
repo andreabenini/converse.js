@@ -1,15 +1,11 @@
-/**
- * @typedef {module:shared.converse.ConversePrivateGlobal} ConversePrivateGlobal
- */
 import { BrowserStorage, Model } from '@converse/skeletor';
 import _converse from '../shared/_converse.js';
 import debounce from 'lodash-es/debounce.js';
-import localDriver from 'localforage-webextensionstorage-driver/local.js';
-import syncDriver from 'localforage-webextensionstorage-driver/sync.js';
 import log from '@converse/log';
 import { ANONYMOUS, CORE_PLUGINS, EXTERNAL, LOGIN } from '../shared/constants.js';
 import { Strophe } from 'strophe.js';
 import { createStore, initStorage } from './storage.js';
+import { local_driver, sync_driver } from './extension-storage.js';
 import { getNodeStore } from './node-store.js';
 import { generateResource, getConnectionServiceURL } from '../shared/connection/utils.js';
 import { isValidJID } from './jid.js';
@@ -19,7 +15,7 @@ import { isPersistableModel } from './object.js';
 
 /**
  * Initializes the plugins for the Converse instance.
- * @param {ConversePrivateGlobal} _converse
+ * @param {import('../shared/_converse.js').ConversePrivateGlobal} _converse
  * @fires _converse#pluginsInitialized - Triggered once all plugins have been initialized.
  * @memberOf _converse
  */
@@ -59,7 +55,7 @@ export function initPlugins(_converse) {
 }
 
 /**
- * @param {ConversePrivateGlobal} _converse
+ * @param {import('../shared/_converse.js').ConversePrivateGlobal} _converse
  */
 export async function initClientConfig(_converse) {
     /* The client config refers to configuration of the client which is
@@ -88,7 +84,7 @@ export async function initClientConfig(_converse) {
 }
 
 /**
- * @param {ConversePrivateGlobal} _converse
+ * @param {import('../shared/_converse.js').ConversePrivateGlobal} _converse
  */
 export async function initSessionStorage(_converse) {
     if (!IS_BROWSER) {
@@ -108,12 +104,27 @@ export async function initSessionStorage(_converse) {
 }
 
 /**
+ * Registers a localForage driver for a browser extension storage area and
+ * switches to it. Failures are logged, leaving the default driver in place.
+ * @param {LocalForageDriver} driver
+ */
+async function useExtensionDriver(driver) {
+    try {
+        await BrowserStorage.localForage.defineDriver(driver);
+        await BrowserStorage.localForage.setDriver(driver._driver);
+    } catch (e) {
+        log.error(e);
+    }
+}
+
+/**
  * Initializes persistent storage
- * @param {ConversePrivateGlobal} _converse
+ * @param {import('../shared/_converse.js').ConversePrivateGlobal} _converse
  * @param {string} store_name - The name of the store.
  * @param {string} [key="persistent"] - The key for `_converse.storage`.
+ * @returns {Promise<void>} Resolves once the extension storage driver is in use.
  */
-export function initPersistentStorage(_converse, store_name, key = 'persistent') {
+export async function initPersistentStorage(_converse, store_name, key = 'persistent') {
     const { api } = _converse;
     if (!IS_BROWSER) {
         // IndexedDB, localStorage and sessionStorage are all browser APIs, so
@@ -127,15 +138,13 @@ export function initPersistentStorage(_converse, store_name, key = 'persistent')
         _converse.storage[key] = _converse.storage['session'];
         return;
     } else if (api.settings.get('persistent_store') === 'BrowserExtLocal') {
-        BrowserStorage.localForage
-            .defineDriver(localDriver)
-            .then(() => BrowserStorage.localForage.setDriver('webExtensionLocalStorage'));
+        // Wait for the switch so that nothing is read or written through the
+        // default backend (IndexedDB or localStorage) in the meantime.
+        await useExtensionDriver(local_driver);
         _converse.storage[key] = BrowserStorage.localForage;
         return;
     } else if (api.settings.get('persistent_store') === 'BrowserExtSync') {
-        BrowserStorage.localForage
-            .defineDriver(syncDriver)
-            .then(() => BrowserStorage.localForage.setDriver('webExtensionSyncStorage'));
+        await useExtensionDriver(sync_driver);
         _converse.storage[key] = BrowserStorage.localForage;
         return;
     }
@@ -155,7 +164,7 @@ export function initPersistentStorage(_converse, store_name, key = 'persistent')
 }
 
 /**
- * @param {ConversePrivateGlobal} _converse
+ * @param {import('../shared/_converse.js').ConversePrivateGlobal} _converse
  * @param {string} jid
  */
 function saveJIDtoSession(_converse, jid) {
@@ -212,7 +221,7 @@ export async function setUserJID(jid) {
 }
 
 /**
- * @param {ConversePrivateGlobal} _converse
+ * @param {import('../shared/_converse.js').ConversePrivateGlobal} _converse
  * @param {string} jid
  */
 export async function initSession(_converse, jid) {
@@ -221,7 +230,7 @@ export async function initSession(_converse, jid) {
     const bare_jid = Strophe.getBareJidFromJid(jid).toLowerCase();
     const id = `converse.session-${bare_jid}`;
     if (_converse.session?.get('id') !== id) {
-        initPersistentStorage(_converse, bare_jid);
+        await initPersistentStorage(_converse, bare_jid);
 
         _converse.session.set({ id });
         initStorage(_converse.session, id, is_shared_session ? 'persistent' : 'session');
@@ -251,7 +260,7 @@ export async function initSession(_converse, jid) {
 }
 
 /**
- * @param {ConversePrivateGlobal} _converse
+ * @param {import('../shared/_converse.js').ConversePrivateGlobal} _converse
  */
 export function registerGlobalEventHandlers(_converse) {
     /**
@@ -264,7 +273,7 @@ export function registerGlobalEventHandlers(_converse) {
 }
 
 /**
- * @param {ConversePrivateGlobal} _converse
+ * @param {import('../shared/_converse.js').ConversePrivateGlobal} _converse
  */
 function unregisterGlobalEventHandlers(_converse) {
     _converse.api.trigger('unregisteredGlobalEventHandlers');
@@ -273,7 +282,7 @@ function unregisterGlobalEventHandlers(_converse) {
 /**
  * Make sure everything is reset in case this is a subsequent call to
  * converse.initialize (happens during tests).
- * @param {ConversePrivateGlobal} _converse
+ * @param {import('../shared/_converse.js').ConversePrivateGlobal} _converse
  */
 export async function cleanup(_converse) {
     const { api } = _converse;
@@ -461,6 +470,9 @@ async function connect(credentials) {
     const { api } = _converse;
     const jid = _converse.session.get('jid');
     const connection = api.connection.get();
+    // Fetching the credentials can outlast the connection, for example if the user logs out.
+    if (!connection) return;
+
     if ([ANONYMOUS, EXTERNAL].includes(api.settings.get('authentication'))) {
         if (!jid) {
             throw new Error(

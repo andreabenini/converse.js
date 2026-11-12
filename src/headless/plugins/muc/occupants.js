@@ -10,12 +10,12 @@ import api from '../../shared/api/index.js';
 import converse from '../../shared/api/public.js';
 import { Collection, Model } from '@converse/skeletor';
 import { Strophe } from 'strophe.js';
+import { MEMBER_AFFILIATIONS } from './constants.js';
 import { getAffiliationList } from './affiliations/utils.js';
 import { occupantsComparator } from './utils.js';
 import { getUniqueId } from '../../utils/index.js';
 
 const { u } = converse.env;
-
 
 /**
  * A list of {@link MUCOccupant} instances, representing participants in a MUC.
@@ -23,12 +23,8 @@ const { u } = converse.env;
  * @extends {Collection<MUCOccupant>}
  */
 class MUCOccupants extends Collection {
-
-    constructor (attrs, options) {
-        super(
-            attrs,
-            Object.assign({ comparator: occupantsComparator }, options)
-        );
+    constructor(attrs, options) {
+        super(attrs, Object.assign({ comparator: occupantsComparator }, options));
         this.chatroom = null;
     }
 
@@ -41,16 +37,16 @@ class MUCOccupants extends Collection {
         this.on('change:role', () => this.sort());
     }
 
-    static getAutoFetchedAffiliationLists () {
+    static getAutoFetchedAffiliationLists() {
         const affs = api.settings.get('muc_fetch_members');
-        return Array.isArray(affs) ? affs : affs ? ['member', 'admin', 'owner'] : [];
+        return Array.isArray(affs) ? affs : affs ? MEMBER_AFFILIATIONS : [];
     }
 
     /**
      * @param {Model|ModelAttributes} attrs
      * @param {Options} [options]
      */
-    create (attrs, options) {
+    create(attrs, options) {
         if (attrs.id || attrs instanceof Model) {
             return super.create(attrs, options);
         }
@@ -58,8 +54,8 @@ class MUCOccupants extends Collection {
         return super.create(attrs, options);
     }
 
-    async fetchMembers () {
-        if (!['member', 'admin', 'owner'].includes(this.getOwnOccupant()?.get('affiliation'))) {
+    async fetchMembers() {
+        if (!MEMBER_AFFILIATIONS.includes(this.getOwnOccupant()?.get('affiliation'))) {
             // https://xmpp.org/extensions/xep-0045.html#affil-priv
             return;
         }
@@ -68,7 +64,7 @@ class MUCOccupants extends Collection {
             return;
         }
         const muc_jid = this.chatroom.get('jid');
-        const aff_lists = await Promise.all(affiliations.map(a => getAffiliationList(a, muc_jid)));
+        const aff_lists = await Promise.all(affiliations.map((a) => getAffiliationList(a, muc_jid)));
 
         const new_members = aff_lists.reduce(
             /**
@@ -81,18 +77,18 @@ class MUCOccupants extends Collection {
                     return acc;
                 }
                 return [...val, ...acc];
-            }, []
+            },
+            [],
         );
 
-        const known_affiliations = affiliations.filter(
-            a => !u.isErrorObject(aff_lists[affiliations.indexOf(a)])
-        );
-        const new_jids = /** @type {MemberListItem[]} */(new_members).map(m => m.jid).filter(m => m !== undefined);
+        const known_affiliations = affiliations.filter((a) => !u.isErrorObject(aff_lists[affiliations.indexOf(a)]));
+        const new_jids = /** @type {MemberListItem[]} */ (new_members).map((m) => m.jid).filter((m) => m !== undefined);
 
-        const new_nicks = /** @type {MemberListItem[]} */(new_members).map(
-            (m) => (!m.jid && m.nick) || undefined).filter(m => m !== undefined);
+        const new_nicks = /** @type {MemberListItem[]} */ (new_members)
+            .map((m) => (!m.jid && m.nick) || undefined)
+            .filter((m) => m !== undefined);
 
-        const removed_members = this.filter(m => {
+        const removed_members = this.filter((m) => {
             return (
                 known_affiliations.includes(m.get('affiliation')) &&
                 !new_nicks.includes(m.get('nick')) &&
@@ -101,7 +97,7 @@ class MUCOccupants extends Collection {
         });
 
         const bare_jid = _converse.session.get('bare_jid');
-        removed_members.forEach(occupant => {
+        removed_members.forEach((occupant) => {
             if (occupant.get('jid') === bare_jid) {
                 return;
             } else if (occupant.get('show') === 'offline') {
@@ -110,7 +106,7 @@ class MUCOccupants extends Collection {
                 occupant.save('affiliation', null);
             }
         });
-        /** @type {MemberListItem[]} */(new_members).forEach(attrs => {
+        /** @type {MemberListItem[]} */ (new_members).forEach((attrs) => {
             const occupant = this.findOccupant(attrs);
             occupant ? occupant.save(attrs) : this.create(attrs);
         });
@@ -132,16 +128,56 @@ class MUCOccupants extends Collection {
      * @param {import('./types').OccupantData} data
      * @returns {MUCOccupant}
      */
-    findOccupant (data) {
+    findOccupant(data) {
         if (data.occupant_id) {
             return this.get(data.occupant_id);
         }
 
         const jid = data.jid && Strophe.getBareJidFromJid(data.jid);
-        const occupant = jid && this.findWhere({ jid }) ||
-            data.nick && this.findWhere({ 'nick': data.nick });
+        const occupant = (jid && this.findWhere({ jid })) || (data.nick && this.findWhere({ 'nick': data.nick }));
 
         return occupant;
+    }
+
+    /**
+     * Find the occupant that was created before its occupant-id was known
+     * (e.g. from the member list or a message without one) and that
+     * represents the same person as the provided {@link OccupantData} object.
+     *
+     * Such an occupant must not have a different occupant-id, nor a
+     * different JID. A member is otherwise matched by nick, since the server
+     * reserves it, but not with an unaffiliated presence. An occupant with
+     * neither a JID nor an affiliation, created from a message without an
+     * occupant-id, is whoever next uses its nick.
+     *
+     * Use it to avoid creating a duplicate occupant when {@link findOccupant} finds none.
+     *
+     * @param {import('./types').OccupantData} data
+     * @returns {MUCOccupant|undefined}
+     */
+    findOccupantWithoutId(data) {
+        if (!data.occupant_id) return;
+
+        const jid = data.jid && Strophe.getBareJidFromJid(data.jid);
+        const matches = (/** @type {MUCOccupant} */ o) => {
+            const o_jid = o.get('jid');
+            if (jid && o_jid) return o_jid === jid;
+
+            if (o.isMember()) {
+                // A message doesn't state the sender's affiliation
+                return data.affiliation === undefined || MEMBER_AFFILIATIONS.includes(data.affiliation);
+            }
+            return !o_jid;
+        };
+        // A match by JID is preferred over one by nick
+        let by_nick;
+        for (const o of this.models) {
+            if (o.get('occupant_id')) continue;
+
+            if (jid && o.get('jid') === jid && matches(o)) return o;
+            if (!by_nick && data.nick && o.get('nick') === data.nick && matches(o)) by_nick = o;
+        }
+        return by_nick;
     }
 
     /**
@@ -150,14 +186,13 @@ class MUCOccupants extends Collection {
      * @method _converse.MUCOccupants#getOwnOccupant
      * @returns {MUCOccupant}
      */
-    getOwnOccupant () {
+    getOwnOccupant() {
         return this.findOccupant({
             jid: _converse.session.get('bare_jid'),
-            occupant_id: this.chatroom.get('occupant_id')
+            occupant_id: this.chatroom.get('occupant_id'),
         });
     }
 }
-
 
 // @ts-ignore
 export default MUCOccupants;

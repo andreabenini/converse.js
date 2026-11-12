@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import mock from '../../../tests/mock.js';
 import converse from '../../../dist/converse-headless.js';
 
@@ -44,11 +45,14 @@ describe('The pubsub API', function () {
                         sent_stanzas.filter((iq) => sizzle('pubsub configure', iq)).pop(),
                     );
                     _converse.api.connection.get()._dataRecv(
-                        mock.createRequest(_converse, stx`<iq type='error'
+                        mock.createRequest(
+                            _converse,
+                            stx`<iq type='error'
                                 xmlns="jabber:client"
                                 from='${pubsub_jid}'
                                 to='${own_jid}'
-                                id="${sent_stanza.getAttribute('id')}">${error_el}</iq>`),
+                                id="${sent_stanza.getAttribute('id')}">${error_el}</iq>`,
+                        ),
                     );
                     const e = await promise.catch((e) => e);
                     expect(e instanceof ErrorClass).toBe(true);
@@ -72,7 +76,9 @@ describe('The pubsub API', function () {
                     sent_stanzas.filter((iq) => sizzle('pubsub configure', iq)).pop(),
                 );
                 _converse.api.connection.get()._dataRecv(
-                    mock.createRequest(_converse, stx`
+                    mock.createRequest(
+                        _converse,
+                        stx`
                     <iq type='result'
                         xmlns="jabber:client"
                         from='${pubsub_jid}'
@@ -186,7 +192,8 @@ describe('The pubsub API', function () {
                         </x>
                         </configure>
                     </pubsub>
-                </iq>`),
+                </iq>`,
+                    ),
                 );
 
                 sent_stanza = await u.waitUntil(() =>
@@ -234,12 +241,15 @@ describe('The pubsub API', function () {
                     </iq>`);
 
                 _converse.api.connection.get()._dataRecv(
-                    mock.createRequest(_converse, stx`
+                    mock.createRequest(
+                        _converse,
+                        stx`
                     <iq type='result'
                         xmlns="jabber:client"
                         from='${pubsub_jid}'
                         to='${own_jid}'
-                        id="${sent_stanza.getAttribute('id')}"></iq>`),
+                        id="${sent_stanza.getAttribute('id')}"></iq>`,
+                    ),
                 );
 
                 // The resolved value is the parsed server config with our
@@ -284,7 +294,9 @@ describe('The pubsub API', function () {
                     sent_stanzas.filter((iq) => sizzle('pubsub configure', iq)).pop(),
                 );
                 _converse.api.connection.get()._dataRecv(
-                    mock.createRequest(_converse, stx`
+                    mock.createRequest(
+                        _converse,
+                        stx`
                     <iq type='result'
                         xmlns="jabber:client"
                         from='${pubsub_jid}'
@@ -305,7 +317,8 @@ describe('The pubsub API', function () {
                         </x>
                         </configure>
                     </pubsub>
-                </iq>`),
+                </iq>`,
+                    ),
                 );
 
                 sent_stanza = await u.waitUntil(() =>
@@ -314,14 +327,17 @@ describe('The pubsub API', function () {
                         .pop(),
                 );
                 _converse.api.connection.get()._dataRecv(
-                    mock.createRequest(_converse, stx`
+                    mock.createRequest(
+                        _converse,
+                        stx`
                     <iq type='error'
                             xmlns="jabber:client"
                             from='${pubsub_jid}'
                             to='${own_jid}'
                             id="${sent_stanza.getAttribute('id')}">
                         <error type='modify'><not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>
-                    </iq>`),
+                    </iq>`,
+                    ),
                 );
 
                 const e = await promise.catch((e) => e);
@@ -391,7 +407,9 @@ describe('The pubsub API', function () {
             expectPublishWithOptions(_converse, sent_stanza);
 
             _converse.api.connection.get()._dataRecv(
-                mock.createRequest(_converse, stx`<iq type='error'
+                mock.createRequest(
+                    _converse,
+                    stx`<iq type='error'
                         xmlns="jabber:client"
                         from='${pubsub_jid}'
                         to='${own_jid}'
@@ -400,7 +418,8 @@ describe('The pubsub API', function () {
                         <conflict xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
                         <precondition-not-met xmlns='http://jabber.org/protocol/pubsub#errors'/>
                     </error>
-                </iq>`),
+                </iq>`,
+                ),
             );
 
             const configure_stanza = await u.waitUntil(() =>
@@ -419,7 +438,9 @@ describe('The pubsub API', function () {
                 const { promise, configure_stanza } = await publishUntilPreconditionNotMet(_converse, true);
 
                 _converse.api.connection.get()._dataRecv(
-                    mock.createRequest(_converse, stx`
+                    mock.createRequest(
+                        _converse,
+                        stx`
                     <iq type='result'
                         xmlns="jabber:client"
                         from='${pubsub_jid}'
@@ -439,7 +460,8 @@ describe('The pubsub API', function () {
                         </x>
                         </configure>
                     </pubsub>
-                </iq>`),
+                </iq>`,
+                    ),
                 );
 
                 // The shape of the reconfigure submit is covered by the
@@ -450,12 +472,15 @@ describe('The pubsub API', function () {
                         .pop(),
                 );
                 _converse.api.connection.get()._dataRecv(
-                    mock.createRequest(_converse, stx`
+                    mock.createRequest(
+                        _converse,
+                        stx`
                     <iq type='result'
                         xmlns="jabber:client"
                         from='${pubsub_jid}'
                         to='${own_jid}'
-                        id="${sent_stanza.getAttribute('id')}"></iq>`),
+                        id="${sent_stanza.getAttribute('id')}"></iq>`,
+                    ),
                 );
 
                 // Clear old stanzas so we catch the republish.
@@ -469,12 +494,15 @@ describe('The pubsub API', function () {
                 expectPublishWithOptions(_converse, sent_stanza);
 
                 _converse.api.connection.get()._dataRecv(
-                    mock.createRequest(_converse, stx`
+                    mock.createRequest(
+                        _converse,
+                        stx`
                     <iq type='result'
                         xmlns="jabber:client"
                         from='${pubsub_jid}'
                         to='${own_jid}'
-                        id="${sent_stanza.getAttribute('id')}"></iq>`),
+                        id="${sent_stanza.getAttribute('id')}"></iq>`,
+                    ),
                 );
 
                 await promise;
@@ -494,13 +522,16 @@ describe('The pubsub API', function () {
                 // The manual reconfigure fallback fails at the config fetch: we
                 // don't own this node.
                 _converse.api.connection.get()._dataRecv(
-                    mock.createRequest(_converse, stx`<iq type='error'
+                    mock.createRequest(
+                        _converse,
+                        stx`<iq type='error'
                         xmlns="jabber:client"
                         from='${pubsub_jid}'
                         to='${own_jid}'
                         id="${configure_stanza.getAttribute('id')}">
                     <error type='auth'><forbidden xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error>
-                </iq>`),
+                </iq>`,
+                    ),
                 );
 
                 // Clear old stanzas so we catch the republish.
@@ -514,15 +545,44 @@ describe('The pubsub API', function () {
                 expect(sent_stanza.querySelector('publish').getAttribute('node')).toBe(node);
 
                 _converse.api.connection.get()._dataRecv(
-                    mock.createRequest(_converse, stx`
+                    mock.createRequest(
+                        _converse,
+                        stx`
                     <iq type='result'
                         xmlns="jabber:client"
                         from='${pubsub_jid}'
                         to='${own_jid}'
-                        id="${sent_stanza.getAttribute('id')}"></iq>`),
+                        id="${sent_stanza.getAttribute('id')}"></iq>`,
+                    ),
                 );
 
                 await promise;
+            }),
+        );
+
+        it(
+            'rejects with null when the publish times out',
+            mock.initConverse(converse, [], {}, async function (_converse) {
+                await mock.waitForRoster(_converse, 'current', 0);
+                const { api } = _converse;
+
+                // A timed out IQ rejects with `null`
+                const sendIQ = api.sendIQ.bind(api);
+                vi.spyOn(api, 'sendIQ').mockImplementation((stanza, ...args) => {
+                    const el = stanza instanceof Element ? stanza : stanza.tree();
+                    return el.querySelector('pubsub publish') ? Promise.reject(null) : sendIQ(stanza, ...args);
+                });
+
+                const promise = api.pubsub.publish(pubsub_jid, node, stx`<item></item>`, {
+                    access_model: 'whitelist',
+                });
+                await mock.waitUntilDiscoConfirmed(
+                    _converse,
+                    pubsub_jid,
+                    [{ 'category': 'pubsub', 'type': 'pep' }],
+                    ['http://jabber.org/protocol/pubsub#publish-options'],
+                );
+                await expect(promise).rejects.toBeNull();
             }),
         );
     });

@@ -8,7 +8,7 @@ import './shared/styles/index.scss';
 import { i18n } from 'i18n/index.js';
 import './shared/registry.js';
 import './shared/components/index.js';
-import { CustomElement } from 'shared/components/element.js';
+import { CustomElement as CustomElementClass } from 'shared/components/element.js';
 import { VIEW_PLUGINS } from './shared/constants.js';
 import { _converse, converse } from '@converse/headless';
 import './utils/index.js';
@@ -36,6 +36,7 @@ import './plugins/chatview/index.js'; // Renders standalone chat boxes for singl
 import './plugins/controlbox/index.js'; // The control box
 import './plugins/disco-views/index.js'; // Adds a service discovery browser component
 import './plugins/headlines-view/index.js';
+import './plugins/jingle/index.js'; // UI for 1:1 audio calls
 import './plugins/mam-views/index.js';
 import './plugins/minimize/index.js'; // Allows chat boxes to be minimized
 import './plugins/muc-views/index.js'; // Views related to MUC
@@ -52,9 +53,10 @@ import './plugins/time-views/index.js'; // Views for XEP-0202 Entity Time
 import './plugins/dragresize/index.js'; // Allows chat boxes to be resized by dragging them
 import './plugins/fullscreen/index.js';
 import './plugins/reactions-views/index.js'; // XEP-0444 Reactions
+import './plugins/voice-messages/index.js'; // Enabled by default via VIEW_PLUGINS
 /* END: Plugins */
 
-_converse.exports.CustomElement = CustomElement;
+_converse.exports.CustomElement = CustomElementClass;
 
 const initialize = converse.initialize;
 
@@ -80,3 +82,13 @@ const ev = new CustomEvent('converse-loaded', { 'detail': { converse } });
 window.dispatchEvent(ev);
 
 export default converse;
+
+// Types of the classes that plugins get at runtime from `_converse.exports`.
+// The package publishes a single bundled declaration file, so these have to be
+// reachable from the entry point.
+/**
+ * @typedef {import('./shared/components/element.js').CustomElement} CustomElement
+ * @typedef {import('./plugins/modal/modal.js').default} BaseModal
+ * @typedef {import('./plugins/modal/popover.js').default} Popover
+ * @typedef {import('./plugins/modal/toast.js').default} Toast
+ */

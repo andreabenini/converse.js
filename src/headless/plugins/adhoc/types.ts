@@ -5,19 +5,21 @@ export type AdHocCommand = {
     node: string;
     sessionid: string;
     status: string;
-}
+};
 
-type AdHocCommandResultNote = {
+export type AdHocCommandNoteType = 'info' | 'warn' | 'error';
+
+export type AdHocCommandResultNote = {
     text: string;
-    type: 'info'|'warn'|'error';
-}
+    type: AdHocCommandNoteType;
+};
 
 export type AdHocCommandAttrs = {
     sessionid: string;
     actions?: string[];
     note?: AdHocCommandResultNote;
-}
+};
 
 export type AdHocCommandResult = XForm & AdHocCommandAttrs;
 
-export type AdHocCommandAction = 'execute'| 'cancel' |'prev'|'next'|'complete';
+export type AdHocCommandAction = 'execute' | 'cancel' | 'prev' | 'next' | 'complete';

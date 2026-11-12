@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import mock from '../../../shared/tests/mock.js';
 import converse from '../../../../dist/converse.js';
 
@@ -25,7 +26,7 @@ describe('A Chat Message', function () {
     it(
         'will render audio streams using the accessible audio player',
         mock.initConverse(converse, ['chatBoxesFetched'], { fetch_url_headers: true }, async function (_converse) {
-            spyOn(window, 'fetch').and.callFake(async () => {
+            spyOn(window, 'fetch').and.callFake(() => {
                 return new Response('', {
                     status: 200,
                     headers: {
@@ -121,8 +122,99 @@ describe('A Chat Message', function () {
     );
 
     it(
+        'keeps the audio play button available before the audio has loaded',
+        mock.initConverse(converse, ['chatBoxesFetched'], { fetch_url_headers: true }, async function (_converse) {
+            // Don't fetch the audio, so that no media events arrive other than the ones dispatched below
+            vi.spyOn(HTMLMediaElement.prototype, 'src', 'set').mockImplementation(() => {});
+
+            await mock.waitForRoster(_converse, 'current', 1);
+            const contact_jid = mock.cur_names[0].replace(/ /g, '.').toLowerCase() + '@montague.lit';
+            await mock.openChatBoxFor(_converse, contact_jid);
+            const view = _converse.chatboxviews.get(contact_jid);
+            await mock.sendMessage(_converse, view, 'https://conversejs.org/logo/audio.mp3');
+            await u.waitUntil(() => view.querySelector('.chat-content converse-audio-player'), 1000);
+
+            const audioPlayer = view.querySelector('converse-audio-player');
+            await audioPlayer.updateComplete;
+            const { audio } = audioPlayer;
+            const playBtn = audioPlayer.querySelector('.audio-player__play-btn');
+            const status = audioPlayer.querySelector('[role="status"]');
+
+            expect(playBtn.disabled).toBe(false);
+            expect(playBtn.querySelector('.fa-play')).not.toBeNull();
+            expect(status.textContent.trim()).toBe('');
+
+            // Without data, play() fires "play" and then "waiting", and the
+            // returned promise stays pending until playback starts.
+            vi.spyOn(audio, 'play').mockImplementation(() => {
+                audio.dispatchEvent(new Event('play'));
+                audio.dispatchEvent(new Event('waiting'));
+                return new Promise(() => {});
+            });
+            playBtn.click();
+            await audioPlayer.updateComplete;
+
+            expect(audio.play).toHaveBeenCalledOnce();
+            expect(playBtn.disabled).toBe(false);
+            expect(playBtn.getAttribute('aria-label')).toBe('Pause');
+            expect(playBtn.querySelector('.audio-player__spinner')).not.toBeNull();
+            expect(status.textContent.trim()).toBe('Loading audio...');
+
+            audio.dispatchEvent(new Event('canplay'));
+            await audioPlayer.updateComplete;
+            expect(playBtn.querySelector('.fa-pause')).not.toBeNull();
+            expect(status.textContent.trim()).toBe('');
+        }),
+    );
+
+    it(
+        'lets the user pause audio that is still loading',
+        mock.initConverse(converse, ['chatBoxesFetched'], { fetch_url_headers: true }, async function (_converse) {
+            vi.spyOn(HTMLMediaElement.prototype, 'src', 'set').mockImplementation(() => {});
+
+            await mock.waitForRoster(_converse, 'current', 1);
+            const contact_jid = mock.cur_names[0].replace(/ /g, '.').toLowerCase() + '@montague.lit';
+            await mock.openChatBoxFor(_converse, contact_jid);
+            const view = _converse.chatboxviews.get(contact_jid);
+            await mock.sendMessage(_converse, view, 'https://conversejs.org/logo/audio.mp3');
+            await u.waitUntil(() => view.querySelector('.chat-content converse-audio-player'), 1000);
+
+            const audioPlayer = view.querySelector('converse-audio-player');
+            await audioPlayer.updateComplete;
+            const { audio } = audioPlayer;
+            const playBtn = audioPlayer.querySelector('.audio-player__play-btn');
+
+            // Pausing before playback starts rejects the pending play() with an AbortError
+            let rejectPlay;
+            vi.spyOn(audio, 'play').mockImplementation(() => {
+                audio.dispatchEvent(new Event('play'));
+                audio.dispatchEvent(new Event('waiting'));
+                return new Promise((_resolve, reject) => (rejectPlay = reject));
+            });
+            vi.spyOn(audio, 'pause').mockImplementation(() => {
+                audio.dispatchEvent(new Event('pause'));
+                rejectPlay(new DOMException('The play() request was interrupted by a call to pause().', 'AbortError'));
+            });
+
+            playBtn.click();
+            await audioPlayer.updateComplete;
+            playBtn.click();
+            await new Promise((resolve) => setTimeout(resolve));
+            await audioPlayer.updateComplete;
+
+            expect(audio.pause).toHaveBeenCalledOnce();
+            expect(audioPlayer.has_error).toBe(false);
+            expect(playBtn.disabled).toBe(false);
+            expect(playBtn.getAttribute('aria-label')).toBe('Play');
+            expect(playBtn.querySelector('.fa-play')).not.toBeNull();
+            expect(audioPlayer.querySelector('[role="status"]').textContent.trim()).toBe('');
+        }),
+    );
+
+    it(
         'will render Spotify player for Spotify URLs',
-        mock.initConverse(converse, 
+        mock.initConverse(
+            converse,
             ['chatBoxesFetched'],
             { embed_3rd_party_media_players: true, view_mode: 'fullscreen' },
             async function (_converse) {

@@ -97,7 +97,19 @@ class MUCMessage extends BaseMessage {
 
             const nick = Strophe.getResourceFromJid(this.get('from'));
             const occupant_id = this.get('occupant_id');
-            this.occupant = nick || occupant_id ? this.occupants.findOccupant({ nick, occupant_id }) : null;
+            if (nick || occupant_id) {
+                const data = { nick, occupant_id, jid: this.get('from_real_jid') };
+                this.occupant = this.occupants.findOccupant(data);
+                if (!this.occupant) {
+                    this.occupant = this.occupants.findOccupantWithoutId(data);
+                    // Take the occupant to be this sender, so that messages with
+                    // other occupant ids don't match it too. Not for a member
+                    // though, whose nick match can't be verified by a message.
+                    if (this.occupant && occupant_id && !this.occupant.isMember()) {
+                        this.occupant.save({ occupant_id });
+                    }
+                }
+            }
 
             if (!this.occupant) {
                 const jid = this.get('from_real_jid');
@@ -115,8 +127,17 @@ class MUCMessage extends BaseMessage {
             }
         }
 
-        if (this.get('from_real_jid') !== this.occupant.get('jid')) {
-            this.save('from_real_jid', this.occupant.get('jid'));
+        // Only a match by occupant-id reliably identifies the sender. A nick
+        // might since have been taken by someone else.
+        const occupant_id = this.get('occupant_id');
+        const occupant_jid = this.occupant.get('jid');
+        if (
+            occupant_id &&
+            occupant_jid &&
+            this.occupant.get('occupant_id') === occupant_id &&
+            this.get('from_real_jid') !== occupant_jid
+        ) {
+            this.save('from_real_jid', occupant_jid);
         }
 
         this.trigger('occupant:add');

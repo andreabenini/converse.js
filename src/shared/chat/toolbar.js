@@ -1,8 +1,8 @@
 import { html } from 'lit';
 import { until } from 'lit/directives/until.js';
 import { _converse, api, converse } from '@converse/headless';
+import './attachment-menu.js';
 import './emoji-picker.js';
-import './location-button.js';
 import 'shared/chat/message-limit.js';
 import tplToolbar from './templates/toolbar.js';
 import { CustomElement } from 'shared/components/element.js';
@@ -19,10 +19,7 @@ export class ChatToolbar extends CustomElement {
             is_groupchat: { type: Boolean },
             message_limit: { type: Number },
             model: { type: Object },
-            show_call_button: { type: Boolean },
             show_emoji_button: { type: Boolean },
-            show_fileupload_button: { type: Boolean },
-            show_location_button: { type: Boolean },
             show_send_button: { type: Boolean },
             show_spoiler_button: { type: Boolean },
         };
@@ -35,10 +32,7 @@ export class ChatToolbar extends CustomElement {
         this.hidden_occupants = false;
         this.show_send_button = false;
         this.show_spoiler_button = false;
-        this.show_call_button = false;
         this.show_emoji_button = false;
-        this.show_fileupload_button = false;
-        this.show_location_button = false;
     }
 
     connectedCallback() {
@@ -67,44 +61,12 @@ export class ChatToolbar extends CustomElement {
             buttons.push(html`<converse-emoji-dropdown .model=${this.model}></converse-emoji-dropdown>`);
         }
 
-        if (this.show_call_button) {
-            const color = this.is_groupchat ? '--muc-color' : '--chat-color';
-            const i18n_start_call = __('Start a call');
-            buttons.push(
-                html` <button
-                    type="button"
-                    class="btn toggle-call"
-                    @click=${this.toggleCall}
-                    title="${i18n_start_call}"
-                >
-                    <converse-icon color="var(${color})" class="fa fa-phone" size="1em"></converse-icon>
-                </button>`,
-            );
-        }
-
         if (this.show_spoiler_button) {
             buttons.push(this.getSpoilerButton());
         }
 
-        if (this.show_location_button) {
-            buttons.push(
-                html`<converse-location-button .model=${this.model} ?is_groupchat=${this.is_groupchat}>
-                </converse-location-button>`,
-            );
-        }
-
-        if (this.show_fileupload_button) {
-            const domain = _converse.session.get('domain');
-            const http_upload_promise = api.disco.supports(Strophe.NS.HTTPUPLOAD, domain);
-            buttons.push(
-                html`${until(
-                    http_upload_promise.then(
-                        /** @param {boolean} is_supported */ (is_supported) => this.getHTTPUploadButton(!!is_supported),
-                    ),
-                    '',
-                )}`,
-            );
-        }
+        // The paperclip, which draws itself only once there is something to attach.
+        buttons.push(html`<converse-attachment-menu .model=${this.model}></converse-attachment-menu>`);
 
         /**
          * *Hook* which allows plugins to add more buttons to a chat's toolbar
@@ -118,32 +80,6 @@ export class ChatToolbar extends CustomElement {
          *  }
          */
         return _converse.api.hook('getToolbarButtons', this, buttons);
-    }
-
-    /**
-     * @param {boolean} is_supported
-     */
-    getHTTPUploadButton(is_supported) {
-        if (is_supported) {
-            const i18n_choose_file = __('Choose a file to send');
-            // Coloured like its neighbours. `converse-icon` writes its `color`
-            // attribute out as an inline style, so a glyph that doesn't name one
-            // falls back to `--secondary-color` and stands out as the only button
-            // in the row not wearing the conversation's colour.
-            const color = this.is_groupchat ? '--muc-color' : '--chat-color';
-            return html` <button type="button" class="btn" title="${i18n_choose_file}" @click=${this.toggleFileUpload}>
-                    <converse-icon color="var(${color})" class="fa fa-paperclip" size="1em"></converse-icon>
-                </button>
-                <input
-                    type="file"
-                    @change=${this.onFileSelection}
-                    class="fileupload"
-                    multiple=""
-                    style="display:none"
-                />`;
-        } else {
-            return '';
-        }
     }
 
     getSpoilerButton() {
@@ -189,40 +125,10 @@ export class ChatToolbar extends CustomElement {
     }
 
     /** @param {MouseEvent} ev */
-    toggleFileUpload(ev) {
-        ev?.preventDefault?.();
-        ev?.stopPropagation?.();
-        /** @type {HTMLInputElement} */ (this.querySelector('.fileupload')).click();
-    }
-
-    /** @param {InputEvent} ev */
-    onFileSelection(ev) {
-        this.model.sendFiles(/** @type {HTMLInputElement} */ (ev.target).files);
-    }
-
-    /** @param {MouseEvent} ev */
     toggleComposeSpoilerMessage(ev) {
         ev?.preventDefault?.();
         ev?.stopPropagation?.();
         this.model.set('composing_spoiler', !this.model.get('composing_spoiler'));
-    }
-
-    /** @param {MouseEvent} ev */
-    toggleCall(ev) {
-        ev?.preventDefault?.();
-        ev?.stopPropagation?.();
-        /**
-         * When a call button (i.e. with class .toggle-call) on a chatbox has been clicked.
-         * @event _converse#callButtonClicked
-         * @type { object }
-         * @property { Strophe.Connection } connection - The XMPP Connection object
-         * @property { _converse.ChatBox | _converse.ChatRoom } model
-         * @example _converse.api.listen.on('callButtonClicked', (connection, model) => { ... });
-         */
-        api.trigger('callButtonClicked', {
-            connection: api.connection.get(),
-            model: this.model,
-        });
     }
 }
 

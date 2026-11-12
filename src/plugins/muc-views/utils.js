@@ -1,7 +1,5 @@
 /**
- * @typedef {import('@converse/headless/types/plugins/muc/muc').default} MUC
- * @typedef {import("shared/avatar/avatar").default} Avatar
- * @typedef {import("shared/autocomplete/suggestion").default} Suggestion
+ * @typedef {import('@converse/headless').MUC} MUC
  */
 import { html } from 'lit';
 import { api, converse, log, constants } from '@converse/headless';
@@ -50,15 +48,6 @@ export function confirmDirectMUCInvitation({ contact, jid, reason }) {
                 reason,
             ),
         );
-    }
-}
-
-/**
- * @param {string} jid
- */
-export function clearHistory(jid) {
-    if (location.hash === `converse/room?jid=${jid}`) {
-        history.pushState(null, '', window.location.pathname);
     }
 }
 
@@ -121,74 +110,34 @@ export function getChatRoomBodyTemplate(model) {
         return html`<converse-muc-config-form class="muc-form-container" jid="${jid}"></converse-muc-config-form>`;
     } else {
         return html`
-            ${conn_status == RS.PASSWORD_REQUIRED
-                ? html`<converse-muc-password-form
-                      class="muc-form-container"
-                      jid="${jid}"
-                  ></converse-muc-password-form>`
-                : ''}
-            ${conn_status == RS.ENTERED
-                ? html`<converse-muc-chatarea class="row g-0" jid="${jid}"></converse-muc-chatarea>`
-                : ''}
+            ${
+                conn_status == RS.PASSWORD_REQUIRED
+                    ? html`<converse-muc-password-form
+                          class="muc-form-container"
+                          jid="${jid}"
+                      ></converse-muc-password-form>`
+                    : ''
+            }
+            ${
+                conn_status == RS.ENTERED
+                    ? html`<converse-muc-chatarea class="row g-0" jid="${jid}"></converse-muc-chatarea>`
+                    : ''
+            }
             ${conn_status == RS.CONNECTING ? tplSpinner({ class: 'vertically-centered' }) : ''}
             ${conn_status == RS.NICKNAME_REQUIRED ? getNicknameRequiredTemplate(model) : ''}
-            ${conn_status == RS.DISCONNECTED
-                ? html`<converse-muc-disconnected jid="${jid}"></converse-muc-disconnected>`
-                : ''}
-            ${conn_status == RS.BANNED
-                ? html`<converse-muc-disconnected jid="${jid}"></converse-muc-disconnected>`
-                : ''}
+            ${
+                conn_status == RS.DISCONNECTED
+                    ? html`<converse-muc-disconnected jid="${jid}"></converse-muc-disconnected>`
+                    : ''
+            }
+            ${
+                conn_status == RS.BANNED
+                    ? html`<converse-muc-disconnected jid="${jid}"></converse-muc-disconnected>`
+                    : ''
+            }
             ${conn_status == RS.DESTROYED ? html`<converse-muc-destroyed jid="${jid}"></converse-muc-destroyed>` : ''}
         `;
     }
-}
-
-/**
- * @param {MUC} muc
- * @param {Suggestion} text
- * @param {string} input
- * @returns {import('lit').TemplateResult} The rendered HTML for the item.
- */
-export function getAutoCompleteListItem(muc, text, input) {
-    input = input.trim();
-    let avatar_model;
-    const show_avatar = api.settings.get('muc_mention_autocomplete_show_avatar');
-    if (show_avatar) {
-        const t = text.label.toLowerCase();
-        avatar_model = muc.occupants.findWhere(
-            /** @param {import('@converse/headless').MUCOccupant} o */ (o) => {
-                if (o.getDisplayName()?.toLowerCase()?.startsWith(t)) {
-                    return o;
-                } else if (o.get('nickname')?.toLowerCase()?.startsWith(t)) {
-                    return o;
-                } else if (o.get('jid')?.toLowerCase()?.startsWith(t)) {
-                    return o;
-                }
-            },
-        );
-    }
-
-    const regex = new RegExp('(' + input + ')', 'ig');
-    const parts = input ? text.split(regex) : [text];
-    return html`
-        <li aria-selected="false">
-            ${show_avatar
-                ? html`<converse-avatar
-                      .model=${avatar_model}
-                      name="${avatar_model.getDisplayName()}"
-                      height="22"
-                      width="22"
-                      class="avatar avatar-autocomplete"
-                  ></converse-avatar>`
-                : ''}
-            <span class="autocomplete-item">
-                ${parts.map(
-                    /** @param {Suggestion|string} txt */ (txt) =>
-                        input && txt.match(regex) ? html`<mark>${txt}</mark>` : txt,
-                )}
-            </span>
-        </li>
-    `;
 }
 
 export async function getAutoCompleteList() {
@@ -295,14 +244,6 @@ export function showModeratorToolsModal(muc, affiliation) {
         modal = api.modal.create('converse-modtools-modal', { affiliation, 'jid': muc.get('jid') });
     }
     modal.show();
-}
-
-/**
- * @param {Event} ev
- * @param {import('@converse/headless').MUCOccupant} model
- */
-export function showOccupantModal(ev, model) {
-    api.modal.show('converse-muc-occupant-modal', { model }, ev);
 }
 
 export async function parseMessageForMUCCommands(data, handled) {

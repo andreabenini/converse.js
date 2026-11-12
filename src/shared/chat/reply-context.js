@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @copyright 2025, the Converse.js contributors
  * @license Mozilla Public License (MPLv2)
  * @description A custom element to display reply context for a message
@@ -11,7 +11,7 @@ import { __ } from 'i18n';
 /**
  * A custom element that displays the context of the message being replied to.
  */
-export default class ReplyContext extends CustomElement {
+class ReplyContext extends CustomElement {
     static get properties() {
         return {
             model: { type: Object },
@@ -27,7 +27,7 @@ export default class ReplyContext extends CustomElement {
 
     /**
      * Get the message being replied to, if this message is a reply.
-     * @returns {import('@converse/headless/types/shared/message').default|undefined}
+     * @returns {import('@converse/headless').BaseMessage|undefined}
      */
     getRepliedMessage() {
         return this.model_with_messages?.getReferencedMessage(this.model.get('reply_to_id'));

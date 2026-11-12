@@ -14,6 +14,7 @@ const commonExclude = [
     '**/node_modules/**',
     '**/tests/mock.js', // shared test helpers
     '**/omemo-views/tests/utils.js', // omemo-views test helper (no describe/it)
+    '**/voice-messages/tests/utils.js', // voice-messages test helper (no describe/it)
     '**/microblog/tests/utils.js', // microblog test helper (no describe/it)
     '**/apps/social/tests/utils.js', // app-social test helper (no describe/it)
     '**/__screenshots__/**', // vitest browser-mode failure screenshots
@@ -69,7 +70,14 @@ export default defineConfig({
                 test: {
                     name: 'main',
                     include: ['src/**/tests/**/*.js', 'src/**/tests/*.js'],
-                    exclude: ['src/headless/**', '**/*.node.js', ...commonExclude],
+                    exclude: [
+                        'src/headless/**',
+                        'src/daemon/**',
+                        'src/cli/**',
+                        '**/*.node.js',
+                        '**/*.prosody.js',
+                        ...commonExclude,
+                    ],
                     browser: makeBrowser(),
                 },
             },
@@ -83,7 +91,7 @@ export default defineConfig({
                     // The shims are Node-only; they're covered by the
                     // `headless-node` project below, as are the `.node.js`
                     // specs, which import those shims directly.
-                    exclude: ['shims/**', '**/*.node.js', ...commonExclude],
+                    exclude: ['shims/**', '**/*.node.js', '**/*.prosody.js', ...commonExclude],
                     browser: makeBrowser(),
                 },
             },
@@ -93,6 +101,7 @@ export default defineConfig({
                 // extend the root config: those setup files inject stylesheets
                 // and a Jasmine compatibility layer that only make sense in a
                 // page, and the aliases point at the browser bundles.
+                extends: false,
                 root: abs('src/headless'),
                 test: {
                     name: 'headless-node',
@@ -107,6 +116,46 @@ export default defineConfig({
                     // hidden dependency on the DOM.
                     include: ['shims/tests/**/*.js', 'utils/tests/**/*.js', 'plugins/**/tests/*.node.js'],
                     exclude: [...commonExclude],
+                },
+            },
+            {
+                // The daemon and its clients are Node programs. Their specs
+                // import `@converse/headless` by package name, which the `node`
+                // export condition resolves to the source tree, so they need no
+                // headless rebuild. Not extending the root config, for the same
+                // reasons as `headless-node` above.
+                extends: false,
+                root: abs('src'),
+                test: {
+                    name: 'daemon',
+                    environment: 'node',
+                    include: ['daemon/tests/**/*.js', 'cli/tests/**/*.js'],
+                    exclude: [
+                        '**/tests/harness.js',
+                        '**/tests/account.js',
+                        '**/tests/run.js',
+                        '**/tests/real-server.js',
+                        '**/tests/fake-server.js',
+                        '**/*.prosody.js',
+                        ...commonExclude,
+                    ],
+                },
+            },
+            {
+                // Specs suffixed `.prosody.js` run against a real Prosody in
+                // Docker (tests/prosody), which the global setup starts if it
+                // isn't running. Kept out of `test:all`, which mustn't need
+                // Docker: run them with `npm run test:prosody`.
+                extends: false,
+                root: abs('src'),
+                test: {
+                    name: 'prosody',
+                    environment: 'node',
+                    include: ['**/tests/*.prosody.js'],
+                    exclude: [...commonExclude],
+                    globalSetup: [abs('tests/prosody/global-setup.js')],
+                    testTimeout: 60000,
+                    hookTimeout: 60000,
                 },
             },
         ],

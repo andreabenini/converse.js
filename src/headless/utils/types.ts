@@ -1,8 +1,8 @@
 import { PersistentStorage, IEventEmitter } from '@converse/skeletor';
 
-export type CommonUtils = Record<string, Function>;
+export type CommonUtils = Record<string, (...args: any[]) => any>;
 
-type PluginUtilsKeys = 'muc' | 'mam' | 'omemo' | 'roster' | 'reactions' | 'bookmarks' | 'emojis';
+type PluginUtilsKeys = 'muc' | 'mam' | 'omemo' | 'roster' | 'reactions' | 'bookmarks' | 'emojis' | 'jingle';
 
 export type PluginUtils = Record<PluginUtilsKeys, CommonUtils>;
 
@@ -32,10 +32,23 @@ export type MediaURLMetadata = MediaURLIndexes & {
     is_gif?: boolean;
     is_image?: boolean;
     is_video?: boolean;
+    is_webp?: boolean;
 };
 
 export type StorageType = 'persistent' | 'session';
 
 export type StorageModel = IEventEmitter & {
     storage: PersistentStorage;
+};
+
+/**
+ * The subset of the browser extension storage area API used by the extension
+ * localForage drivers. Methods return a promise (`browser.storage`) or take a
+ * callback (`chrome.storage`).
+ */
+export type ExtensionStorageArea = {
+    get: (keys: string | string[] | null, callback?: (items: Record<string, any>) => void) => any;
+    set: (items: Record<string, any>, callback?: () => void) => any;
+    remove: (keys: string | string[], callback?: () => void) => any;
+    clear: (callback?: () => void) => any;
 };

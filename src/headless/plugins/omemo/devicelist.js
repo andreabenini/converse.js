@@ -1,11 +1,10 @@
-import { getOpenPromise } from '@converse/openpromise';
 import log from '@converse/log';
 import * as errors from '../../shared/errors.js';
 import { parsers } from '../../shared/index.js';
 import _converse from '../../shared/_converse.js';
 import api from '../../shared/api/index.js';
 import converse from '../../shared/api/public.js';
-import { OMEMOVersionAwareModel } from './profiles.js';
+import { OMEMOVersionAwareModel } from './version-aware-model.js';
 
 const { Strophe, stx, sizzle, u } = converse.env;
 

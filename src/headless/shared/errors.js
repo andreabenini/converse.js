@@ -1,13 +1,18 @@
 export class MethodNotImplementedError extends Error {}
 
-export class UserFacingError extends Error {
+/**
+ * An error with a stable `code`. Clients map the code to their own text, so the
+ * message is a developer aid only and nothing shows it to users.
+ */
+export class CodedError extends Error {
     /**
+     * @param {string} code
      * @param {string} message
      */
-    constructor (message) {
+    constructor(code, message) {
         super(message);
-        this.name = 'UserFacingError';
-        this.user_facing = true;
+        this.name = 'CodedError';
+        this.code = code;
     }
 }
 
@@ -16,7 +21,7 @@ export class IQError extends Error {
      * @param {string} message
      * @param {Element} iq
      */
-    constructor (message, iq) {
+    constructor(message, iq) {
         super(message);
         this.name = 'IQError';
         this.iq = iq;
@@ -52,7 +57,7 @@ export class StanzaError extends Error {
     constructor(name, e, extra) {
         super(e.querySelector('text')?.textContent ?? '');
         /** @type {ErrorName} */
-        this.name = name
+        this.name = name;
         /** @type {string} */
         this.message = name;
         /** @type {ErrorType} */

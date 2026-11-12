@@ -1,9 +1,9 @@
 /**
  * @typedef {module:plugins-omemo-index.WindowWithLibsignal} WindowWithLibsignal
- * @typedef {import('@converse/headless/types/shared/types').MessageAttributes} MessageAttributes
- * @typedef {import('@converse/headless/types/plugins/muc/types').MUCMessageAttributes} MUCMessageAttributes
+ * @typedef {import('@converse/headless').MessageAttributes} MessageAttributes
+ * @typedef {import('@converse/headless').MUCMessageAttributes} MUCMessageAttributes
  * @typedef {import('@converse/headless').ChatBox} ChatBox
- * @typedef {import('@converse/headless/types/shared/message').default} BaseMessage
+ * @typedef {import('@converse/headless').BaseMessage} BaseMessage
  */
 import { html } from 'lit';
 import { __ } from 'i18n';
@@ -239,13 +239,13 @@ export function onChatComponentInitialized(el) {
  * Generate the displayable fingerprints for a contact's devices for a single
  * OMEMO version.
  * @param {string} jid
- * @param {import('@converse/headless/types/plugins/omemo/types').OMEMOVersion} [version]
+ * @param {import('@converse/headless').OMEMOVersion} [version]
  */
 async function generateFingerprintsForVersion(jid, version) {
     const devices = await u.omemo.getDevicesForContact(jid, version);
     return Promise.all(
         devices.map(
-            /** @param {import('@converse/headless/types/plugins/omemo/device').default} d */
+            /** @param {import('@converse/headless').Device} d */
             (d) => u.omemo.generateFingerprint(d),
         ),
     );
@@ -261,16 +261,6 @@ export async function generateFingerprints(jid) {
         generateFingerprintsForVersion(jid, Strophe.NS.OMEMO).catch((e) => log.error(e)),
         generateFingerprintsForVersion(jid, Strophe.NS.OMEMO2).catch((e) => log.error(e)),
     ]);
-}
-
-/**
- * @param {string} jid
- * @param {string} device_id
- * @returns {Promise<import('@converse/headless').Device[]>}
- */
-export async function getDeviceForContact(jid, device_id) {
-    const devices = await u.omemo.getDevicesForContact(jid);
-    return devices.get(device_id);
 }
 
 /**
@@ -370,3 +360,46 @@ Object.assign(u, {
         formatFingerprint,
     },
 });
+
+/**
+ * Returns the text that explains a failed encrypted send, for the codes that
+ * OMEMO fails with. Headless gives each failure a stable code and keeps its prose
+ * out, so the wording lives here. Any other code returns undefined.
+ * @param {string} [code] - The `code` of the error that failed the send.
+ * @param {Object} [details]
+ * @param {string} [details.from] - The JID that the reason names, when the failure came from the server.
+ * @param {Element} [details.iq] - The IQ that failed, when the failure came from the server.
+ * @returns {string[]|undefined}
+ */
+export function getOMEMOSendErrorMessages(code, { from, iq } = {}) {
+    switch (code) {
+        case constants.SEND_ERROR.SUBSCRIPTION_REQUIRED:
+            return [
+                __(
+                    "Sorry, we're unable to send an encrypted message because %1$s " +
+                        'requires you to be subscribed to their presence in order to see their OMEMO information',
+                    from,
+                ),
+            ];
+        case constants.SEND_ERROR.REMOTE_SERVER_NOT_FOUND:
+            return [
+                __(
+                    "Sorry, we're unable to send an encrypted message because the remote server for %1$s could not be found",
+                    from,
+                ),
+            ];
+        case constants.SEND_ERROR.KEY_FETCH_FAILED:
+            return [
+                __('Unable to send an encrypted message due to an unexpected error.'),
+                ...(iq ? [iq.outerHTML] : []),
+            ];
+        case constants.SEND_ERROR.ENCRYPT_FAILED:
+            return [__('Unable to send an encrypted message due to an unexpected error.')];
+        case constants.SEND_ERROR.NO_DEVICES:
+            return [__('Sorry, no devices found to which we can send an OMEMO encrypted message.')];
+        case constants.SEND_ERROR.GROUPCHAT_NOT_ELIGIBLE:
+            return [__('Cannot use OMEMO in this groupchat — it must be non-anonymous and members-only.')];
+        default:
+            return undefined;
+    }
+}

@@ -15,9 +15,23 @@ import tplRetraction from './templates/retraction.js';
 import tplSpinner from 'templates/spinner.js';
 import { ObservableElement } from 'shared/components/observable.js';
 import { __ } from 'i18n';
+import { alertSendError } from 'shared/chat/send-errors.js';
 
 const { Strophe } = converse.env;
 const { SUCCESS } = constants;
+
+/**
+ * Whether following a link leaves Converse for a web page. Other schemes, such
+ * as `mailto:` and the `xmpp:` URIs Converse leaves to the OS, go to a local
+ * app, and `blob:` URLs are files Converse made itself. Only the page Converse
+ * runs on counts as its own, not every page on its origin.
+ * @param {URL} url
+ */
+function isExternalURL(url) {
+    if (!['http:', 'https:'].includes(url.protocol)) return false;
+
+    return url.origin !== location.origin || url.pathname !== location.pathname || url.search !== location.search;
+}
 
 export default class Message extends ObservableElement {
     /**
@@ -29,6 +43,9 @@ export default class Message extends ObservableElement {
         this.model_with_messages = null;
         this.model = null;
         this.observable = /** @type {ObservableProperty} */ ('once');
+        this.addEventListener('click', (ev) => this.onLinkClick(ev));
+        // A middle-click doesn't fire `click`, but still opens the link in a new tab.
+        this.addEventListener('auxclick', (ev) => ev.button === 1 && this.onLinkClick(ev));
     }
 
     static get properties() {
@@ -86,12 +103,18 @@ export default class Message extends ObservableElement {
         }
     }
 
-    renderRetraction() {
-        return tplRetraction(this);
+    /**
+     * @param {import('lit').TemplateResult|string} [tpl_time] - A timestamp to show right after the text
+     */
+    renderRetraction(tpl_time = '') {
+        return tplRetraction(this, tpl_time);
     }
 
-    renderMessageText() {
-        return tplMessageText(this);
+    /**
+     * @param {import('lit').TemplateResult|string} [tpl_time] - A timestamp to show right after the text
+     */
+    renderMessageText(tpl_time = '') {
+        return tplMessageText(this, tpl_time);
     }
 
     renderMEPMessage() {
@@ -130,6 +153,41 @@ export default class Message extends ObservableElement {
     }
 
     /**
+     * Ask before following a link out of the chat, since the sender chose where
+     * it leads. Clicks that Converse handles itself, such as an image opening in
+     * a modal or an `xmpp:` URI opening a chat, have already been prevented by
+     * the time they bubble up to here.
+     * @param {MouseEvent} ev
+     */
+    async onLinkClick(ev) {
+        // Only an explicit `false` turns it off, so that a setting which was
+        // never registered doesn't silently disable the confirmation.
+        if (ev.defaultPrevented || api.settings.get('confirm_external_links') === false) return;
+
+        const link = /** @type {Element} */ (ev.target).closest('a[href]');
+        if (!(link instanceof HTMLAnchorElement)) return;
+
+        let url;
+        try {
+            url = new URL(link.href);
+        } catch {
+            url = null; // Unparseable, so there's no telling where it leads.
+        }
+        if (url && !isExternalURL(url)) return;
+
+        ev.preventDefault();
+        const confirmed = await api.confirm(__('Open external link?'), [
+            url ? __('This link will take you to %1$s', url.hostname) : __('This link will take you to:'),
+            link.href,
+        ]);
+        // Opened the way the link's `target="_blank" rel="noopener"` would have.
+        // Clicking it again instead would hand the click back to the link's own
+        // handlers, and browsers ignore the modifier keys of a scripted click,
+        // except that a shift-click's request for a new window can be honoured.
+        if (confirmed) window.open(link.href, '_blank', ev.shiftKey ? 'noopener,popup' : 'noopener');
+    }
+
+    /**
      * @param {import("lit").PropertyValues} changed
      */
     firstUpdated(changed) {
@@ -161,6 +219,38 @@ export default class Message extends ObservableElement {
                 'url_preview_transition': 'fade-in',
             });
         }
+    }
+
+    async onRetrySendClicked() {
+        try {
+            await this.model_with_messages.resendFailedMessage(this.model);
+        } catch (e) {
+            alertSendError(/** @type {Error} */ (e));
+        }
+    }
+
+    async onSendUnencryptedClicked() {
+        const confirmed = await api.confirm(__('Send without encryption?'), [
+            __(
+                'This message will be sent unencrypted. The server, and anyone else who can read the conversation, can read it.',
+            ),
+        ]);
+        if (!confirmed) return;
+        try {
+            const { handled } = await api.hook('resendFailedMessageUnencrypted', this.model_with_messages, {
+                message: this.model,
+                handled: false,
+            });
+            if (!handled) {
+                api.alert('error', __('Error'), [__('This message could not be sent without encryption.')]);
+            }
+        } catch (e) {
+            alertSendError(/** @type {Error} */ (e));
+        }
+    }
+
+    onDiscardSendClicked() {
+        this.model_with_messages.discardFailedMessage(this.model);
     }
 
     async onRetryClicked() {
@@ -219,20 +309,27 @@ export default class Message extends ObservableElement {
     }
 
     getRetractionText() {
-        if (['groupchat', 'mep'].includes(this.model.get('type')) && this.model.get('moderated_by')) {
-            const retracted_by_mod = this.model.get('moderated_by');
+        const { moderated, moderated_by, moderated_by_id } = this.model.attributes;
+        // The moderator's JID is optional, so a moderation may only identify
+        // the moderator by occupant-id, or not at all.
+        const is_moderated = moderated === 'retracted' || moderated_by || moderated_by_id;
+        if (['groupchat', 'mep'].includes(this.model.get('type')) && is_moderated) {
             if (!this.model.mod) {
                 const { occupants } = this.model_with_messages;
                 this.model.mod =
-                    occupants.findOccupant({ 'jid': retracted_by_mod }) ||
-                    occupants.findOccupant({ 'nick': Strophe.getResourceFromJid(retracted_by_mod) });
+                    (moderated_by_id && occupants.findOccupant({ 'occupant_id': moderated_by_id })) ||
+                    (moderated_by && occupants.findOccupant({ 'jid': moderated_by })) ||
+                    (moderated_by && occupants.findOccupant({ 'nick': Strophe.getResourceFromJid(moderated_by) }));
+            }
+            if (this.model.mod && this.model.mod === this.model_with_messages.getOwnOccupant()) {
+                return __('You removed a message');
             }
             const modname = this.model.mod ? this.model.mod.getDisplayName() : __('A moderator');
-            return __('%1$s has removed a message', modname);
+            return __('%1$s removed a message', modname);
         } else {
             return this.model.get('sender') === 'me'
-                ? __('You have removed a message')
-                : __('%1$s has removed a message', this.model.getDisplayName());
+                ? __('You removed a message')
+                : __('%1$s removed a message', this.model.getDisplayName());
         }
     }
 

@@ -4,8 +4,8 @@
  * @license Mozilla Public License (MPLv2)
  */
 /**
- * @typedef {import('@converse/headless/types/shared/message').default} BaseMessage
- * @typedef {import('@converse/headless/types/shared/types').ChatBoxOrMUC} ChatBoxOrMUC
+ * @typedef {import('@converse/headless').BaseMessage} BaseMessage
+ * @typedef {import('@converse/headless').ChatBoxOrMUC} ChatBoxOrMUC
  */
 import { html } from 'lit';
 import { _converse, api, u, EmojiPicker } from '@converse/headless';
@@ -14,7 +14,7 @@ import 'shared/components/icons.js';
 import 'shared/chat/emoji-picker.js';
 import 'shared/chat/styles/emoji.scss';
 
-export default class EmojiPickerDropdown extends DropdownBase {
+class EmojiPickerDropdown extends DropdownBase {
     static get properties() {
         return {
             'message_model': { type: Object },
@@ -51,29 +51,31 @@ export default class EmojiPickerDropdown extends DropdownBase {
             </button>
             <ul class="dropdown-menu">
                 <li>
-                    ${this.chatbox?.emoji_picker
-                        ? html`
-                              <converse-emoji-picker
-                                  .state=${this.chatbox.emoji_picker}
-                                  .model=${this.chatbox}
-                                  .allowed_emojis=${this.allowed_emojis}
-                                  @emojiSelected=${(ev) => {
-                                      ev.stopPropagation();
-                                      this.dispatchEvent(
-                                          new CustomEvent('emoji-picker-selected', {
-                                              detail: { emoji: ev.detail.value },
-                                              bubbles: true,
-                                              composed: true,
-                                          }),
-                                      );
-                                  }}
-                                  ?render_emojis=${true}
-                                  current_category="${this.chatbox.emoji_picker.get('current_category') || ''}"
-                                  current_skintone="${this.chatbox.emoji_picker.get('current_skintone') || ''}"
-                                  query="${this.chatbox.emoji_picker.get('query') || ''}"
-                              ></converse-emoji-picker>
-                          `
-                        : ''}
+                    ${
+                        this.chatbox?.emoji_picker
+                            ? html`
+                                  <converse-emoji-picker
+                                      .state=${this.chatbox.emoji_picker}
+                                      .model=${this.chatbox}
+                                      .allowed_emojis=${this.allowed_emojis}
+                                      @emojiSelected=${(ev) => {
+                                          ev.stopPropagation();
+                                          this.dispatchEvent(
+                                              new CustomEvent('emoji-picker-selected', {
+                                                  detail: { emoji: ev.detail.value },
+                                                  bubbles: true,
+                                                  composed: true,
+                                              }),
+                                          );
+                                      }}
+                                      ?render_emojis=${true}
+                                      current_category="${this.chatbox.emoji_picker.get('current_category') || ''}"
+                                      current_skintone="${this.chatbox.emoji_picker.get('current_skintone') || ''}"
+                                      query="${this.chatbox.emoji_picker.get('query') || ''}"
+                                  ></converse-emoji-picker>
+                              `
+                            : ''
+                    }
                 </li>
             </ul>
         `;

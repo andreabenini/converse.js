@@ -2,6 +2,7 @@ import path from 'path';
 import { rspack } from '@rspack/core';
 import { merge } from 'webpack-merge';
 import common, { __dirname } from '../rspack/rspack.common.js';
+import IgnoreChunkImportsPlugin from './ignore-chunk-imports.js';
 
 export default (_env, argv) => {
     const isDev = argv?.mode === 'development';
@@ -10,9 +11,13 @@ export default (_env, argv) => {
         new rspack.CopyRspackPlugin({
             patterns: [
                 { from: 'src/headless/plugins/emoji/emoji.json', to: 'emoji.json' },
-                { from: `node_modules/libomemo.js/dist/${isDev ? 'libomemo.esm.js' : 'libomemo.esm.min.js'}`, to: 'libomemo.esm.min.js' },
+                {
+                    from: `node_modules/libomemo.js/dist/${isDev ? 'libomemo.esm.js' : 'libomemo.esm.min.js'}`,
+                    to: 'libomemo.esm.min.js',
+                },
             ],
         }),
+        new IgnoreChunkImportsPlugin(),
     ];
 
     const sharedConfig = {

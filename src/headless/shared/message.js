@@ -8,6 +8,7 @@ import ColorAwareModel from '../shared/color.js';
 import ModelWithContact from '../shared/model-with-contact.js';
 import ModelWithVCard from '../shared/model-with-vcard.js';
 import { getUniqueId } from '../utils/index.js';
+import { getStanzaIDsByJID } from './parsers.js';
 import converse from './api/public.js';
 import { NO_SLOT, putFile, requestSlot } from './http-upload.js';
 
@@ -130,6 +131,76 @@ class BaseMessage extends ModelWithVCard(ModelWithContact(ColorAwareModel(Model)
     }
 
     /**
+     * Returns the XEP-0359 stanza-id which the archive holding this message gave
+     * it: the room's for a groupchat message, our account's otherwise.
+     * @returns {string|undefined}
+     */
+    getArchiveID() {
+        const by_jid = this.get('type') === 'groupchat' ? this.chatbox.get('jid') : _converse.session.get('bare_jid');
+        return this.get(`stanza_id ${by_jid}`);
+    }
+
+    /**
+     * Returns the id by which other messages refer to this one, such as
+     * XEP-0461 replies and XEP-0444 reactions: in a groupchat the stanza-id
+     * which the room gave it, elsewhere its own id.
+     * @returns {string|undefined}
+     */
+    getReferenceID() {
+        return this.get('type') === 'groupchat' ? this.getArchiveID() : this.get('msgid');
+    }
+
+    /**
+     * Returns the XEP-0359 stanza-ids which `by_jid` assigned to all versions of
+     * this message: first the original's, then those of its XEP-0308 corrections.
+     * @param {string} by_jid - The JID of the entity which assigned the stanza-ids
+     * @returns {string[]}
+     */
+    getStanzaIDs(by_jid) {
+        const original = this.get(`stanza_id ${by_jid}`);
+        const corrections = this.get('correction_stanza_ids')?.[by_jid] ?? [];
+        return original ? [original, ...corrections] : corrections;
+    }
+
+    /**
+     * Whether the passed in message attributes have the stanza-id of a version
+     * of this message, i.e. whether they represent this message or one of its
+     * XEP-0308 corrections which we already have.
+     * @param {import('./types').MessageAttributes} attrs
+     * @returns {boolean}
+     */
+    hasStanzaIDOf(attrs) {
+        return Object.entries(getStanzaIDsByJID(attrs)).some(([by_jid, id]) => this.getStanzaIDs(by_jid).includes(id));
+    }
+
+    /**
+     * Given the attributes of a XEP-0308 correction of this message, returns the
+     * stanza-ids of this message's corrections, including those of the given one.
+     * @param {import('./types').MessageAttributes} attrs - The correction's attributes
+     * @returns {Record<string, string[]>} The correction stanza-ids keyed by the assigning JID
+     */
+    getCorrectionStanzaIDs(attrs) {
+        const correction_stanza_ids = { ...this.get('correction_stanza_ids') };
+        for (const [by_jid, id] of Object.entries(getStanzaIDsByJID(attrs))) {
+            if (this.getStanzaIDs(by_jid).includes(id)) continue;
+
+            correction_stanza_ids[by_jid] = [...(correction_stanza_ids[by_jid] ?? []), id];
+        }
+        return correction_stanza_ids;
+    }
+
+    /**
+     * Returns when the last thing that happened to this message happened:
+     * when it was retracted, else when it was last edited, else when it was sent.
+     * @returns {string}
+     */
+    getDisplayTime() {
+        if (this.isRetracted()) return this.get('retracted') || this.get('time');
+
+        return this.get('edited') || this.get('time');
+    }
+
+    /**
      * Returns a boolean indicating whether this message is considered a followup
      * message from the previous one. Followup messages are shown grouped together
      * under one author heading.
@@ -223,10 +294,12 @@ class BaseMessage extends ModelWithVCard(ModelWithContact(ColorAwareModel(Model)
             return this.save({
                 is_ephemeral: true,
                 message:
-                    e.code === NO_SLOT
+                    // `e` is null if the slot request timed out
+                    e?.code === NO_SLOT
                         ? __('Sorry, could not determine file upload URL.')
                         : __('Sorry, could not determine upload URL.'),
                 type: 'error',
+                upload: FAILURE,
             });
         }
         this.upload_metadata = { headers: slot.headers };
@@ -272,7 +345,17 @@ class BaseMessage extends ModelWithVCard(ModelWithContact(ColorAwareModel(Model)
          * saved on the message once a file has been uploaded.
          * @event _converse#afterFileUploaded
          */
-        attrs = await api.hook('afterFileUploaded', this, attrs);
+        try {
+            attrs = await api.hook('afterFileUploaded', this, attrs);
+        } catch (e) {
+            log.error(e);
+            return this.save({
+                is_ephemeral: true,
+                message: __('Sorry, could not successfully upload your file.'),
+                type: 'error',
+                upload: FAILURE,
+            });
+        }
         this.save(attrs);
     }
 }

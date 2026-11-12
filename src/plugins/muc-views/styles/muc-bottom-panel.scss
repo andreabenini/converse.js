@@ -1,6 +1,5 @@
 .conversejs {
     converse-muc {
-
         .muc-bottom-panel,
         converse-muc-bottom-panel {
             display: contents;
@@ -36,13 +35,20 @@
         }
 
         converse-muc-bottom-panel {
+            // The composer panels answer in the room's colour, as the toolbar does.
+            converse-composer-panels {
+                --composer-panel-accent: var(--muc-color);
+            }
+
             .chat-message-form {
                 border-top: 0.25em solid var(--muc-color) !important;
                 border-inline-end: 0 !important;
 
-                .chat-textarea, input {
+                .chat-textarea,
+                input {
                     outline: 1px solid var(--background-color) !important;
-                    &:active, &:focus{
+                    &:active,
+                    &:focus {
                         outline-width: 2px !important;
                     }
                     // As in the 1:1 composer, but answering in the MUC's

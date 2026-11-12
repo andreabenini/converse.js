@@ -114,7 +114,8 @@ describe("The 'Add Contact' widget", function () {
 
     it(
         'shows XMPP provider suggestions when typing a JID',
-        mock.initConverse(converse, 
+        mock.initConverse(
+            converse,
             [],
             {
                 autocomplete_providers_url: 'https://data.xmpp.net/providers/v2/providers-Ds.json',
@@ -170,7 +171,8 @@ describe("The 'Add Contact' widget", function () {
 
     it(
         'falls back to roster domains when providers API is unavailable',
-        mock.initConverse(converse, 
+        mock.initConverse(
+            converse,
             [],
             {
                 autocomplete_providers_url: 'https://data.xmpp.net/providers/v2/providers-Ds.json',
@@ -212,14 +214,15 @@ describe("The 'Add Contact' widget", function () {
 
     it(
         'allows disabling provider autocomplete by setting autocomplete_providers_url to empty',
-        mock.initConverse(converse, 
+        mock.initConverse(
+            converse,
             [],
             {
                 autocomplete_providers_url: '',
             },
             async function (_converse) {
                 // Track if providers URL was called
-                const fetchSpy = spyOn(window, 'fetch').and.callFake((url) => {
+                const fetchSpy = spyOn(window, 'fetch').and.callFake(() => {
                     // Return empty response for any fetch call
                     return Promise.resolve({
                         ok: true,

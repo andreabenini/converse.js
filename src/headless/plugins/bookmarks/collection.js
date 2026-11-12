@@ -10,18 +10,38 @@ import _converse from '../../shared/_converse.js';
 import api from '../../shared/api/index.js';
 import converse from '../../shared/api/public.js';
 import { parseErrorStanza } from '../../shared/parsers.js';
+import { CodedError, StanzaError } from '../../shared/errors.js';
 import log from '@converse/log';
 import { initStorage } from '../../utils/storage.js';
+import { isErrorStanza } from '../../utils/stanza.js';
 import { parseStanzaForBookmarks } from './parsers.js';
 import '../../plugins/muc/index.js';
-import { getStorageKeys } from './utils.js';
+import { getStorageKeys, isPinnedExtension } from './utils.js';
 
 const { Strophe, stx } = converse.env;
+
+/**
+ * The `<pinned/>` extension element (XEP-0469), serialized as a string.
+ * Wrapped in a function so the namespace (registered in the plugin) is only
+ * read at call time, not at module load.
+ * @returns {string}
+ */
+const getPinnedExtension = () => `<pinned xmlns="${Strophe.NS.BOOKMARKS_PINNING}"/>`;
+
+/**
+ * Returns a copy of an extensions list with any XEP-0469 `<pinned/>` element(s)
+ * removed. Other (unknown) extensions are kept, as XEP-0402 requires.
+ * @param {string[]} [extensions]
+ * @returns {string[]}
+ */
+const withoutPinnedExtension = (extensions) => (extensions ?? []).filter((e) => !isPinnedExtension(e));
 
 /**
  * @extends {Collection<Bookmark>}
  */
 class Bookmarks extends Collection {
+    #supports_pinning = false;
+
     get idAttribute() {
         return 'jid';
     }
@@ -32,15 +52,20 @@ class Bookmarks extends Collection {
     }
 
     async initialize() {
-        this.on('add', (bm) =>
-            this.openBookmarkedRoom(bm)
-                .then((bm) => this.markRoomAsBookmarked(bm))
-                .catch((e) => log.fatal(e)),
-        );
+        this.on('add', (bm) => this.openBookmarkedRoom(bm).catch((e) => log.fatal(e)));
         this.on('change:autojoin', this.onAutoJoinChanged, this);
         this.on(
             'remove',
-            /** @param { Bookmark } bookmark }*/ (bookmark) => {
+            /**
+             * @param {Bookmark} bookmark
+             * @param {Bookmarks} _collection
+             * @param {{ rollback?: boolean }} [options]
+             */
+            (bookmark, _collection, options) => {
+                // A rolled back bookmark never reached the server, so there's
+                // nothing to retract, and its room must stay open.
+                if (options?.rollback) return;
+
                 this.sendRemoveBookmarkStanza(bookmark);
                 this.leaveRoom(bookmark);
             },
@@ -50,7 +75,22 @@ class Bookmarks extends Collection {
         this.fetched_flag = fetched_flag_key;
         initStorage(this, storage_key);
 
-        await this.fetchBookmarks();
+        const bare_jid = _converse.session.get('bare_jid');
+        this.#supports_pinning = await api.disco.supports(`${Strophe.NS.BOOKMARKS2}#compat`, bare_jid);
+        try {
+            await this.fetchBookmarks();
+        } catch (e) {
+            if (/** @type {{code?: string}} */ (e).code !== 'bookmarks-timeout') throw e;
+            /**
+             * Triggered when the server did not return the bookmarks in time.
+             * The error's `code` is `bookmarks-timeout`, which the client maps to its own text.
+             * @event _converse#bookmarksFetchFailed
+             * @type {Error}
+             * @example _converse.api.listen.on('bookmarksFetchFailed', (e) => { ... });
+             */
+            api.trigger('bookmarksFetchFailed', e);
+            return;
+        }
 
         /**
          * Triggered once the {@link Bookmarks} collection
@@ -60,6 +100,17 @@ class Bookmarks extends Collection {
          * @example _converse.api.listen.on('bookmarksInitialized', (bookmarks) => { ... });
          */
         api.trigger('bookmarksInitialized', this);
+    }
+
+    /** @returns {boolean} Whether the server supports native bookmarks and their extensions. */
+    supportsPinning() {
+        return this.#supports_pinning;
+    }
+
+    #assertPinningSupported() {
+        if (!this.supportsPinning()) {
+            throw new Error('Pinning requires native bookmarks');
+        }
     }
 
     static async checkBookmarksSupport() {
@@ -104,30 +155,77 @@ class Bookmarks extends Collection {
     /**
      * @param {import('./types').BookmarkAttrs} attrs
      * @param {boolean} [create=true]
-     * @param {import('@converse/skeletor').FetchOrCreateOptions} [options]
+     * @param {import('./types').SetBookmarkOptions} [options]
+     * @returns {Promise<Bookmark|undefined>}
      */
     async setBookmark(attrs, create = true, options = {}) {
-        if (!attrs.jid) return log.warn('No JID provided for setBookmark');
-
-        let send_stanza = false;
-
-        let bookmark = this.get(attrs.jid);
-        if (bookmark) {
-            // Check if any attrs changed
-            const has_changed = Object.keys(attrs).reduce((result, k) => {
-                return result || (attrs[k] ?? '') !== (bookmark.attributes[k] ?? '');
-            }, false);
-            if (has_changed) {
-                bookmark.save(attrs, options);
-                send_stanza = true;
-            }
-        } else if (create) {
-            bookmark = await this.create(attrs, options);
-            send_stanza = true;
+        if (!attrs.jid) {
+            log.warn('No JID provided for setBookmark');
+            return;
         }
 
-        if (bookmark && send_stanza) {
-            this.sendBookmarkStanza(bookmark).catch((iq) => this.onBookmarkError(iq));
+        const persistence_options = { ...options, promise: true };
+        let send_stanza = false;
+        let bookmark = this.get(attrs.jid);
+        // The changed attributes' previous values, or `null` for a new bookmark
+        let previous = null;
+
+        try {
+            if (bookmark) {
+                // Check if any attrs changed
+                const has_changed = Object.keys(attrs).reduce((result, k) => {
+                    return result || (attrs[k] ?? '') !== (bookmark.attributes[k] ?? '');
+                }, false);
+                if (has_changed) {
+                    previous = Object.fromEntries(Object.keys(attrs).map((k) => [k, bookmark.get(k)]));
+                    await bookmark.save(attrs, persistence_options);
+                    send_stanza = true;
+                }
+            } else if (create) {
+                bookmark = await this.create(attrs, persistence_options);
+                send_stanza = true;
+            }
+
+            if (bookmark && send_stanza) {
+                try {
+                    await this.sendBookmarkStanza(bookmark);
+                } catch (error) {
+                    // Only a refusal tells us the server doesn't have the
+                    // change. After a timeout it might, so we keep it.
+                    const refused = isErrorStanza(error) || error instanceof StanzaError;
+                    if (refused && !options.keep_on_error) {
+                        await this.#rollBack(bookmark, previous, options);
+                    }
+                    throw error;
+                }
+            }
+            return bookmark;
+        } catch (error) {
+            this.onBookmarkError(error);
+            throw error;
+        }
+    }
+
+    /**
+     * Undoes a local bookmark change that the server didn't accept, so that
+     * our bookmarks don't claim something the server doesn't have.
+     * @param {Bookmark} bookmark
+     * @param {Object|null} previous - The changed attributes' previous values,
+     *  or `null` if the bookmark was newly created.
+     * @param {import('./types').SetBookmarkOptions} options
+     */
+    async #rollBack(bookmark, previous, options) {
+        try {
+            if (previous) {
+                await bookmark.save(previous, /** @type {Object} */ ({ ...options, rollback: true, promise: true }));
+            } else {
+                await new Promise((success, error) =>
+                    bookmark.destroy(/** @type {Object} */ ({ rollback: true, success, error })),
+                );
+            }
+        } catch (e) {
+            log.error('Could not roll back a bookmark that failed to publish');
+            log.error(e);
         }
     }
 
@@ -157,18 +255,27 @@ class Bookmarks extends Collection {
         if (node === Strophe.NS.BOOKMARKS2) {
             if (!bookmark) throw new Error('getPublishedItems: missing bookmark');
 
-            const extensions = bookmark.get('extensions') ?? [];
+            // Parse each extension defensively
+            const extensions = (bookmark.get('extensions') ?? [])
+                .map(
+                    /** @param {string} e */ (e) => {
+                        try {
+                            return Stanza.fromString(e);
+                        } catch (err) {
+                            log.error(`Ignoring invalid bookmark extension: ${e}`);
+                            log.error(err);
+                            return null;
+                        }
+                    },
+                )
+                .filter(Boolean);
             return stx`<item id="${bookmark.get('jid')}">
                         <conference xmlns="${Strophe.NS.BOOKMARKS2}"
                                 name="${bookmark.get('name') || nothing}"
                                 autojoin="${bookmark.get('autojoin')}">
                             ${bookmark.get('nick') ? stx`<nick>${bookmark.get('nick')}</nick>` : ''}
                             ${bookmark.get('password') ? stx`<password>${bookmark.get('password')}</password>` : ''}
-                        ${
-                            extensions.length
-                                ? stx`<extensions>${extensions.map((e) => Stanza.fromString(e))}</extensions>`
-                                : ''
-                        }
+                        ${extensions.length ? stx`<extensions>${extensions}</extensions>` : ''}
                         </conference>
                     </item>`;
         } else {
@@ -206,11 +313,11 @@ class Bookmarks extends Collection {
     }
 
     /**
-     * @param {Element} iq
+     * @param {Element|Error} error
      */
-    onBookmarkError(iq) {
+    onBookmarkError(error) {
         log.error('Error while trying to update bookmarks');
-        log.error(iq);
+        log.error(error);
     }
 
     /**
@@ -235,17 +342,14 @@ class Bookmarks extends Collection {
 
     /**
      * @param {Bookmark} bookmark
+     * @param {boolean} _autojoin
+     * @param {{ rollback?: boolean }} [options]
      */
-    markRoomAsBookmarked(bookmark) {
-        const { chatboxes } = _converse.state;
-        const groupchat = chatboxes.get(bookmark.get('jid'));
-        groupchat?.save('bookmarked', true);
-    }
+    onAutoJoinChanged(bookmark, _autojoin, options) {
+        // A rolled back change never reached the server, so the room should
+        // stay as the user left it.
+        if (options?.rollback) return;
 
-    /**
-     * @param {Bookmark} bookmark
-     */
-    onAutoJoinChanged(bookmark) {
         if (bookmark.get('autojoin')) {
             this.openBookmarkedRoom(bookmark);
         } else {
@@ -293,15 +397,8 @@ class Bookmarks extends Collection {
      */
     async onBookmarksReceivedError(deferred, iq) {
         if (iq === null) {
-            const { __ } = _converse;
             log.error('Error: timeout while fetching bookmarks');
-            api.alert('error', __('Timeout Error'), [
-                __(
-                    'The server did not return your bookmarks within the allowed time. ' +
-                        'You can reload the page to request them again.',
-                ),
-            ]);
-            deferred?.reject(new Error('Could not fetch bookmarks'));
+            deferred?.reject(new CodedError('bookmarks-timeout', 'Timeout while fetching bookmarks'));
         } else {
             const { errors } = converse.env;
             const e = await parseErrorStanza(iq);
@@ -322,6 +419,71 @@ class Bookmarks extends Collection {
         await api.waitUntil('chatBoxesFetched');
         const { chatboxes } = _converse.state;
         return this.filter((b) => !chatboxes.get(b.get('jid')));
+    }
+
+    /**
+     * Pin a bookmark to the top of the lists (XEP-0469) by ensuring exactly one
+     * `<pinned/>` element is present in its extensions. We always (re)publish,
+     * even when the bookmark already looks pinned locally: the operation is
+     * idempotent (any existing `<pinned/>` is stripped before re-adding a single
+     * one, so it can't accumulate duplicates) and self-healing if our local
+     * state and the server's have diverged. The `pinned` attribute is derived
+     * from the extensions by {@link Bookmark}.
+     * @param {Bookmark} bookmark
+     * @returns {Promise<Bookmark|undefined>}
+     */
+    async pinBookmark(bookmark) {
+        this.#assertPinningSupported();
+        const extensions = [...withoutPinnedExtension(bookmark.get('extensions')), getPinnedExtension()];
+        return await api.bookmarks.set({ jid: bookmark.get('jid'), extensions });
+    }
+
+    /**
+     * Pin a room to the top of the lists (XEP-0469). Pinning is an extension on
+     * a bookmark, so if the room isn't bookmarked yet we bookmark it first
+     * (with autojoin enabled, so the pin survives a reload) and include the
+     * `<pinned/>` extension in the same publish.
+     * @param {string} jid
+     * @returns {Promise<Bookmark|undefined>}
+     */
+    async pinRoom(jid) {
+        this.#assertPinningSupported();
+        const bookmark = this.get(jid);
+        if (bookmark) return await this.pinBookmark(bookmark);
+
+        const room = _converse.state.chatboxes.get(jid);
+        return await api.bookmarks.set({
+            jid,
+            name: room?.get('name'),
+            nick: room?.get('nick'),
+            password: room?.get('password'),
+            autojoin: true,
+            extensions: [getPinnedExtension()],
+        });
+    }
+
+    /**
+     * Unpin a room by its JID (XEP-0469). A no-op if the room isn't bookmarked
+     * (you can only unpin something that was pinned, which requires a bookmark).
+     * @param {string} jid
+     * @returns {Promise<Bookmark|undefined>}
+     */
+    async unpinRoom(jid) {
+        this.#assertPinningSupported();
+        const bookmark = this.get(jid);
+        if (bookmark) return await this.unpinBookmark(bookmark);
+    }
+
+    /**
+     * Unpin a bookmark (XEP-0469) by removing its `<pinned/>` extension.
+     * Idempotent and self-healing for the same reasons as {@link pinBookmark}.
+     * @param {Bookmark} bookmark
+     * @returns {Promise<Bookmark|undefined>}
+     */
+    async unpinBookmark(bookmark) {
+        this.#assertPinningSupported();
+        const extensions = withoutPinnedExtension(bookmark.get('extensions'));
+        return await api.bookmarks.set({ jid: bookmark.get('jid'), extensions });
     }
 }
 

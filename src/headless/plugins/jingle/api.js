@@ -1,0 +1,41 @@
+import _converse from '../../shared/_converse.js';
+import { Strophe } from 'strophe.js';
+import { dial } from './utils.js';
+
+/**
+ * The "calls" namespace - the imperative entry the UI uses to start a call.
+ * Per-call verbs (accept/reject/hangup/toggleAudio) live on the Call model.
+ *
+ * @namespace api.calls
+ * @memberOf api
+ */
+export default {
+    /**
+     * Start an outgoing audio call. Calls are one at a time: dialling the peer
+     * of the live call returns that call, and dialling anyone else returns null.
+     * @method api.calls.dial
+     * @param {string} jid - the contact to call
+     * @returns {import('./model.js').default|null}
+     */
+    dial(jid) {
+        return dial(jid);
+    },
+
+    /**
+     * Look up the live call by its session id or by the peer's JID. Ended
+     * calls are no longer kept.
+     * @method api.calls.get
+     * @param {string} [id_or_jid] - omit to get all live calls
+     * @returns {import('./model.js').default|import('./model.js').default[]|undefined}
+     */
+    get(id_or_jid) {
+        const { calls } = _converse.state;
+        if (id_or_jid === undefined) return calls.models;
+
+        const call = calls.get(id_or_jid);
+        if (call) return call;
+
+        const bare_jid = Strophe.getBareJidFromJid(id_or_jid).toLowerCase();
+        return calls.find((c) => c.get('jid') === bare_jid);
+    },
+};

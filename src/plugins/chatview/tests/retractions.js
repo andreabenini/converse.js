@@ -47,7 +47,13 @@ describe('A sent chat message', function () {
             expect(message.get('editable')).toBeFalsy();
             expect(view.querySelectorAll('.chat-msg--retracted').length).toBe(1);
             const el = view.querySelector('.chat-msg--retracted .chat-msg__message .retraction');
-            expect(el.firstElementChild.textContent.trim()).toBe('You have removed a message');
+            expect(el.firstElementChild.textContent.trim()).toBe('You removed a message');
+
+            // The timestamp trails the text and shows when the message was
+            // removed, not when it was sent.
+            const time_el = view.querySelector('.chat-msg--retracted .retraction > span + converse-time');
+            expect(time_el.matches('converse-time.chat-msg__time')).toBe(true);
+            expect(time_el.getAttribute('timestamp')).toBe(message.get('retracted'));
         }),
     );
 });
@@ -96,7 +102,7 @@ describe('A received chat message', function () {
             expect(message.get('retracted')).toBeTruthy();
             expect(view.querySelectorAll('.chat-msg--retracted').length).toBe(1);
             const msg_el = view.querySelector('.chat-msg--retracted .chat-msg__message .retraction');
-            expect(msg_el.firstElementChild.textContent.trim()).toBe('Mercutio has removed a message');
+            expect(msg_el.firstElementChild.textContent.trim()).toBe('Mercutio removed a message');
         }),
     );
 
@@ -142,7 +148,7 @@ describe('A received chat message', function () {
             expect(message.get('retracted')).toBeTruthy();
             expect(view.querySelectorAll('.chat-msg--retracted').length).toBe(1);
             const msg_el = view.querySelector('.chat-msg--retracted .chat-msg__message .retraction');
-            expect(msg_el.firstElementChild.textContent.trim()).toBe('Mercutio has removed a message');
+            expect(msg_el.firstElementChild.textContent.trim()).toBe('Mercutio removed a message');
         }),
     );
 });
@@ -283,8 +289,85 @@ describe('A message retraction', function () {
             await u.waitUntil(() => view.querySelectorAll('.chat-msg').length === 2);
             expect(view.querySelectorAll('.chat-msg--retracted').length).toBe(1);
             const el = view.querySelector('.chat-msg--retracted .chat-msg__message .retraction');
-            expect(el.firstElementChild.textContent.trim()).toBe('Mercutio has removed a message');
+            expect(el.firstElementChild.textContent.trim()).toBe('Mercutio removed a message');
             expect(u.hasClass('chat-msg--followup', el.parentElement)).toBe(false);
+        }),
+    );
+
+    it(
+        'is timestamped from the archive when returned via MAM',
+        mock.initConverse(converse, ['discoInitialized'], {}, async function (_converse) {
+            await mock.waitForRoster(_converse, 'current', 1);
+            const contact_jid = mock.cur_names[0].replace(/ /g, '.').toLowerCase() + '@montague.lit';
+            await mock.openChatBoxFor(_converse, contact_jid);
+            await mock.waitUntilDiscoConfirmed(_converse, _converse.bare_jid, null, [Strophe.NS.MAM]);
+            const sent_IQs = _converse.api.connection.get().IQ_stanzas;
+            const stanza = await u.waitUntil(() =>
+                sent_IQs.filter((iq) => sizzle(`query[xmlns="${Strophe.NS.MAM}"]`, iq).length).pop(),
+            );
+            const queryid = stanza.querySelector('query').getAttribute('queryid');
+            const view = _converse.chatboxviews.get(contact_jid);
+            const first_id = u.getUniqueId();
+            const last_id = u.getUniqueId();
+
+            _converse.api.connection.get()._dataRecv(
+                mock.createRequest(
+                    _converse,
+                    stx`
+                <message id="${u.getUniqueId()}" to="${_converse.jid}" xmlns="jabber:client">
+                    <result xmlns="urn:xmpp:mam:2" queryid="${queryid}" id="${first_id}">
+                        <forwarded xmlns="urn:xmpp:forward:0">
+                            <delay xmlns="urn:xmpp:delay" stamp="2019-09-20T23:01:15Z"/>
+                            <message type="chat" from="${contact_jid}" to="${_converse.bare_jid}" id="message-id-0">
+                                <body>😊</body>
+                            </message>
+                        </forwarded>
+                    </result>
+                </message>`,
+                ),
+            );
+
+            _converse.api.connection.get()._dataRecv(
+                mock.createRequest(
+                    _converse,
+                    stx`
+                <message id="${u.getUniqueId()}" to="${_converse.jid}" xmlns="jabber:client">
+                    <result xmlns="urn:xmpp:mam:2" queryid="${queryid}" id="${last_id}">
+                        <forwarded xmlns="urn:xmpp:forward:0">
+                            <delay xmlns="urn:xmpp:delay" stamp="2019-09-20T23:08:25Z"/>
+                            <message type="chat" from="${contact_jid}" to="${_converse.bare_jid}" id="retract-message-1">
+                                <retract id="message-id-0" xmlns='urn:xmpp:message-retract:1'/>
+                                <fallback xmlns="urn:xmpp:fallback:0" for='urn:xmpp:message-retract:1'/>
+                                <body>/me retracted a previous message, but it's unsupported by your client.</body>
+                            </message>
+                        </forwarded>
+                    </result>
+                </message>`,
+                ),
+            );
+
+            _converse.api.connection.get()._dataRecv(
+                mock.createRequest(
+                    _converse,
+                    stx`
+                <iq type="result" id="${stanza.getAttribute('id')}" xmlns="jabber:client">
+                    <fin xmlns="urn:xmpp:mam:2" complete="true">
+                        <set xmlns="http://jabber.org/protocol/rsm">
+                            <first index="0">${first_id}</first>
+                            <last>${last_id}</last>
+                            <count>2</count>
+                        </set>
+                    </fin>
+                </iq>`,
+                ),
+            );
+
+            await u.waitUntil(() => view.querySelectorAll('.chat-msg--retracted').length === 1);
+            const message = view.model.messages.at(0);
+            expect(message.get('retracted')).toBe('2019-09-20T23:08:25.000Z');
+
+            const time_el = view.querySelector('.chat-msg--retracted .retraction > span + converse-time');
+            expect(time_el.getAttribute('timestamp')).toBe('2019-09-20T23:08:25.000Z');
         }),
     );
 });
@@ -352,7 +435,7 @@ describe('A Received Chat Message', function () {
             expect(message.get('retracted')).toBeTruthy();
             expect(view.querySelectorAll('.chat-msg--retracted').length).toBe(1);
             const msg_el = view.querySelector('.chat-msg--retracted .chat-msg__message .retraction span');
-            expect(msg_el.textContent.trim()).toBe('Mercutio has removed a message');
+            expect(msg_el.textContent.trim()).toBe('Mercutio removed a message');
         }),
     );
 });
