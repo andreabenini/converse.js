@@ -1,0 +1,280 @@
+.conversejs {
+    converse-app-chat {
+        &.converse-overlayed {
+            .chatbox {
+                margin: 0 var(--overlayed-chat-gutter);
+            }
+        }
+    }
+
+    // A 1:1 chat colours its glyphs the way a groupchat already did (see
+    // `converse-muc.chatroom` in muc.scss). Without this, only a MUC had a
+    // blanket rule, so shared parts of a message — the edited pencil, the
+    // encryption padlock — came out in the MUC colour in a groupchat but fell
+    // back to `converse-icon`'s own `--secondary-color` in a chat, leaving blue
+    // glyphs in a conversation whose every other control was green.
+    //
+    // Deliberately the same shape and specificity as the MUC rule, so the two
+    // contexts resolve identically against everything else. Icons that name a
+    // colour in their template are unaffected either way: `converse-icon` writes
+    // that out as an inline style, which outranks any stylesheet, so the glyphs
+    // that need to contrast with a fill keep doing so.
+    converse-chat.chatbox {
+        converse-icon {
+            svg {
+                fill: var(--chat-color);
+            }
+        }
+    }
+}
+
+.conversejs {
+    .chatbox {
+        text-align: start;
+
+        @media screen and (max-height: $mobile-landscape-height) {
+            margin: 0;
+            width: var(--mobile-chat-width);
+        }
+        @media screen and (max-width: $mobile-portrait-length) {
+            margin: 0;
+            width: var(--mobile-chat-width);
+        }
+
+        converse-controlbox-navback {
+            display: none;
+        }
+
+        .flyout {
+            position: absolute;
+
+            @media screen and (max-height: $mobile-landscape-height) {
+                border-radius: 0;
+            }
+            @media screen and (max-width: $mobile-portrait-length) {
+                border-radius: 0;
+            }
+
+            @media screen and (max-height: $mobile-landscape-height) {
+                bottom: 0;
+            }
+            @media screen and (max-width: $mobile-portrait-length) {
+                bottom: 0;
+            }
+        }
+
+        // Carried both by the standalone heading buttons and by the host of the
+        // heading's dropdown, so it holds only what they share. The box itself is
+        // shaped below, on whichever element is the actual button.
+        .chatbox-btn {
+            border: none;
+            cursor: pointer;
+            font-size: var(--chatbox-button-size);
+            margin: 0 0.2em;
+            text-decoration: none;
+
+            &:active {
+                position: relative;
+                top: 1px;
+            }
+        }
+
+        // A heading control is a tile around its glyph, whether it is a button
+        // itself or the toggle inside a dropdown host.
+        //
+        // Both were stretched and lopsided: a block-level button in a flex host
+        // that is itself stretched to the heading row took the row's full height,
+        // and `padding: 0 0 0 0.5em` put all of the horizontal space on one side.
+        // The glyph ended up in a 21x40 box, flush against the right edge, which
+        // is the shape the hover plate then traced.
+        button.chatbox-btn,
+        .chatbox-btn .btn--standalone {
+            display: inline-flex;
+            align-items: center;
+            align-self: center;
+            padding: 0.35em;
+            line-height: 1;
+            border-radius: var(--button-border-radius);
+        }
+
+        .box-flyout {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 1px 3px 5px 3px rgba(0, 0, 0, 0.4);
+            z-index: 2;
+            overflow: hidden;
+            width: 100%;
+
+            @media screen and (max-height: $mobile-landscape-height) {
+                height: var(--mobile-chat-height);
+                width: var(--mobile-chat-width);
+                height: var(--fullpage-chat-height);
+            }
+            @media screen and (max-width: $mobile-portrait-length) {
+                height: var(--mobile-chat-height);
+                width: var(--mobile-chat-width);
+                height: var(--fullpage-chat-height);
+            }
+        }
+
+        .chat-title {
+            display: block;
+            font-family: var(--heading-font);
+            color: var(--heading-color);
+            display: block;
+            line-height: var(--line-height-large);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            &.groupchat {
+                padding-inline-end: 0;
+            }
+            a {
+                color: var(--chat-color);
+                width: 100%;
+            }
+        }
+
+        .chat-body {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background-color: var(--background-color);
+            border-bottom-left-radius: var(--chatbox-border-radius);
+            border-bottom-right-radius: var(--chatbox-border-radius);
+
+            @media screen and (max-height: $mobile-landscape-height) {
+                border-bottom-left-radius: 0;
+                border-bottom-right-radius: 0;
+            }
+            @media screen and (max-width: $mobile-portrait-length) {
+                border-bottom-left-radius: 0;
+                border-bottom-right-radius: 0;
+            }
+            border-top: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            p {
+                color: var(--text-color);
+                font-size: var(--message-font-size);
+                margin: 0;
+                padding: 0.25em;
+            }
+            .error {
+                color: var(--error-color);
+            }
+        }
+        .new-msgs-indicator {
+            position: relative;
+            width: 100%;
+            cursor: pointer;
+            background-color: var(--background-color);
+            color: var(--background-color);
+            padding: 0.5em;
+            font-size: 0.9em;
+            text-align: center;
+            z-index: 20;
+            white-space: nowrap;
+            margin-bottom: 0.25em;
+        }
+        .chat-content {
+            border: 0;
+            color: var(--text-color);
+            font-size: var(--message-font-size);
+            height: 100%;
+            line-height: 1.3em;
+            overflow: hidden;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+
+            .chat-content__help {
+                max-height: 100%;
+                converse-chat-help {
+                    border-top: 1px solid var(--background-color);
+                    // The close button takes the end of the first row, and
+                    // the help messages the column before it.
+                    display: grid;
+                    grid-template-columns: minmax(0, 1fr) auto;
+                    align-content: start;
+                    height: 100%;
+                    overflow-y: auto;
+                    padding: 0.5em 0;
+
+                    > * {
+                        grid-column: 1;
+                    }
+                }
+                .close-chat-help {
+                    grid-column: 2;
+                    grid-row: 1;
+                    padding-inline-end: 1em;
+                    cursor: pointer;
+                    color: var(--background-color);
+                    svg {
+                        fill: var(--background-color);
+                    }
+                }
+            }
+
+            .chat-content__messages {
+                display: flex;
+                flex-direction: column-reverse;
+                justify-content: space-between;
+                overflow-x: hidden;
+                overflow-y: auto;
+                height: 100%;
+            }
+
+            .chat-content__notifications {
+                display: block;
+                white-space: pre;
+                background-color: var(--background-color);
+                color: var(--secondary-color);
+                font-size: 90%;
+                font-style: italic;
+                line-height: var(--line-height-small);
+                padding: 0 1em 0.3em;
+                &:before {
+                    content: ' ';
+                }
+            }
+
+            progress {
+                margin: 0.5em 0;
+                width: 100%;
+            }
+        }
+
+        .dragresize {
+            background: transparent;
+            border: 0;
+            margin: 0;
+            position: absolute;
+            top: 0;
+            z-index: 20;
+            &-top {
+                cursor: n-resize;
+                height: 5px;
+                width: 100%;
+            }
+            &-left,
+            &-occupants-left {
+                cursor: w-resize;
+                width: 5px;
+                height: 100%;
+                left: 0;
+            }
+            &-topleft {
+                cursor: nw-resize;
+                width: 15px;
+                height: 15px;
+                top: 0;
+                left: 0;
+            }
+        }
+    }
+}

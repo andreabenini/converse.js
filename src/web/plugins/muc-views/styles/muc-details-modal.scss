@@ -1,0 +1,45 @@
+converse-muc-details-modal {
+    .features-list {
+        margin-inline-start: 1em;
+    }
+
+    .room-info__summary {
+        display: flex;
+        align-items: flex-start;
+        gap: 1em;
+        margin-bottom: 0.5em;
+
+        converse-avatar {
+            display: block;
+            flex-shrink: 0;
+        }
+
+        > div {
+            min-width: 0;
+        }
+    }
+
+    .room-info {
+        strong {
+            color: var(--muc-color);
+            margin-right: 0.5em;
+        }
+    }
+
+    .chatroom-features {
+        width: 100%;
+        .features-list {
+            padding-top: 0;
+            .feature {
+                width: 100%;
+                margin-inline-end: 0.5em;
+                padding-inline-end: 0;
+                font-size: 1em;
+                cursor: help;
+                converse-icon {
+                    margin-inline-end: 0.5em;
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,62 @@
+/**
+ * @module converse-notification
+ * @copyright 2022, the Converse.js contributors
+ * @license Mozilla Public License (MPLv2)
+ */
+import { _converse, api, constants, converse } from '@converse/headless';
+import {
+    clearFavicon,
+    handleChatStateNotification,
+    handleContactRequestNotification,
+    handleFeedback,
+    handleMessageNotification,
+    handleMicroblogNotification,
+    requestPermission,
+    updateUnreadFavicon,
+} from './utils.js';
+import notifications_api from './api.js';
+
+converse.plugins.add('converse-notification', {
+    dependencies: ['converse-chatboxes'],
+
+    initialize() {
+        api.settings.extend({
+            // ^ a list of JIDs to ignore concerning chat state notifications
+            chatstate_notification_blacklist: [],
+            notification_delay: 5000,
+            notification_icon: api.settings.get('assets_path') + '/images/logo/conversejs-filled.svg',
+            notify_all_room_messages: false,
+            notify_nicknames_without_references: false,
+            play_sounds: true,
+            show_chat_state_notifications: false,
+            show_desktop_notifications: true,
+            show_tab_notifications: true,
+            sounds_path: api.settings.get('assets_path') + '/sounds/',
+        });
+
+        Object.assign(api, notifications_api);
+
+        /************************ Event Handlers ************************/
+        api.listen.on('clearSession', (/** @type {import('@converse/headless').ClearSessionReason} */ reason) => {
+            // The rooms kept through an anonymous reconnection keep their unread counts.
+            if (reason !== constants.ANONYMOUS_RESET) clearFavicon(); // Needed for tests
+        });
+
+        api.waitUntil('chatBoxesInitialized').then(() => {
+            const { chatboxes } = _converse.state;
+            chatboxes.on('change:num_unread', updateUnreadFavicon);
+        });
+
+        api.listen.on('pluginsInitialized', function () {
+            // We only register event handlers after all plugins are
+            // registered, because other plugins might override some of our
+            // handlers.
+            api.listen.on('contactRequest', handleContactRequestNotification);
+            api.listen.on('contactPresenceChanged', handleChatStateNotification);
+            api.listen.on('message', handleMessageNotification);
+            api.listen.on('microblogNotification', handleMicroblogNotification);
+            api.listen.on('feedback', handleFeedback);
+            api.listen.on('connected', requestPermission);
+        });
+    },
+});

@@ -10,11 +10,11 @@ a TUI in development.
 
 Three npm workspaces:
 
-- **Root** (`/`): Main package with UI plugins (`src/plugins/`)
+- **Root** (`/`): Main package with UI plugins (`src/web/plugins/`)
 - **Headless** (`src/headless/`): Core XMPP logic and state management, separate package `@converse/headless`
   The `@converse/headless` package resolves to the built bundle (`dist/converse-headless.js`),
   **not** to individual source files. Importing from relative paths pointing to `src/headless/`
-  back into the main package like `src/plugins` is forbidden since they cross the package boundary.
+  back into the main package like `src/web/plugins` is forbidden since they cross the package boundary.
 
     Read: src/headless/AGENTS.md
 
@@ -45,7 +45,7 @@ details you cannot read off `package.json`:
 ### Testing
 
 Tests live in a `tests/` subdirectory of each plugin. Mock data is in
-`src/headless/tests/mock.js` and `src/shared/tests/mock.js`.
+`src/headless/tests/mock.js` and `src/web/shared/tests/mock.js`.
 
 **Always run `npm run dev` before running tests.** Vitest runs against the pre-built `dist/converse.js` bundle,
 not source files directly. If you skip the build, you will be testing against a stale bundle and changes to source
@@ -57,13 +57,13 @@ regressed across the entire codebase. When working on a specific feature, pass a
 
 ```bash
 # Run only specific files (fastest turnaround) — pass a path/substring to vitest
-npx vitest run --project main src/plugins/chatview/tests/messages.js
+npx vitest run --project main src/web/plugins/chatview/tests/messages.js
 ```
 
 > **Which suite to run?** Tests for plugins under `src/headless/` (e.g. smacks, roster,
 > status, presence) live in the **headless** suite and will not be picked up by `npm test`.
 > Use `npm run test:headless` (or `npm run dev:headless` before it) when
-> working in that area. `npm test` only covers the UI plugins under `src/plugins/`.
+> working in that area. `npm test` only covers the UI plugins under `src/web/plugins/`.
 
 The daemon and CLI tests run under Node with a mock connection: `npm run test:daemon`. The real-server
 tests need Docker and start Prosody themselves: `npm run test:prosody`.
@@ -136,16 +136,19 @@ as consumers see it. The bundle only contains what the entry point exports, so a
 UI code or plugins need from headless has to be exported from `src/headless/index.js` (a
 top-level `@typedef` there is enough); import it as `import('@converse/headless').Name`,
 never from a `@converse/headless/types/...` subpath. Likewise, UI types that plugins need
-are exported from `src/index.js`. Bare imports such as `shared/components/element.js`
+are exported from `src/web/index.js`. Bare imports such as `shared/components/element.js`
 resolve through the catch-all `paths` entry of each `tsconfig.json`, not through
 `baseUrl`. Side-effect imports of stylesheets are covered by the ambient `*.scss`
-declaration in `src/shared/styles/scss.d.ts`.
+declaration in `src/web/shared/styles/scss.d.ts`.
 
 ## Commits
 
 Keep commit messages short: a `type(scope): summary` subject (e.g.
 `fix(reactions): …`, `feat(muc): …`) that states what was fixed or which feature was
 implemented. Don't explain how; the code and its comments document that.
+
+A `CHANGES.md` entry is one line of at most 80 characters, including the leading
+`- `. Like a commit subject, it says what changed for the user, not how.
 
 ## Architecture
 
@@ -154,7 +157,7 @@ implemented. Don't explain how; the code and its comments document that.
 Converse uses a **plugin-based architecture** powered by `pluggable.js`:
 
 - **Headless plugins** (`src/headless/plugins/`): Core XMPP logic, no UI
-- **UI plugins** (`src/plugins/`): Visual components that depend on headless
+- **UI plugins** (`src/web/plugins/`): Visual components that depend on headless
 
 ### Plugin Structure
 
@@ -233,7 +236,7 @@ api.listen.on('beforeMessageCreated', (chatbox, attrs, data) => {
 });
 ```
 
-**Apps own navigation; building blocks announce intent.** An app (`src/apps/*`, e.g.
+**Apps own navigation; building blocks announce intent.** An app (`src/web/apps/*`, e.g.
 the Chat and Social apps) is itself a plugin that composes lower-level view plugins
 (`rosterview`, `muc-views`, etc.). Those building blocks must not import app modules to
 navigate: that inverts the dependency arrow (plugin -> app) and couples a reusable view
@@ -251,6 +254,28 @@ api.listen.on('openConversation', ({ view, jid, attrs }) => openConversationRout
 
 The Social app follows the same convention (`openSocialFeed`, `openMicroblogPost`). Use
 a hook instead of an event only when the call site genuinely needs a return value.
+
+### UI and headless boundary
+
+UI code (everything under `src/web/`) reads
+state from models and changes it through `api` methods. Protocol work belongs in
+`@converse/headless`, where the daemon, the CLI and other front ends can use it too.
+
+- **No stanzas in UI code.** Don't build, send or parse stanzas, and don't register
+  stanza handlers. Add an `api` method to the headless plugin that owns the feature
+  and call that. `npm run lint` catches the common ways of building and sending
+  stanzas and registering handlers (`no-restricted-properties` in
+  `.oxlintrc.json`), but not parsing, so don't take a lint pass as proof. The few
+  files still exempted there are to be migrated, not added to.
+- **Commands take and return plain data.** A new `api` method that the UI calls
+  takes serialisable arguments (no callbacks, no `Element`) and returns plain data
+  or a model.
+- **Don't depend on a command's synchronous return value.** Await it, or react to
+  the resulting model change.
+- **Reading from models is fine**: `model.get()` and methods that compute from
+  attributes.
+
+These rules bind the code in this repository, not third-party plugins.
 
 ### Import Patterns
 

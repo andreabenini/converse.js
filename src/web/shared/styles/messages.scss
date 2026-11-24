@@ -1,0 +1,576 @@
+.conversejs {
+    .styling-directive {
+        color: var(--secondary-color);
+    }
+
+    .msgs-indicator {
+        color: var(--background-color);
+        background-color: var(--chat-color);
+    }
+
+    .message {
+        .show-msg-author-modal {
+            align-self: flex-start; // Don't expand height to that of largest sibling
+            // https://stackoverflow.com/questions/27575779/prevent-a-flex-items-height-from-expanding-to-match-other-flex-items/40156422#40156422
+            color: var(--link-color) !important;
+        }
+
+        button.show-msg-author-modal {
+            background: none;
+            border: 0;
+            cursor: pointer;
+            font: inherit;
+            padding: 0;
+        }
+
+        blockquote {
+            border-inline-start: 0.3em solid var(--info-color);
+            color: var(--info-color);
+            display: inline-block;
+            margin-bottom: 0.25em;
+            margin-inline-start: 0;
+            padding-inline-end: 1em;
+            padding-inline-start: 0.5em;
+        }
+
+        code {
+            font-family: monospace;
+        }
+        .mention {
+            font-weight: bold;
+        }
+        .mention--self {
+            font-weight: normal;
+        }
+        &.date-separator,
+        &.separator {
+            height: 2em;
+            margin: 0.5em 0 0 0;
+            position: relative;
+            text-align: center;
+            z-index: 0;
+
+            .separator {
+                border-top: 0px;
+                border-bottom: var(--chat-separator-border-bottom);
+                margin: 0 1em;
+                position: relative;
+                top: 1em;
+                z-index: 5;
+            }
+
+            .separator-text {
+                background: var(--background-color);
+                bottom: 1px; // Offset needed due to .separator border size
+                color: var(--foreground-color);
+                display: inline-block;
+                line-height: 2em;
+                padding: 0 1em;
+                position: relative;
+                z-index: 5;
+            }
+        }
+
+        &.chat-info {
+            color: var(--info-color);
+            font-size: var(--message-font-size);
+            line-height: var(--line-height-small);
+            font-size: 90%;
+            padding: 0.17rem 1rem;
+
+            &.badge {
+                color: var(--chat-color);
+            }
+            &.chat-state-notification {
+                font-style: italic;
+            }
+            &.chat-event {
+                font-style: italic;
+            }
+            &.chat-error {
+                color: var(--error-color);
+                font-weight: bold;
+            }
+            .q {
+                font-style: italic;
+            }
+        }
+
+        .chat-image {
+            height: auto;
+            width: auto;
+            max-height: 15em;
+            max-width: 100%;
+        }
+
+        &.chat-msg--action {
+            font-style: italic;
+
+            .chat-msg__author {
+                padding-inline-end: 0.2em;
+            }
+        }
+
+        &.chat-msg {
+            // Block-level, not `inline-flex`. Each message sits inside its own
+            // `converse-chat-message`, which has no display of its own and so is
+            // inline, and an inline-level message therefore joined a line box: the
+            // leading around it left about 0.6px of unpainted space between one
+            // message and the next.
+            //
+            // Blockifying the host instead does not help, because the inline-flex
+            // child would still form a line box of its own inside it.
+            display: flex;
+            width: 100%;
+            flex-direction: row;
+            padding: 0.25rem 1rem;
+
+            &.onload {
+                animation: colorchange-chatmessage 1s;
+                -webkit-animation: colorchange-chatmessage 1s;
+            }
+            &:hover {
+                background-color: var(--highlight-color-hover);
+            }
+
+            // Arrived in the clear while the conversation's encryption is on.
+            // Faint enough to read as a property of the row rather than as an
+            // error banner, and mixed from `--error-color` so each theme brings
+            // its own red rather than one hardcoded here.
+            //
+            // The hover state is restated because the plain `&:hover` above
+            // carries the same specificity as this rule: left alone, whichever
+            // came last would win outright, and the row would either lose its
+            // hover response or lose the mark while the pointer was on it.
+            &.chat-msg--unencrypted {
+                background-color: color-mix(in srgb, var(--error-color) 8%, transparent);
+
+                &:hover {
+                    background-color: color-mix(in srgb, var(--error-color) 14%, var(--highlight-color-hover));
+                }
+            }
+
+            &.correcting {
+                background-color: var(--highlight-color);
+            }
+            &.chat-msg--highlighted {
+                animation: highlight-message 2s ease-out;
+            }
+
+            .spoiler {
+                margin-top: 0.5em;
+            }
+            .spoiler-hint {
+                margin-bottom: 0.5em;
+            }
+            .spoiler-toggle {
+                color: var(--background-color);
+                i {
+                    color: var(--background-color);
+                    padding-inline-end: 0.5em;
+                }
+                &:before {
+                    padding-inline-end: 0.25em;
+                    white-space: nowrap;
+                }
+            }
+
+            .chat-msg__content--me {
+                .chat-msg__body--groupchat {
+                    .chat-msg__text {
+                        color: var(--secondary-color);
+                    }
+                    &.chat-msg__body--delayed .chat-msg__text,
+                    &.chat-msg__body--received .chat-msg__text {
+                        color: var(--foreground-color);
+                    }
+                }
+            }
+
+            .chat-msg__content--action {
+                width: 100%;
+                margin-inline-start: 0;
+            }
+
+            .chat-msg__message {
+                display: inline-flex;
+                flex-direction: column;
+                line-height: 1.5em;
+                overflow-wrap: break-word;
+                width: 100%;
+                .chat-msg__body--wrapper {
+                    .chat-msg__text {
+                        color: var(--foreground-color);
+                        padding: 0;
+                        white-space: pre-wrap;
+                        word-wrap: break-word;
+                        word-break: break-word;
+                        a {
+                            word-wrap: break-word;
+                            word-break: break-all;
+                            display: inline;
+                            &.chat-image__link {
+                                width: fit-content;
+                                display: block;
+                            }
+                        }
+                        img {
+                            &.emoji {
+                                height: 1.5em;
+                                width: 1.5em;
+                                margin: 0 0.05em 0 0.1em;
+                                vertical-align: -0.1em;
+                            }
+                        }
+                        .emojione {
+                            margin-bottom: -6px;
+                        }
+                    }
+                    &.error {
+                        .chat-msg__text {
+                            color: var(--disabled-color);
+                        }
+                    }
+                    display: flex;
+                }
+            }
+
+            .chat-msg__edit-modal {
+                cursor: pointer;
+                padding-inline-end: 0.5em;
+            }
+
+            .chat-msg__subject {
+                font-weight: bold;
+            }
+
+            .chat-msg__text--larger {
+                line-height: 1.6em;
+                font-size: 1.6em;
+                padding-top: 0.25em;
+                padding-bottom: 0.25em;
+            }
+
+            .chat-msg__error {
+                color: var(--error-color);
+                white-space: pre-wrap;
+            }
+
+            .chat-msg__media {
+                margin-top: 0.25rem;
+                word-break: break-all;
+                a {
+                    word-wrap: break-word;
+                }
+                audio {
+                    width: 100%;
+                }
+            }
+
+            .chat-msg__author {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-family: var(--heading-font);
+                font-size: 115%;
+                font-weight: bold;
+                padding-bottom: 1px; // Hack to avoid cutting of text on the button
+            }
+
+            .chat-msg__heading {
+                width: 100%;
+                padding-inline-end: 0.25rem;
+                margin-bottom: 0.25em;
+
+                .badge {
+                    margin-inline-start: 0.5em;
+                    font-family: var(--normal-font);
+                }
+                .chat-msg__time {
+                    padding-inline-start: 0.25em;
+                    padding-inline-end: 0.25em;
+                    color: var(--secondary-color);
+                }
+                // The encryption padlock states a fact about the message; it is
+                // not a control. Held to the same colour as the timestamp it sits
+                // beside, so the heading's metadata reads as one quiet row rather
+                // than putting an accent-coloured mark next to the author's name.
+                //
+                // Said explicitly because it would otherwise take whichever
+                // blanket colour the surrounding conversation sets — the MUC
+                // colour in a groupchat, the chat colour in a 1:1.
+                .fa-lock {
+                    svg {
+                        padding-bottom: 2px;
+                        fill: var(--secondary-color);
+                    }
+                }
+            }
+            &.chat-msg--action {
+                // Inline flow, so that the author, the text and the trailing
+                // timestamp read as one sentence that wraps as a whole,
+                // instead of flex items that each shrink into a column.
+                .chat-msg__message {
+                    display: block;
+                    // The message body is inline here, so its own
+                    // `overflow-y: hidden` no longer contains zalgo text.
+                    overflow-y: clip;
+                }
+                .chat-msg__body--wrapper {
+                    display: inline;
+                }
+                .chat-msg__text {
+                    margin-inline-end: 0;
+                    width: auto;
+                }
+                .chat-msg__heading {
+                    margin-top: 0;
+                    padding-bottom: 0;
+                    width: auto;
+
+                    .fa {
+                        margin-inline-start: 0.5em;
+                    }
+                }
+                // Part of the sentence, so a long nickname wraps with it
+                // instead of being cut off or overflowing the row.
+                // The timestamp after it brings its own spacing
+                .chat-msg__edit-modal {
+                    padding-inline-end: 0;
+                }
+                .chat-msg__author {
+                    font-size: var(--message-font-size);
+                    white-space: normal;
+                    overflow-wrap: anywhere;
+                }
+                // The timestamp trails the text as a dimmed suffix
+                // ("romeo waves · 5m"), so that a relative time is not
+                // read as the first word of the sentence.
+                .chat-msg__time {
+                    color: var(--secondary-color);
+                    // Added to the space that comes before it
+                    margin-inline-start: 0.25em;
+                    white-space: nowrap;
+
+                    &::before {
+                        content: '·' / ''; // Decorative, so not read out
+                        margin-inline-end: 0.5em;
+                    }
+                }
+
+                // The timestamp follows the text on its line, and a
+                // moderation reason goes below both.
+                .chat-msg--retracted__reason {
+                    display: block;
+                }
+            }
+
+            .chat-msg__content {
+                width: calc(100% - var(--message-avatar-width));
+            }
+
+            .chat-msg__content--action {
+                width: 100%;
+            }
+
+            &.chat-msg--followup {
+                .chat-msg__heading,
+                .show-msg-author-modal {
+                    display: none;
+                }
+                &.chat-msg--with-avatar .chat-msg__content {
+                    margin-inline-start: 3rem;
+                    width: 100%;
+                }
+            }
+
+            .chat-msg__send-pending {
+                display: flex;
+                flex-shrink: 0;
+                align-items: baseline;
+                gap: 0.75em;
+                margin-inline-start: 0.5em;
+                color: var(--subdued-color);
+                white-space: nowrap;
+
+                .chat-msg__send-pending-status {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.35em;
+
+                    // Centred on the line box, the icon sits below the middle of the capitals.
+                    converse-icon {
+                        position: relative;
+                        top: -0.1em;
+                    }
+                }
+            }
+
+            .chat-msg__send-failed {
+                display: flex;
+                flex-wrap: wrap;
+                flex-shrink: 0;
+                align-items: baseline;
+                gap: 0.25em 0.75em;
+                max-width: 60%;
+                margin-inline-start: 0.5em;
+
+                // The actions wrap together, rather than one by one.
+                .chat-msg__send-actions {
+                    display: flex;
+                    gap: 0.25em;
+                    white-space: nowrap;
+                    // Undoes the first action's padding, so that its text lines
+                    // up with the reason when the actions wrap below it.
+                    margin-inline-start: -0.45em;
+                }
+            }
+
+            // Retry, discard and the like, for a message that wasn't sent.
+            .chat-msg__send-action {
+                padding: 0.05em 0.45em;
+                border: 0;
+                border-radius: 0.3em;
+                background: none;
+                color: var(--link-color);
+                font: inherit;
+                font-weight: 600;
+                cursor: pointer;
+                transition: background-color 0.15s ease-out;
+
+                &:hover {
+                    background-color: color-mix(in srgb, var(--link-color) 12%, transparent);
+                }
+
+                &:focus-visible {
+                    outline: 2px solid var(--link-color);
+                    outline-offset: 1px;
+                }
+            }
+
+            .chat-msg__receipt {
+                margin-inline-start: 0.5em;
+                margin-inline-end: 0.5em;
+
+                svg {
+                    fill: var(--success-color);
+                }
+            }
+        }
+
+        .chat-msg__content {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: stretch;
+            margin-inline-start: 0.5rem;
+            &:hover {
+                .btn--standalone {
+                    opacity: 1;
+                }
+            }
+        }
+
+        .chat-msg__body {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            position: relative; /* Anchor for absolute positioned children like reaction picker */
+        }
+    }
+
+    .chatroom-body .message {
+        &.onload {
+            animation: colorchange-chatmessage-muc 1s;
+            -webkit-animation: colorchange-chatmessage-muc 1s;
+        }
+        .separator {
+            border-top: 0px;
+            border-bottom: 0.15em solid var(--muc-color);
+        }
+    }
+
+    converse-app-chat {
+        &.converse-overlayed {
+            .message {
+                &.chat-msg {
+                    &.chat-msg--followup {
+                        .chat-msg__content {
+                            margin-inline-start: 0;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@media screen and (max-width: 767px) {
+    converse-app-chat:not(.converse-embedded) {
+        .message {
+            &.chat-msg {
+                .chat-msg__author {
+                    white-space: normal;
+                }
+            }
+        }
+    }
+}
+
+// Reply context styles
+.chat-msg__reply-context {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.4em 0.6em;
+    margin-bottom: 0.35em;
+    background-color: var(--highlight-color);
+    border-left: 3px solid var(--chat-color);
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: background-color 0.15s ease;
+
+    &:hover {
+        background-color: var(--highlight-color-hover);
+    }
+
+    &--unavailable {
+        opacity: 0.7;
+        font-style: italic;
+    }
+
+    .fa-reply {
+        opacity: 0.6;
+        flex-shrink: 0;
+    }
+
+    .chat-msg__reply-sender {
+        font-weight: 600;
+        color: var(--chat-color);
+        flex-shrink: 0;
+        &::after {
+            content: ':';
+        }
+    }
+
+    .chat-msg__reply-text {
+        color: var(--foreground-color);
+        opacity: 0.8;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+// Highlight animation for scrolled-to replied messages
+@keyframes highlight-message {
+    0% {
+        background-color: var(--chat-color);
+        opacity: 0.8;
+    }
+    100% {
+        background-color: transparent;
+        opacity: 1;
+    }
+}

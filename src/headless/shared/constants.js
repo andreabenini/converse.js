@@ -45,6 +45,9 @@ export const METADATA_ATTRIBUTES = [
 ];
 
 export const ANONYMOUS = 'anonymous';
+// The reasons for the `clearSession` event
+export const ANONYMOUS_RESET = 'anonymous-reset';
+export const SESSION_ENDED = 'ended';
 export const CLOSED = 'closed';
 export const EXTERNAL = 'external';
 export const LOGIN = 'login';
@@ -133,6 +136,7 @@ export const CORE_PLUGINS = [
     'converse-bookmarks',
     'converse-blocklist',
     'converse-bosh',
+    'converse-browser-credentials',
     'converse-caps',
     'converse-chat',
     'converse-chatboxes',
@@ -145,6 +149,7 @@ export const CORE_PLUGINS = [
     'converse-muc',
     'converse-ping',
     'converse-pubsub',
+    'converse-push',
     'converse-reactions',
     'converse-roster',
     'converse-smacks',

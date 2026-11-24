@@ -1,0 +1,68 @@
+converse-user-profile {
+    padding: 0.5em 1em 0.75em 1em;
+    border-bottom: 0.1rem var(--controlbox-color) solid;
+
+    .show-profile {
+        display: flex;
+        align-items: center;
+        flex: 1 1 auto;
+        min-width: 0;
+        // No `text-overflow` here: this is a flex container, so its children
+        // are flex items rather than inline content. `.username` owns the
+        // ellipsis. `white-space` still inherits down to it.
+        white-space: nowrap;
+        overflow-x: hidden;
+    }
+
+    converse-controlbox-buttons {
+        flex-shrink: 0;
+    }
+
+    .change-status {
+        display: flex;
+        min-width: 0;
+        white-space: nowrap;
+        > span {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+        }
+        converse-icon {
+            flex-shrink: 0;
+            padding-inline-end: 0.5em;
+        }
+    }
+
+    .userinfo {
+        .xmpp-status__msg {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .username {
+            margin-inline-end: 0.5em;
+            margin-inline-start: 0.5em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .profile {
+            margin-bottom: 0.5em;
+        }
+    }
+
+    .xmpp-status {
+        .chat-status--online {
+            color: var(--chat-status-online);
+        }
+        .chat-status--busy {
+            color: var(--chat-status-busy);
+        }
+        .chat-status--away {
+            color: var(--chat-status-away);
+        }
+        .far.fa-circle,
+        .fa-times-circle {
+            color: var(--secondary-color);
+        }
+    }
+}

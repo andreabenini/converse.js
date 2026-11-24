@@ -13,7 +13,7 @@
   "globals": {
     "sinon": "readonly"
   },
-  "ignorePatterns": ["**/dist/**", "src/types/**", "src/headless/types/**"],
+  "ignorePatterns": ["**/dist/**", "src/web/types/**", "src/headless/types/**"],
   "rules": {
     "constructor-super": "error",
     "for-direction": "error",
@@ -226,9 +226,78 @@
       }
     },
     {
-      "files": ["src/shared/qrcode/**"],
+      "files": ["src/web/shared/qrcode/**"],
       "rules": {
         "max-depth": "off"
+      }
+    },
+    {
+      "files": [
+        "src/web/plugins/**/*.js",
+        "src/web/apps/**/*.js",
+        "src/web/shared/**/*.js",
+        "src/web/templates/**/*.js",
+        "src/web/utils/**/*.js"
+      ],
+      "rules": {
+        "no-restricted-properties": [
+          "error",
+          {
+            "property": "stx",
+            "message": "UI code must not build stanzas. Add an api method to @converse/headless instead."
+          },
+          {
+            "property": "$iq",
+            "message": "UI code must not build stanzas. Add an api method to @converse/headless instead."
+          },
+          {
+            "property": "$msg",
+            "message": "UI code must not build stanzas. Add an api method to @converse/headless instead."
+          },
+          {
+            "property": "$pres",
+            "message": "UI code must not build stanzas. Add an api method to @converse/headless instead."
+          },
+          {
+            "property": "$build",
+            "message": "UI code must not build stanzas. Add an api method to @converse/headless instead."
+          },
+          {
+            "property": "toStanza",
+            "message": "UI code must not build stanzas. Add an api method to @converse/headless instead."
+          },
+          {
+            "property": "sendIQ",
+            "message": "UI code must not send stanzas. Add an api method to @converse/headless instead."
+          },
+          {
+            "object": "api",
+            "property": "send",
+            "message": "UI code must not send stanzas. Add an api method to @converse/headless instead."
+          },
+          {
+            "property": "addHandler",
+            "message": "UI code must not handle stanzas. Handle them in @converse/headless instead."
+          },
+          {
+            "property": "_addSysHandler",
+            "message": "UI code must not handle stanzas. Handle them in @converse/headless instead."
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/**/tests/**",
+        "src/web/plugins/muc-views/modals/templates/muc-config.js",
+        "src/web/plugins/profile/password-reset.js",
+        "src/web/plugins/profile/utils.js",
+        "src/web/plugins/reactions-views/utils.js",
+        "src/web/plugins/register/form.js",
+        "src/web/utils/form.js"
+      ],
+      "rules": {
+        "no-restricted-properties": "off"
       }
     }
   ]
